@@ -55,7 +55,7 @@ impl eframe::App for SharedApp {
         }
 
         if let Some(warpon) = self.warpon.as_mut() {
-            // assert maps, remove if map or room doesn't exist anymore
+            // TODO assert maps, remove if map or room doesn't exist anymore
         }
 
         ctx.input(|i| eprintln!("MAX TEX SIDE {}", i.max_texture_side));

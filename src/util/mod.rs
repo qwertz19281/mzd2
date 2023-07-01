@@ -90,7 +90,7 @@ impl<T,E> ResultExt<T> for Result<T,E> where E: Error {
 static OP_GEN_EVO: AtomicI64 = AtomicI64::new(64);
 
 pub fn next_op_gen_evo() -> u64 {
-    let next = ID_GEN_SRC.fetch_add(1, Relaxed);
+    let next = OP_GEN_EVO.fetch_add(1, Relaxed);
     if next > 0 {
         next as u64
     } else {
