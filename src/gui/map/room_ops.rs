@@ -168,12 +168,12 @@ fn in_sift_range(v: [i8;3], base: [i8;3], axis: OpAxis, dir: bool) -> bool {
 
 fn sift_range_big_enough(base: [i8;3], n_sift: u8, axis: OpAxis, dir: bool) -> bool {
     match (axis,dir) {
-        (OpAxis::X, true ) => ( 255 - base[0] as i16) >= n_sift as i16,
-        (OpAxis::X, false) => (base[0] as i16 - -256) >= n_sift as i16,
-        (OpAxis::Y, true ) => ( 255 - base[1] as i16) >= n_sift as i16,
-        (OpAxis::Y, false) => (base[1] as i16 - -256) >= n_sift as i16,
-        (OpAxis::Z, true ) => ( 255 - base[2] as i16) >= n_sift as i16,
-        (OpAxis::Z, false) => (base[2] as i16 - -256) >= n_sift as i16,
+        (OpAxis::X, true ) => ( 127 - base[0] as i16) >= n_sift as i16,
+        (OpAxis::X, false) => (base[0] as i16 - -128) >= n_sift as i16,
+        (OpAxis::Y, true ) => ( 127 - base[1] as i16) >= n_sift as i16,
+        (OpAxis::Y, false) => (base[1] as i16 - -128) >= n_sift as i16,
+        (OpAxis::Z, true ) => ( 127 - base[2] as i16) >= n_sift as i16,
+        (OpAxis::Z, false) => (base[2] as i16 - -128) >= n_sift as i16,
     }
 }
 
