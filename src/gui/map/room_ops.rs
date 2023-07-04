@@ -8,7 +8,7 @@ use crate::util::next_op_gen_evo;
 use super::{RoomId, Map};
 
 impl Map {
-    pub fn move_room(&mut self, id: RoomId, dest: [i8;3]) -> bool {
+    pub fn move_room(&mut self, id: RoomId, dest: [u8;3]) -> bool {
         if self.room_matrix.get(dest).is_some() {return false;}
         let room = self.state.rooms.get_mut(id).unwrap();
         let old_pos = room.coord;
@@ -18,11 +18,11 @@ impl Map {
         true
     }
 
-    pub fn room_at(&self, coord: [i8;3]) -> Option<RoomId> {
+    pub fn room_at(&self, coord: [u8;3]) -> Option<RoomId> {
         self.room_matrix.get(coord).cloned()
     }
 
-    pub fn get_or_create_room_at(&mut self, coord: [i8;3]) -> RoomId {
+    pub fn get_or_create_room_at(&mut self, coord: [u8;3]) -> RoomId {
         *self.room_matrix.get_or_insert_with(coord, || {
             let tex_id = self.state.next_room_tex_id;
             self.state.next_room_tex_id += 1;
@@ -42,7 +42,7 @@ impl Map {
     }
 
     /// create a gap next to base_coord with n size
-    pub fn shift_away(&mut self, base_coord: [i8;3], n_sift: u8, axis: OpAxis, dir: bool) {
+    pub fn shift_away(&mut self, base_coord: [u8;3], n_sift: u8, axis: OpAxis, dir: bool) {
         assert!(n_sift != 0);
         let Some(zuckerbounds) = self.room_matrix.zuckerbounds() else {return};
         if !sift_vali(zuckerbounds, n_sift, axis, dir) {return;}
@@ -64,13 +64,13 @@ impl Map {
     }
 
     /// try move room and base_coord and all directly connected into a direction
-    pub fn shift_smart(&mut self, base_coord: [i8;3], n_sift: u8, axis: OpAxis, dir: bool, away_lock: bool, no_new_connect: bool) -> bool {
+    pub fn shift_smart(&mut self, base_coord: [u8;3], n_sift: u8, axis: OpAxis, dir: bool, away_lock: bool, no_new_connect: bool) -> bool {
         assert!(n_sift != 0);
         if self.room_matrix.total() == 0 {return false}
         let Some(&my_room) = self.room_matrix.get(base_coord) else {return false};
         if !sift_range_big_enough(base_coord, n_sift, axis, dir) {return false;}
         
-        let (mut area_min, mut area_max) = ([127,127,127],[-128,-128,-128]);
+        let (mut area_min, mut area_max) = ([255,255,255],[0,0,0]);
         let mut flood_spin = VecDeque::<RoomId>::with_capacity(65536);
         let mut all_list = Vec::with_capacity(65536);
 
@@ -155,7 +155,7 @@ pub enum OpAxis {
     Z,
 }
 
-fn in_sift_range(v: [i8;3], base: [i8;3], axis: OpAxis, dir: bool) -> bool {
+fn in_sift_range(v: [u8;3], base: [u8;3], axis: OpAxis, dir: bool) -> bool {
     match (axis,dir) {
         (OpAxis::X, true ) => v[0] >= base[0],
         (OpAxis::X, false) => v[0] <= base[0],
@@ -166,21 +166,21 @@ fn in_sift_range(v: [i8;3], base: [i8;3], axis: OpAxis, dir: bool) -> bool {
     }
 }
 
-fn sift_range_big_enough(base: [i8;3], n_sift: u8, axis: OpAxis, dir: bool) -> bool {
+fn sift_range_big_enough(base: [u8;3], n_sift: u8, axis: OpAxis, dir: bool) -> bool {
     match (axis,dir) {
-        (OpAxis::X, true ) => ( 127 - base[0] as i16) >= n_sift as i16,
-        (OpAxis::X, false) => (base[0] as i16 - -128) >= n_sift as i16,
-        (OpAxis::Y, true ) => ( 127 - base[1] as i16) >= n_sift as i16,
-        (OpAxis::Y, false) => (base[1] as i16 - -128) >= n_sift as i16,
-        (OpAxis::Z, true ) => ( 127 - base[2] as i16) >= n_sift as i16,
-        (OpAxis::Z, false) => (base[2] as i16 - -128) >= n_sift as i16,
+        (OpAxis::X, true ) => (255 - base[0]) >= n_sift,
+        (OpAxis::X, false) => (base[0] - 0) >= n_sift,
+        (OpAxis::Y, true ) => (255 - base[1]) >= n_sift,
+        (OpAxis::Y, false) => (base[1] - 0) >= n_sift,
+        (OpAxis::Z, true ) => (255 - base[2]) >= n_sift,
+        (OpAxis::Z, false) => (base[2] - 0) >= n_sift,
     }
 }
 
-fn sift_vali((v_min,v_max): ([i8;3],[i8;3]), n_sift: u8, axis: OpAxis, dir: bool) -> bool {
+fn sift_vali((v_min,v_max): ([u8;3],[u8;3]), n_sift: u8, axis: OpAxis, dir: bool) -> bool {
     assert!(n_sift != 0);
-    let upper_limit = 127i8 - n_sift as i8;
-    let lower_limit = -128i8 + n_sift as i8;
+    let upper_limit = 255u8 - n_sift as u8;
+    let lower_limit = 0u8 + n_sift as u8;
     match (axis,dir) {
         (OpAxis::X, true ) => v_max[0] <= upper_limit,
         (OpAxis::X, false) => v_min[0] >= lower_limit,
@@ -191,48 +191,47 @@ fn sift_vali((v_min,v_max): ([i8;3],[i8;3]), n_sift: u8, axis: OpAxis, dir: bool
     }
 }
 
-fn apply_sift(mut v: [i8;3], n_sift: u8, axis: OpAxis, dir: bool) -> [i8;3] {
-    let isift = match dir {
-        true => n_sift as i8,
-        false => -(n_sift as i8),
-    };
-    match axis {
-        OpAxis::X => v[0] += isift,
-        OpAxis::Y => v[1] += isift,
-        OpAxis::Z => v[2] += isift,
-    };
+fn apply_sift(mut v: [u8;3], n_sift: u8, axis: OpAxis, dir: bool) -> [u8;3] {
+    match (axis,dir) {
+        (OpAxis::X, true) => v[0] += n_sift,
+        (OpAxis::X, false) => v[1] += n_sift,
+        (OpAxis::Y, true) => v[2] += n_sift,
+        (OpAxis::Y, false) => v[0] -= n_sift,
+        (OpAxis::Z, true) => v[1] -= n_sift,
+        (OpAxis::Z, false) => v[2] -= n_sift,
+    }
     v
 }
 
-fn try_6_sides(v: [i8;3], mut fun: impl FnMut([i8;3])) {
-    if v[0] !=  127 {
+fn try_6_sides(v: [u8;3], mut fun: impl FnMut([u8;3])) {
+    if v[0] != 255 {
         fun([v[0]+1, v[1]  , v[2]  ]);
     }
-    if v[0] != -128 {
+    if v[0] !=   0 {
         fun([v[0]-1, v[1]  , v[2]  ]);
     }
-    if v[1] !=  127 {
+    if v[1] != 255 {
         fun([v[0]  , v[1]+1, v[2]  ]);
     }
-    if v[1] != -128 {
+    if v[1] !=   0 {
         fun([v[0]  , v[1]-1, v[2]  ]);
     }
-    if v[2] !=  127 {
+    if v[2] != 255 {
         fun([v[0]  , v[1]  , v[2]+1]);
     }
-    if v[2] != -128 {
+    if v[2] !=   0 {
         fun([v[0]  , v[1]  , v[2]-1]);
     }
 }
 
-fn try_side<R>(v: [i8;3], axis: OpAxis, dir: bool, fun: impl FnOnce([i8;3]) -> R) -> Option<R> {
+fn try_side<R>(v: [u8;3], axis: OpAxis, dir: bool, fun: impl FnOnce([u8;3]) -> R) -> Option<R> {
     match (axis,dir) {
-        (OpAxis::X, true ) if v[0] !=  127 => Some(fun([v[0]+1, v[1]  , v[2]  ])),
-        (OpAxis::X, false) if v[0] != -128 => Some(fun([v[0]-1, v[1]  , v[2]  ])),
-        (OpAxis::Y, true ) if v[1] !=  127 => Some(fun([v[0]  , v[1]+1, v[2]  ])),
-        (OpAxis::Y, false) if v[1] != -128 => Some(fun([v[0]  , v[1]-1, v[2]  ])),
-        (OpAxis::Z, true ) if v[2] !=  127 => Some(fun([v[0]  , v[1]  , v[2]+1])),
-        (OpAxis::Z, false) if v[2] != -128 => Some(fun([v[0]  , v[1]  , v[2]-1])),
+        (OpAxis::X, true ) if v[0] != 255 => Some(fun([v[0]+1, v[1]  , v[2]  ])),
+        (OpAxis::X, false) if v[0] !=   0 => Some(fun([v[0]-1, v[1]  , v[2]  ])),
+        (OpAxis::Y, true ) if v[1] != 255 => Some(fun([v[0]  , v[1]+1, v[2]  ])),
+        (OpAxis::Y, false) if v[1] !=   0 => Some(fun([v[0]  , v[1]-1, v[2]  ])),
+        (OpAxis::Z, true ) if v[2] != 255 => Some(fun([v[0]  , v[1]  , v[2]+1])),
+        (OpAxis::Z, false) if v[2] !=   0 => Some(fun([v[0]  , v[1]  , v[2]-1])),
         _ => None,
     }
 }

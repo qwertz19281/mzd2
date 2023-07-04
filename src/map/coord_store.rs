@@ -17,7 +17,7 @@ pub struct Laser {
     laser_z: Box<[usize;256]>,
     total: usize,
     zucker_dirty: bool,
-    zuckerbounds: Option<([i8;3],[i8;3])>,
+    zuckerbounds: Option<([u8;3],[u8;3])>,
 }
 
 
@@ -38,8 +38,7 @@ impl<T> CoordStore<T> {
         }
     }
 
-    pub fn get(&self, [x,y,z]: [i8;3]) -> Option<&T> {
-        let (x,y,z) = (castor(x),castor(y),castor(z));
+    pub fn get(&self, [x,y,z]: [u8;3]) -> Option<&T> {
         let x1 = x / 16; let y1 = y / 16; let z1 = z / 16;
         let x2 = x % 16; let y2 = y % 16; let z2 = z % 16;
         unsafe {
@@ -56,8 +55,7 @@ impl<T> CoordStore<T> {
         cell.as_ref()
     }
 
-    pub fn get_mut(&mut self, [x,y,z]: [i8;3]) -> Option<&mut T> {
-        let (x,y,z) = (castor(x),castor(y),castor(z));
+    pub fn get_mut(&mut self, [x,y,z]: [u8;3]) -> Option<&mut T> {
         let x1 = x / 16; let y1 = y / 16; let z1 = z / 16;
         let x2 = x % 16; let y2 = y % 16; let z2 = z % 16;
         unsafe {
@@ -74,10 +72,9 @@ impl<T> CoordStore<T> {
         cell.as_mut()
     }
 
-    pub fn insert(&mut self, [x,y,z]: [i8;3], v: T) -> Option<T> {
-        let (xp,yp,zp) = (castor(x),castor(y),castor(z));
-        let x1 = xp / 16; let y1 = yp / 16; let z1 = zp / 16;
-        let x2 = xp % 16; let y2 = yp % 16; let z2 = zp % 16;
+    pub fn insert(&mut self, [x,y,z]: [u8;3], v: T) -> Option<T> {
+        let x1 = x / 16; let y1 = y / 16; let z1 = z / 16;
+        let x2 = x % 16; let y2 = y % 16; let z2 = z % 16;
         unsafe {
             if x1 >= 16 { unreachable_unchecked(); }
             if y1 >= 16 { unreachable_unchecked(); }
@@ -96,10 +93,9 @@ impl<T> CoordStore<T> {
         cell.replace(v)
     }
 
-    pub fn remove(&mut self, [x,y,z]: [i8;3], autofree: bool) -> Option<T> {
-        let (xp,yp,zp) = (castor(x),castor(y),castor(z));
-        let x1 = xp / 16; let y1 = yp / 16; let z1 = zp / 16;
-        let x2 = xp % 16; let y2 = yp % 16; let z2 = zp % 16;
+    pub fn remove(&mut self, [x,y,z]: [u8;3], autofree: bool) -> Option<T> {
+        let x1 = x / 16; let y1 = y / 16; let z1 = z / 16;
+        let x2 = x % 16; let y2 = y % 16; let z2 = z % 16;
         unsafe {
             if x1 >= 16 { unreachable_unchecked(); }
             if y1 >= 16 { unreachable_unchecked(); }
@@ -122,17 +118,16 @@ impl<T> CoordStore<T> {
         v
     }
 
-    pub fn replace(&mut self, pos: [i8;3], v: Option<T>, autofree: bool) -> Option<T> {
+    pub fn replace(&mut self, pos: [u8;3], v: Option<T>, autofree: bool) -> Option<T> {
         match v {
             Some(v) => self.insert(pos, v),
             None => self.remove(pos, autofree),
         }
     }
 
-    pub fn get_or_insert_with(&mut self, [x,y,z]: [i8;3], v: impl FnOnce() -> T) -> &mut T {
-        let (xp,yp,zp) = (castor(x),castor(y),castor(z));
-        let x1 = xp / 16; let y1 = yp / 16; let z1 = zp / 16;
-        let x2 = xp % 16; let y2 = yp % 16; let z2 = zp % 16;
+    pub fn get_or_insert_with(&mut self, [x,y,z]: [u8;3], v: impl FnOnce() -> T) -> &mut T {
+        let x1 = x / 16; let y1 = y / 16; let z1 = z / 16;
+        let x2 = x % 16; let y2 = y % 16; let z2 = z % 16;
         unsafe {
             if x1 >= 16 { unreachable_unchecked(); }
             if y1 >= 16 { unreachable_unchecked(); }
@@ -155,28 +150,26 @@ impl<T> CoordStore<T> {
         self.laser.total
     }
 
-    pub fn zuckerbounds(&mut self) -> Option<([i8;3],[i8;3])> {
+    pub fn zuckerbounds(&mut self) -> Option<([u8;3],[u8;3])> {
         self.laser.rezucker();
         self.laser.zuckerbounds.clone()
     }
 }
 
 impl Laser {
-    fn remove_from_laser(&mut self, [x,y,z]: [i8;3]) {
+    fn remove_from_laser(&mut self, [x,y,z]: [u8;3]) {
         self.total -= 1;
-        let (xp,yp,zp) = (castor(x),castor(y),castor(z));
-        self.laser_x[xp as usize] -= 1;
-        self.laser_y[yp as usize] -= 1;
-        self.laser_z[zp as usize] -= 1;
+        self.laser_x[x as usize] -= 1;
+        self.laser_y[y as usize] -= 1;
+        self.laser_z[z as usize] -= 1;
         self.zucker_dirty = true;
     }
 
-    fn add_to_laser(&mut self, [x,y,z]: [i8;3]) {
+    fn add_to_laser(&mut self, [x,y,z]: [u8;3]) {
         self.total += 1;
-        let (xp,yp,zp) = (castor(x),castor(y),castor(z));
-        self.laser_x[xp as usize] += 1;
-        self.laser_y[yp as usize] += 1;
-        self.laser_z[zp as usize] += 1;
+        self.laser_x[x as usize] += 1;
+        self.laser_y[y as usize] += 1;
+        self.laser_z[z as usize] += 1;
         self.zucker_dirty = true;
     }
 
@@ -184,23 +177,23 @@ impl Laser {
         if !self.zucker_dirty {return}
         self.zuckerbounds = None;
         if self.total > 0 {
-            let mut x0 = 0;
-            let mut x1 = 0;
-            let mut y0 = 0;
-            let mut y1 = 0;
-            let mut z0 = 0;
-            let mut z1 = 0;
+            let mut x0 = 128;
+            let mut x1 = 128;
+            let mut y0 = 128;
+            let mut y1 = 128;
+            let mut z0 = 128;
+            let mut z1 = 128;
 
-            fn laser_axis(x0: &mut i8, x1: &mut i8, vec: &[usize;256]) {
+            fn laser_axis(x0: &mut u8, x1: &mut u8, vec: &[usize;256]) {
                 for (i,v) in vec.iter().enumerate() {
                     if *v != 0 {
-                        *x0 = castor_inv(i as u8);
+                        *x0 = i as u8;
                         break;
                     }
                 }
                 for (i,v) in vec.iter().enumerate().rev() {
                     if *v != 0 {
-                        *x1 = castor_inv(i as u8);
+                        *x1 = i as u8;
                         break;
                     }
                 }

@@ -18,7 +18,7 @@ pub struct Room {
     #[serde(skip)]
     pub dirty_file: bool,
     pub tags: Vec<TagState>,
-    pub coord: [i8;3],
+    pub coord: [u8;3],
     #[serde(skip)]
     pub op_evo: u64,
 }
@@ -30,7 +30,7 @@ impl Room {
         tex_dir
     }
 
-    pub fn create_empty(tex_id: usize, coord: [i8;3], image: Option<RgbaImage>) -> Self {
+    pub fn create_empty(tex_id: usize, coord: [u8;3], image: Option<RgbaImage>) -> Self {
         Self {
             image,
             texture: None,
