@@ -100,6 +100,8 @@ impl Map {
             }
         }
 
+        drop(flood_spin);
+
         if !sift_vali((area_min,area_max), n_sift, axis, dir) {return false;}
 
         if no_new_connect {

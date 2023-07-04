@@ -40,6 +40,7 @@ impl Tileset {
             }
             ui.label("| Zoom: ");
             ui.add(egui::DragValue::new(&mut self.state.zoom).speed(1).clamp_range(1..=4));
+            ui.add(egui::Slider::new(&mut self.state.zoom, 1..=4));
             if self.edit_path.is_none() {
                 if ui.button("Make editable").double_clicked() {
                     self.save_editstate();

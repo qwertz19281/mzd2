@@ -59,8 +59,7 @@ impl Map {
             ui.add(egui::DragValue::new(&mut self.state.zoom).speed(1).clamp_range(1..=4));
         });
         ui.horizontal(|ui| {
-            ui.radio_value(&mut self.edit_mode, MapEditMode::DrawLine, "Draw Line");
-            ui.radio_value(&mut self.edit_mode, MapEditMode::DrawRect, "Draw Rect");
+            ui.radio_value(&mut self.edit_mode, MapEditMode::DrawSel, "Draw Sel");
             ui.radio_value(&mut self.edit_mode, MapEditMode::RoomSel, "Room Sel");
             ui.radio_value(&mut self.edit_mode, MapEditMode::Tags, "Tags");
         });
@@ -68,18 +67,18 @@ impl Map {
 
     }
 
-    // pub fn ui_draw(
-    //     &mut self,
-    //     warp_setter: &mut Option<(MapId,RoomId,(u32,u32))>,
-    //     palette: &mut Palette,
-    //     ui: &mut egui::Ui,
-    //     mut_queue: &mut MutQueue,
-    // ) {
-    //     // on close of the map, palette textures should be unchained
-    //     if let Some(room) {
+    pub fn ui_draw(
+        &mut self,
+        warp_setter: &mut Option<(MapId,RoomId,(u32,u32))>,
+        palette: &mut Palette,
+        ui: &mut egui::Ui,
+        mut_queue: &mut MutQueue,
+    ) {
+        // on close of the map, palette textures should be unchained
+        // if let Some(room) {
 
-    //     }
-    // }
+        // }
+    }
 
     pub fn save_map(&mut self) {
 
@@ -94,8 +93,7 @@ impl Map {
 
 #[derive(PartialEq)]
 pub enum MapEditMode {
-    DrawLine,
-    DrawRect,
+    DrawSel,
     RoomSel,
     Tags,
 }

@@ -22,9 +22,10 @@ pub fn top_panel_ui(state: &mut SharedApp, ui: &mut egui::Ui) {
     // }
     ui.horizontal(|ui| {
         if ui.button("Create new Map with dimensions:").clicked() {
-            ui.add(egui::DragValue::new(&mut state.top_panel.createw).speed(16).clamp_range(160..=320));
-            ui.add(egui::DragValue::new(&mut state.top_panel.createh).speed(16).clamp_range(128..=240));
+            
         }
+        ui.add(egui::DragValue::new(&mut state.top_panel.createw).speed(16).clamp_range(160..=320));
+        ui.add(egui::DragValue::new(&mut state.top_panel.createh).speed(16).clamp_range(128..=240));
         if let Some(warpon) = state.warpon {
             if ui.button(format!("Cancel warp creation")).clicked() {
                 state.warpon = None;
