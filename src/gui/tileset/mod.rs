@@ -99,15 +99,11 @@ impl Tileset {
     }
 
     pub fn new_sel_entry([w,h]: [u32;2]) -> Vec<SelEntry> {
-        let [w,h] = [w / 16 * 2, h / 16 * 2];
-        (0..w*h).map(|i| {
-            let cx = (i % w) as u16;
-            let cy = (i / h) as u16;
-            let poz = SelEntry {
-                pos0: [cx,cy],
-                pos1: [cx+1,cy+1],
-            };
-            poz
+        (0..w*h).map(|_| {
+            SelEntry {
+                start: [0,0],
+                size: [1,1],
+            }
         })
         .collect()
     }
@@ -136,8 +132,8 @@ impl TilesetState {
         for y in y0 .. y1 {
             for x in x0 .. x1 {
                 if let Some(se) = self.get_sel_entry_mut([x,y]) {
-                    se.pos0 = [x0 as u16, y0 as u16];
-                    se.pos1 = [x1 as u16, y1 as u16];
+                    se.start = [(x -x0) as u8, (y -y0) as u8]; //TODO handle tile sizes >256 (fail or panic)
+                    se.size = [(x1-x0) as u8, (y1-y0) as u8];
                 }
             }
         }
@@ -146,6 +142,7 @@ impl TilesetState {
 
 #[derive(Deserialize,Serialize)]
 pub struct SelEntry {
-    pos0: [u16;2],
-    pos1: [u16;2],
+    start: [u8;2],
+    size: [u8;2],
+    //tile_hash: u32,
 }
