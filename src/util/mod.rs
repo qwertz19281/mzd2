@@ -1,5 +1,6 @@
 use std::error::Error;
 use std::ffi::OsStr;
+use std::fmt::Display;
 use std::num::NonZeroI64;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicI64, Ordering::Relaxed};
@@ -70,7 +71,7 @@ pub trait ResultExt<T> {
     fn unwrap_gui(self, title: &str) -> Option<T>;
 }
 
-impl<T,E> ResultExt<T> for Result<T,E> where E: Error {
+impl<T,E> ResultExt<T> for Result<T,E> where E: Display {
     fn unwrap_gui(self, title: &str) -> Option<T> {
         match self {
             Ok(v) => Some(v),
@@ -85,6 +86,15 @@ impl<T,E> ResultExt<T> for Result<T,E> where E: Error {
             },
         }
     }
+}
+
+pub fn gui_error(title: &str, error: impl std::fmt::Display) {
+    MessageDialog::new()
+                    .set_type(native_dialog::MessageType::Error)
+                    .set_title(title)
+                    .set_text(&format!("{}", error))
+                    .show_alert()
+                    .unwrap();
 }
 
 static OP_GEN_EVO: AtomicI64 = AtomicI64::new(64);
