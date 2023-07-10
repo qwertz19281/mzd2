@@ -29,6 +29,7 @@ impl Map {
             self.state.rooms.insert(Room::create_empty(
                 tex_id,
                 coord,
+                self.state.rooms_size,
                 Some(RgbaImage::new(self.state.rooms_size[0], self.state.rooms_size[1]))
             ))
         })

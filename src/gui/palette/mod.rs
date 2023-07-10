@@ -1,19 +1,21 @@
+use std::rc::Rc;
+
 use egui::{TextureHandle, Pos2};
-use image::RgbaImage;
+use image::{RgbaImage, ImageBuffer};
 
 use super::init::SharedApp;
 use super::{rector, rector_off, line2_off};
 use super::texture::RECT_0_0_1_1;
 
 pub struct Palette {
-    paletted: Vec<PaletteItem>,
+    paletted: Vec<Rc<PaletteItem>>,
     selected: u32,
 }
 
 impl Palette {
     pub fn new() -> Self {
         Self {
-            paletted: (0..10).map(|_| PaletteItem { texture: None, uv: RECT_0_0_1_1 }).collect(),
+            paletted: (0..10).map(|_| Rc::new(PaletteItem { texture: None, uv: RECT_0_0_1_1, src: ImageBuffer::new(0,0) })).collect(),
             selected: 0
         }
     }
@@ -21,6 +23,7 @@ impl Palette {
 
 pub struct PaletteItem {
     pub texture: Option<TextureHandle>,
+    pub src: RgbaImage,
     pub uv: egui::Rect,
 }
 

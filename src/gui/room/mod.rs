@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::util::{attached_to_path, gui_error, ResultExt};
 
+use super::sel_matrix::{SelMatrix, sel_entry_dims};
 use super::tags::TagState;
 use super::texture::ensure_texture_from_image;
 
@@ -25,6 +26,7 @@ pub struct Room {
     #[serde(skip)]
     pub op_evo: u64,
     pub locked: Option<String>,
+    pub sel_matrix: SelMatrix,
 }
 
 impl Room {
@@ -34,7 +36,8 @@ impl Room {
         tex_dir
     }
 
-    pub fn create_empty(tex_id: usize, coord: [u8;3], image: Option<RgbaImage>) -> Self {
+    pub fn create_empty(tex_id: usize, coord: [u8;3], rooms_size: [u32;2], image: Option<RgbaImage>) -> Self {
+        assert!(rooms_size[0] % 16 == 0 && rooms_size[1] % 16 == 0);
         Self {
             image,
             texture: None,
@@ -44,6 +47,7 @@ impl Room {
             coord,
             op_evo: 0,
             locked: None,
+            sel_matrix: SelMatrix::new(sel_entry_dims(rooms_size))
         }
     }
 

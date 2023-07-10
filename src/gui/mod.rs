@@ -13,6 +13,9 @@ pub mod map;
 pub mod palette;
 pub mod room;
 pub mod tags;
+pub mod draw_state;
+pub mod sel_matrix;
+pub mod util;
 
 pub type MutQueue = Vec<Box<dyn FnOnce(&mut SharedApp)>>;
 
