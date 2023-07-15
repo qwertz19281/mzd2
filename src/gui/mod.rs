@@ -17,6 +17,7 @@ pub mod draw_state;
 pub mod dsel_state;
 pub mod sel_matrix;
 pub mod util;
+pub mod filedrop;
 
 pub type MutQueue = Vec<Box<dyn FnOnce(&mut SharedApp)>>;
 

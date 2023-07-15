@@ -10,7 +10,9 @@ pub struct DSelState {
 }
 
 impl DSelState {
-    pub fn dsel_mouse_down(&mut self, pos: [f32;2], src: &Rc<PaletteItem>) {
+    ///
+    /// add: true = add to sel, false = remove from sel
+    pub fn dsel_mouse_down(&mut self, pos: [f32;2], src: &Rc<PaletteItem>, mode: DSelMode, add: bool) {
         todo!()
     }
 
@@ -29,4 +31,10 @@ impl DSelState {
     pub fn dsel_capture(&mut self) -> SelImg {
         todo!()
     }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum DSelMode {
+    Direct,
+    Rect,
 }

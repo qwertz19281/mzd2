@@ -1,17 +1,21 @@
 use std::collections::VecDeque;
 use std::path::PathBuf;
 
+use egui::{Vec2, TextureOptions};
 use image::RgbaImage;
 use serde::{Deserialize, Serialize};
 
-use crate::util::{TilesetId, attached_to_path, ResultExt};
+use crate::util::{TilesetId, attached_to_path, ResultExt, next_tex_id};
 
-use super::MutQueue;
+use super::{MutQueue, rector};
 use super::init::SharedApp;
 use super::sel_matrix::{SelMatrix, sel_entry_dims};
+use super::texture::{ensure_texture_from_image, RECT_0_0_1_1};
+use super::util::{alloc_painter_rel, alloc_painter_rel_ds};
 
 pub struct Tileset {
     pub id: TilesetId,
+    pub id2: u64,
     pub state: TilesetState,
     pub path: PathBuf,
     pub loaded_image: RgbaImage,
@@ -23,7 +27,7 @@ pub struct Tileset {
 #[derive(Deserialize,Serialize)]
 pub struct TilesetState {
     pub title: String,
-    pub zoom: usize,
+    pub zoom: u32,
     pub voff: [f32;2],
     pub validate_size: [u32;2],
     pub sel_matrix: SelMatrix,
@@ -39,8 +43,9 @@ impl Tileset {
                 let id = self.id;
                 mut_queue.push(Box::new(move |state: &mut SharedApp| {state.tilesets.open_tilesets.remove(&id);} ))
             }
+            ui.text_edit_singleline(&mut self.state.title);
             ui.label("| Zoom: ");
-            ui.add(egui::DragValue::new(&mut self.state.zoom).speed(1).clamp_range(1..=4));
+            //ui.add(egui::DragValue::new(&mut self.state.zoom).speed(1).clamp_range(1..=4));
             ui.add(egui::Slider::new(&mut self.state.zoom, 1..=4));
             if self.edit_path.is_none() {
                 if ui.button("Make editable").double_clicked() {
@@ -48,6 +53,42 @@ impl Tileset {
                 }
             }
         });
+
+        let dpi = ui.ctx().pixels_per_point();
+
+        let sizev2 = Vec2::new(
+            (self.state.validate_size[0] * self.state.zoom) as f32,
+            (self.state.validate_size[1] * self.state.zoom) as f32,
+        );
+
+        let mut reg = alloc_painter_rel_ds(
+            ui,
+            MIN_WINDOW ..= sizev2, egui::Sense::click_and_drag(),
+            1. / dpi
+        );
+
+        let ts_tex = ensure_texture_from_image(
+            &mut self.texture,
+            format!("TsTex{}",self.id2),
+            TS_TEX_OPTS,
+            &self.loaded_image,
+            false,
+            None,
+            ui.ctx()
+        );
+
+        let mut shapes = vec![];
+
+        shapes.push(egui::Shape::image(
+            ts_tex.id(),
+            rector(0, 0, self.state.validate_size[0], self.state.validate_size[1]),
+            RECT_0_0_1_1,
+            egui::Color32::WHITE
+        ));
+
+        reg.extend_rel_zoomed(shapes, 1.);
+
+        // let hover_pos = reg.hover_pos_rel();
     }
 
     pub fn save_editstate(&mut self) {
@@ -88,6 +129,7 @@ impl Tileset {
 
         let ts = Self {
             id: TilesetId::new(),
+            id2: next_tex_id(),
             state,
             path,
             loaded_image: image,
@@ -105,3 +147,10 @@ impl Tileset {
 impl TilesetState {
     
 }
+
+const MIN_WINDOW: Vec2 = Vec2 { x: 64., y: 64. };
+
+const TS_TEX_OPTS: TextureOptions = TextureOptions {
+    magnification: egui::TextureFilter::Nearest,
+    minification: egui::TextureFilter::Linear,
+};

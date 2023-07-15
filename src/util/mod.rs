@@ -107,3 +107,14 @@ pub fn next_op_gen_evo() -> u64 {
         panic!("OpEvo Overflow");
     }
 }
+
+static TEX_ID: AtomicI64 = AtomicI64::new(64);
+
+pub fn next_tex_id() -> u64 {
+    let next = TEX_ID.fetch_add(1, Relaxed);
+    if next > 0 {
+        next as u64
+    } else {
+        panic!("TexId Overflow");
+    }
+}

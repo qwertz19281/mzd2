@@ -24,10 +24,7 @@ impl Map {
 
     pub fn get_or_create_room_at(&mut self, coord: [u8;3]) -> RoomId {
         *self.room_matrix.get_or_insert_with(coord, || {
-            let tex_id = self.state.next_room_tex_id;
-            self.state.next_room_tex_id += 1;
             self.state.rooms.insert(Room::create_empty(
-                tex_id,
                 coord,
                 self.state.rooms_size,
                 Some(RgbaImage::new(self.state.rooms_size[0], self.state.rooms_size[1]))

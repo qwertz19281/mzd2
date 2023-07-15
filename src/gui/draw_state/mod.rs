@@ -10,7 +10,7 @@ pub struct DrawState {
 }
 
 impl DrawState {
-    pub fn draw_mouse_down(&mut self, pos: [f32;2], src: &Rc<PaletteItem>) {
+    pub fn draw_mouse_down(&mut self, pos: [f32;2], src: &Rc<PaletteItem>, mode: DrawMode) {
         todo!()
     }
 
@@ -25,4 +25,11 @@ impl DrawState {
     pub fn draw_mouse_up(&mut self, pos: [f32;2], dest: &mut RgbaImage) {
         todo!()
     }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum DrawMode {
+    Direct,
+    Line,
+    Rect,
 }

@@ -1,3 +1,4 @@
+use std::ops::{Range, RangeInclusive};
 use std::sync::Arc;
 
 use egui::{Shape, Pos2, Rect, Vec2, Sense};
@@ -208,6 +209,18 @@ pub struct PainterRel {
 
 pub fn alloc_painter_rel(ui: &mut egui::Ui, desired_size: Vec2, sense: Sense, zoom: f32) -> PainterRel {
     let (r,p) = ui.allocate_painter(desired_size.multiply_0(zoom), sense);
+    PainterRel {
+        response: r,
+        painter: p,
+        zoom,
+    }
+}
+
+pub fn alloc_painter_rel_ds(ui: &mut egui::Ui, size_bound: RangeInclusive<Vec2>, sense: Sense, zoom: f32) -> PainterRel {
+    let av_size = ui.available_size();
+    let min = size_bound.start().multiply_0(zoom);
+    let max = size_bound.end().multiply_0(zoom);
+    let (r,p) = ui.allocate_painter(av_size.clamp(min, max), sense);
     PainterRel {
         response: r,
         painter: p,

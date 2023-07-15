@@ -44,6 +44,8 @@ pub fn palette_ui(state: &mut SharedApp, ui: &mut egui::Ui) {
         1. / dpi
     );
 
+    eprintln!("AKA {:?}", reg.response.rect);
+
     let hover_pos = reg.hover_pos_rel();
 
     if let Some(mouse_pos) = hover_pos {

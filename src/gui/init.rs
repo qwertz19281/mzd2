@@ -57,6 +57,8 @@ impl eframe::App for SharedApp {
             v(self);
         }
 
+        self.handle_filedrop(ctx, frame);
+
         if let Some(warpon) = self.warpon.as_mut() {
             // TODO assert maps, remove if map or room doesn't exist anymore
         }

@@ -6,7 +6,7 @@ use egui::epaint::ahash::{HashMap, HashSet};
 use image::{RgbaImage, ImageFormat};
 use serde::{Deserialize, Serialize};
 
-use crate::util::{attached_to_path, gui_error, ResultExt};
+use crate::util::{attached_to_path, gui_error, ResultExt, next_tex_id};
 
 use super::sel_matrix::{SelMatrix, sel_entry_dims};
 use super::tags::TagState;
@@ -18,7 +18,7 @@ pub struct Room {
     pub image: Option<RgbaImage>,
     #[serde(skip)]
     pub texture: Option<TextureHandle>,
-    pub tex_id: usize,
+    tex_id: u64,
     #[serde(skip)]
     pub dirty_file: bool,
     pub tags: Vec<TagState>,
@@ -36,12 +36,12 @@ impl Room {
         tex_dir
     }
 
-    pub fn create_empty(tex_id: usize, coord: [u8;3], rooms_size: [u32;2], image: Option<RgbaImage>) -> Self {
+    pub fn create_empty(coord: [u8;3], rooms_size: [u32;2], image: Option<RgbaImage>) -> Self {
         assert!(rooms_size[0] % 16 == 0 && rooms_size[1] % 16 == 0);
         Self {
             image,
             texture: None,
-            tex_id,
+            tex_id: next_tex_id(),
             dirty_file: true,
             tags: vec![],
             coord,

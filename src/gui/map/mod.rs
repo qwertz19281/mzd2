@@ -6,14 +6,13 @@ use serde::{Serialize, Deserialize};
 use slotmap::HopSlotMap;
 
 use crate::map::coord_store::CoordStore;
-use crate::util::{MapId, attached_to_path};
+use crate::util::*;
 
-use super::MutQueue;
-use super::init::SharedApp;
-use super::palette::Palette;
 use super::room::Room;
 
 pub mod room_ops;
+pub mod map_ui;
+pub mod draw_ui;
 
 pub struct Map {
     pub id: MapId,
@@ -33,7 +32,6 @@ pub struct MapState {
     pub file_counter: usize,
     pub view_pos: [f32;2],
     pub rooms_size: [u32;2],
-    pub next_room_tex_id: usize,
 }
 
 slotmap::new_key_type! {
@@ -41,47 +39,28 @@ slotmap::new_key_type! {
 }
 
 impl Map {
-    pub fn ui_map(
-        &mut self,
-        warp_setter: &mut Option<(MapId,RoomId,(u32,u32))>,
-        palette: &mut Palette,
-        ui: &mut egui::Ui,
-        mut_queue: &mut MutQueue,
-    ) {
-        // on close of the map, palette textures should be unchained
-        ui.horizontal(|ui| {
-            if ui.button("Close").clicked() {
-                self.save_map();
-                let id = self.id;
-                mut_queue.push(Box::new(move |state: &mut SharedApp| {state.maps.open_maps.remove(&id);} ))
-            }
-            ui.label("| Zoom: ");
-            ui.add(egui::DragValue::new(&mut self.state.zoom).speed(1).clamp_range(1..=4));
-        });
-        ui.horizontal(|ui| {
-            ui.radio_value(&mut self.edit_mode, MapEditMode::DrawSel, "Draw Sel");
-            ui.radio_value(&mut self.edit_mode, MapEditMode::RoomSel, "Room Sel");
-            ui.radio_value(&mut self.edit_mode, MapEditMode::Tags, "Tags");
-        });
-
-
-    }
-
-    pub fn ui_draw(
-        &mut self,
-        warp_setter: &mut Option<(MapId,RoomId,(u32,u32))>,
-        palette: &mut Palette,
-        ui: &mut egui::Ui,
-        mut_queue: &mut MutQueue,
-    ) {
-        // on close of the map, palette textures should be unchained
-        // if let Some(room) {
-
-        // }
-    }
-
     pub fn save_map(&mut self) {
+        let mut errors = vec![];
 
+        for dirty_room in self.dirty_rooms.drain() {
+            if let Some(room) = self.state.rooms.get_mut(dirty_room) {
+                if let Err(e) = room.save_image2(self.path.clone()) {
+                    errors.push(e);
+                }
+            }
+        }
+
+        if let Some(e) = errors.first() {
+            gui_error(&format!("Failed to save img of {} rooms", errors.len()), e);
+        }
+
+        self.save_map2().unwrap_gui("Error saving map");
+    }
+
+    fn save_map2(&mut self) -> anyhow::Result<()> {
+        let ser = serde_json::to_vec(&self.state)?;
+        std::fs::write(&self.path, ser)?;
+        Ok(())
     }
 
     fn tex_dir(&self) -> PathBuf {
@@ -91,7 +70,7 @@ impl Map {
     
 }
 
-#[derive(PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum MapEditMode {
     DrawSel,
     RoomSel,
