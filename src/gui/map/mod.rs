@@ -1,3 +1,4 @@
+use std::io::ErrorKind;
 use std::path::PathBuf;
 
 use egui::epaint::ahash::HashSet;
@@ -41,6 +42,15 @@ slotmap::new_key_type! {
 impl Map {
     pub fn save_map(&mut self) {
         let mut errors = vec![];
+
+        if let Err(e) = std::fs::create_dir_all(self.tex_dir()) {
+            if e.kind() != ErrorKind::AlreadyExists {
+                gui_error("Failed to create dir for rooms", e);
+                if !self.dirty_rooms.is_empty() {
+                    return;
+                }
+            }
+        }
 
         for dirty_room in self.dirty_rooms.drain() {
             if let Some(room) = self.state.rooms.get_mut(dirty_room) {
