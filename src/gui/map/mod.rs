@@ -30,7 +30,7 @@ pub struct MapState {
     pub zoom: usize,
     pub rooms: HopSlotMap<RoomId,Room>,
     pub selected_room: Option<RoomId>,
-    pub file_counter: usize,
+    pub file_counter: u64,
     pub view_pos: [f32;2],
     pub rooms_size: [u32;2],
 }
@@ -56,6 +56,8 @@ impl Map {
             if let Some(room) = self.state.rooms.get_mut(dirty_room) {
                 if let Err(e) = room.save_image2(self.path.clone()) {
                     errors.push(e);
+                } else {
+                    room.dirty_file = false;
                 }
             }
         }
@@ -77,7 +79,63 @@ impl Map {
         attached_to_path(&self.path, "_maptex")
     }
 
-    
+    pub fn load_map(path: PathBuf) -> anyhow::Result<Self> {
+        let data = std::fs::read(&path)?;
+        let state = serde_json::from_slice::<MapState>(&data)?;
+        drop(data);
+
+        let mut map = Self {
+            id: MapId::new(),
+            state,
+            path,
+            dirty_rooms: Default::default(),
+            edit_mode: MapEditMode::DrawSel,
+            room_matrix: CoordStore::new(),
+        };
+
+        for (id,room) in &map.state.rooms {
+            if room.dirty_file {
+                map.dirty_rooms.insert(id);
+            }
+        }
+
+            // state.zoom = state.zoom.min(1).max(4);
+            // if state.validate_size != img_size {
+            //     state.sel_matrix = SelMatrix::new(sel_entry_dims(img_size));
+            // }
+            // edit_path = Some(epath);
+
+        Ok(map)
+    }
+
+    pub fn new(path: PathBuf, rooms_size: [u32;2]) -> Self {
+        let title = match path.file_stem() {
+            Some(name) => {
+                let name = name.to_string_lossy();
+                name.into_owned()
+            },
+            None => {
+                let moment = chrono::Local::now();
+                moment.to_rfc3339()
+            }
+        };
+        Self {
+            id: MapId::new(),
+            state: MapState {
+                title,
+                zoom: 1,
+                rooms: HopSlotMap::with_capacity_and_key(1024),
+                selected_room: None,
+                file_counter: 0,
+                view_pos: [0.,0.],
+                rooms_size,
+            },
+            path,
+            dirty_rooms: Default::default(),
+            edit_mode: MapEditMode::DrawSel,
+            room_matrix: CoordStore::new(),
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]

@@ -18,7 +18,7 @@ pub struct Room {
     pub image: Option<RgbaImage>,
     #[serde(skip)]
     pub texture: Option<TextureHandle>,
-    tex_id: u64,
+    file_id: u64,
     #[serde(skip)]
     pub dirty_file: bool,
     pub tags: Vec<TagState>,
@@ -32,16 +32,16 @@ pub struct Room {
 impl Room {
     fn tex_file(&self, map_path: impl Into<PathBuf>) -> PathBuf {
         let mut tex_dir = attached_to_path(map_path, "_maptex");
-        tex_dir.push(format!("{}.png",self.tex_id));
+        tex_dir.push(format!("{:08}.png",self.file_id));
         tex_dir
     }
 
-    pub fn create_empty(coord: [u8;3], rooms_size: [u32;2], image: Option<RgbaImage>) -> Self {
+    pub fn create_empty(file_id: u64, coord: [u8;3], rooms_size: [u32;2], image: Option<RgbaImage>) -> Self {
         assert!(rooms_size[0] % 16 == 0 && rooms_size[1] % 16 == 0);
         Self {
             image,
             texture: None,
-            tex_id: next_tex_id(),
+            file_id,
             dirty_file: true,
             tags: vec![],
             coord,
@@ -67,7 +67,7 @@ impl Room {
         if let Some(img) = &self.image {
             ensure_texture_from_image(
                 &mut self.texture,
-                format!("room_tex_{}",self.tex_id),
+                format!("room_tex_{}",self.file_id),
                 ROOM_TEX_OPTS,
                 img,
                 false,

@@ -15,7 +15,6 @@ use super::util::{alloc_painter_rel, alloc_painter_rel_ds};
 
 pub struct Tileset {
     pub id: TilesetId,
-    pub id2: u64,
     pub state: TilesetState,
     pub path: PathBuf,
     pub loaded_image: RgbaImage,
@@ -69,7 +68,7 @@ impl Tileset {
 
         let ts_tex = ensure_texture_from_image(
             &mut self.texture,
-            format!("TsTex{}",self.id2),
+            format!("tileset_{}",self.state.title),
             TS_TEX_OPTS,
             &self.loaded_image,
             false,
@@ -102,7 +101,10 @@ impl Tileset {
     pub fn load(path: PathBuf) -> anyhow::Result<Self> {
         let image = std::fs::read(&path)?;
         let image = image::load_from_memory(&image)?;
-        let image = image.to_rgba8();
+        Self::load2(path, image.to_rgba8())
+    }
+
+    pub fn load2(path: PathBuf, image: RgbaImage) -> anyhow::Result<Self> {
         let img_size = [image.width() as u32, image.height() as u32];
 
         let epath = attached_to_path(&path, ".mzdtileset");
@@ -129,7 +131,6 @@ impl Tileset {
 
         let ts = Self {
             id: TilesetId::new(),
-            id2: next_tex_id(),
             state,
             path,
             loaded_image: image,
