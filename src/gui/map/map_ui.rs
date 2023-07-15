@@ -31,7 +31,13 @@ impl Map {
             ui.radio_value(&mut self.edit_mode, MapEditMode::RoomSel, "Room Sel");
             ui.radio_value(&mut self.edit_mode, MapEditMode::Tags, "Tags");
         });
-
-        
+        ui.horizontal(|ui| {
+            let mut level = self.state.current_level;
+            ui.label("| Z: ");
+            ui.add(egui::DragValue::new(&mut level).speed(0.0625).clamp_range(0..=255));
+            if level != self.state.current_level {
+                self.update_level(level);
+            }
+        });
     }
 }

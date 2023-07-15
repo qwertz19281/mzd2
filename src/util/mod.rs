@@ -1,5 +1,5 @@
 use std::error::Error;
-use std::ffi::OsStr;
+use std::ffi::{OsStr, OsString};
 use std::fmt::Display;
 use std::num::NonZeroI64;
 use std::path::PathBuf;
@@ -63,6 +63,12 @@ impl MapId {
 
 pub fn attached_to_path(path: impl Into<PathBuf>, add: impl AsRef<OsStr>) -> PathBuf {
     let mut path = path.into().into_os_string();
+    path.push(add);
+    path.into()
+}
+pub fn attached_to_path_stripdot(path: impl Into<PathBuf>, add: impl AsRef<OsStr>) -> PathBuf {
+    let mut path: OsString = path.into().into_os_string();
+    todo!();
     path.push(add);
     path.into()
 }

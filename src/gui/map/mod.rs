@@ -1,6 +1,7 @@
 use std::io::ErrorKind;
 use std::path::PathBuf;
 
+use egui::TextureHandle;
 use egui::epaint::ahash::HashSet;
 use image::RgbaImage;
 use serde::{Serialize, Deserialize};
@@ -22,6 +23,7 @@ pub struct Map {
     pub dirty_rooms: HashSet<RoomId>,
     pub edit_mode: MapEditMode,
     pub room_matrix: CoordStore<RoomId>,
+    pub picomap_tex: Option<TextureHandle>,
 }
 
 #[derive(Deserialize,Serialize)]
@@ -33,6 +35,7 @@ pub struct MapState {
     pub file_counter: u64,
     pub view_pos: [f32;2],
     pub rooms_size: [u32;2],
+    pub current_level: u8,
 }
 
 slotmap::new_key_type! {
@@ -91,6 +94,7 @@ impl Map {
             dirty_rooms: Default::default(),
             edit_mode: MapEditMode::DrawSel,
             room_matrix: CoordStore::new(),
+            picomap_tex: None,
         };
 
         for (id,room) in &map.state.rooms {
@@ -129,12 +133,19 @@ impl Map {
                 file_counter: 0,
                 view_pos: [0.,0.],
                 rooms_size,
+                current_level: 128,
             },
             path,
             dirty_rooms: Default::default(),
             edit_mode: MapEditMode::DrawSel,
             room_matrix: CoordStore::new(),
+            picomap_tex: None,
         }
+    }
+
+    fn update_level(&mut self, new_z: u8) {
+        self.picomap_tex = None; // TODO maybe use cell to reuse texture
+        self.state.current_level = new_z;
     }
 }
 

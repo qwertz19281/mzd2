@@ -1,5 +1,6 @@
 use std::collections::VecDeque;
 
+use egui::{ColorImage, Color32};
 use image::RgbaImage;
 
 use crate::gui::room::{Room, self};
@@ -146,6 +147,25 @@ impl Map {
         }
 
         true
+    }
+
+    pub fn render_picomap(&self) -> ColorImage {
+        let mut pixels = Vec::with_capacity(256*256);
+        for y in 0 .. 255 {
+            for x in 0 .. 255 {
+                let is_room = self.room_matrix.get([x,y,self.state.current_level]);
+                let color = if is_room.is_some() {
+                    Color32::WHITE
+                } else {
+                    Color32::BLACK
+                };
+                pixels.push(color);
+            }
+        }
+        ColorImage {
+            size: [256,256],
+            pixels,
+        }
     }
 }
 
