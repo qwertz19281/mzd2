@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
-use egui::{Shape, Pos2, Rect, Vec2};
+use egui::{Shape, Pos2, Rect, Vec2, Sense};
+
+use super::StupidInto;
 
 pub fn trans_shape(s: Shape, mul: f32, off: [f32;2]) -> Shape {
     match s {
@@ -124,5 +126,104 @@ pub fn vec_croods<T>(mut v: Vec<T>, mut map: impl FnMut(T) -> T) -> Vec<T> {
         }
         v.set_len(len);
         v
+    }
+}
+
+pub trait MulDivonRect {
+    fn multiply_0<T>(self, v: T) -> Self where T: StupidInto<f32>;
+    fn divide_0<T>(self, v: T) -> Self where T: StupidInto<f32>;
+}
+
+impl MulDivonRect for egui::Rect {
+    fn multiply_0<T>(self, v: T) -> Self where T: StupidInto<f32> {
+        let v = v.stupinto();
+        Self {
+            min: self.min.multiply_0(v),
+            max: self.max.multiply_0(v),
+        }
+    }
+
+    fn divide_0<T>(self, v: T) -> Self where T: StupidInto<f32> {
+        let v = v.stupinto();
+        Self {
+            min: self.min.divide_0(v),
+            max: self.max.divide_0(v),
+        }
+    }
+}
+
+impl MulDivonRect for egui::Pos2 {
+    fn multiply_0<T>(self, v: T) -> Self where T: StupidInto<f32> {
+        let v = v.stupinto();
+        Self {
+            x: self.x * v,
+            y: self.y * v,
+        }
+    }
+
+    fn divide_0<T>(self, v: T) -> Self where T: StupidInto<f32> {
+        let v = v.stupinto();
+        Self {
+            x: self.x / v,
+            y: self.y / v,
+        }
+    }
+}
+
+impl MulDivonRect for egui::Vec2 {
+    fn multiply_0<T>(self, v: T) -> Self where T: StupidInto<f32> {
+        let v = v.stupinto();
+        Self {
+            x: self.x * v,
+            y: self.y * v,
+        }
+    }
+
+    fn divide_0<T>(self, v: T) -> Self where T: StupidInto<f32> {
+        let v = v.stupinto();
+        Self {
+            x: self.x / v,
+            y: self.y / v,
+        }
+    }
+}
+
+impl<T> MulDivonRect for Vec<T> where T: MulDivonRect {
+    fn multiply_0<U>(self, v: U) -> Self where U: StupidInto<f32> {
+        let v = v.stupinto();
+        vec_croods(self, |e| e.multiply_0(v))
+    }
+
+    fn divide_0<U>(self, v: U) -> Self where U: StupidInto<f32> {
+        let v = v.stupinto();
+        vec_croods(self, |e| e.divide_0(v))
+    }
+}
+
+pub struct PainterRel {
+    pub response: egui::Response,
+    pub painter: egui::Painter,
+    pub zoom: f32,
+}
+
+pub fn alloc_painter_rel(ui: &mut egui::Ui, desired_size: Vec2, sense: Sense, zoom: f32) -> PainterRel {
+    let (r,p) = ui.allocate_painter(desired_size, sense);
+    PainterRel {
+        response: r,
+        painter: p,
+        zoom,
+    }
+}
+
+impl PainterRel {
+    pub fn cursor_pos_rel(&self) -> Option<Pos2> {
+        let off = self.response.rect.left_top();
+        self.response.hover_pos().filter(|pos| self.response.rect.contains(*pos)).map(|pos| ((pos - off) / self.zoom).to_pos2() )
+    }
+
+    pub fn extend_rel<I: IntoIterator<Item = Shape>>(&self, shapes: I) {
+        let off = self.response.rect.left_top();
+        let shapes = shapes.into_iter().map(|i| trans_shape(i, self.zoom, [off.x,off.y]));
+        self.painter.extend(shapes);
     }
 }

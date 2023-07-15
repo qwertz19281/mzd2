@@ -50,6 +50,9 @@ impl SharedApp {
 
 impl eframe::App for SharedApp {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        //eprintln!("PPI: {}", ctx.pixels_per_point());
+        //ctx.set_pixels_per_point(1.);
+        
         for v in std::mem::replace(&mut self.mut_queue, vec![]) {
             v(self);
         }

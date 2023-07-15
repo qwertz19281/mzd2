@@ -14,6 +14,7 @@ pub mod palette;
 pub mod room;
 pub mod tags;
 pub mod draw_state;
+pub mod dsel_state;
 pub mod sel_matrix;
 pub mod util;
 
@@ -50,5 +51,5 @@ macro_rules! convtable {
 
 convtable!(
     f32,
-    i8,u8,i16,u16,i32,u32
+    i8,u8,i16,u16,i32,u32,f32
 );

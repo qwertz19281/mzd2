@@ -1,21 +1,22 @@
 use std::rc::Rc;
 
-use egui::{TextureHandle, Pos2};
+use egui::{TextureHandle, Pos2, TextureOptions};
 use image::{RgbaImage, ImageBuffer};
 
 use super::init::SharedApp;
+use super::sel_matrix::SelPt;
 use super::{rector, rector_off, line2_off};
-use super::texture::RECT_0_0_1_1;
+use super::texture::{RECT_0_0_1_1, ensure_texture_from_image};
 
 pub struct Palette {
-    paletted: Vec<Rc<PaletteItem>>,
+    paletted: Vec<PaletteItem>,
     selected: u32,
 }
 
 impl Palette {
     pub fn new() -> Self {
         Self {
-            paletted: (0..10).map(|_| Rc::new(PaletteItem { texture: None, uv: RECT_0_0_1_1, src: ImageBuffer::new(0,0) })).collect(),
+            paletted: (0..10).map(|_| PaletteItem { texture: None, uv: RECT_0_0_1_1, src: SelImg::empty() }).collect(),
             selected: 0
         }
     }
@@ -23,12 +24,12 @@ impl Palette {
 
 pub struct PaletteItem {
     pub texture: Option<TextureHandle>,
-    pub src: RgbaImage,
+    pub src: SelImg,
     pub uv: egui::Rect,
 }
 
-const PALETTE_SHOW_DIMS: u32 = 32;
-const PALETTE_GAP: u32 = 8;
+const PALETTE_SHOW_DIMS: u32 = 64;
+const PALETTE_GAP: u32 = 16;
 
 pub fn palette_ui(state: &mut SharedApp, ui: &mut egui::Ui) {
     let plen = state.palette.paletted.len() as u32;
@@ -64,8 +65,18 @@ pub fn palette_ui(state: &mut SharedApp, ui: &mut egui::Ui) {
         shapes.push(egui::Shape::line(line2_off(line_x, 0, line_x, PALETTE_SHOW_DIMS, off.to_vec2()), stroke));
     }
 
-    if let Some(paltex) = &state.palette.paletted[state.palette.selected as usize].texture {
-        let uv = state.palette.paletted[state.palette.selected as usize].uv;
+    let selected = &mut state.palette.paletted[state.palette.selected as usize];
+
+    let paltex = ensure_texture_from_image(
+        &mut selected.texture,
+        format!("PalTex {}",state.palette.selected), PAL_TEX_OPTS,
+        &selected.src.img,
+        false, None,
+        ui.ctx(),
+    );
+
+    /*if let Some(paltex) = &state.palette.paletted[state.palette.selected as usize].texture*/ {
+        let uv = selected.uv;
         shapes.push(egui::Shape::image(
             paltex.id(),
             texdraw_rect(0),
@@ -98,3 +109,27 @@ fn xbounds_iter(len: u32) -> impl Iterator<Item = (u32,u32)> {
             (i,offseted)
         })
 }
+
+
+pub struct SelImg {
+    pub img: RgbaImage,
+    pub selpts: Vec<SelPt>,
+}
+
+impl SelImg {
+    pub fn empty() -> Self {
+        Self {
+            img: RgbaImage::new(0,0),
+            selpts: vec![],
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.img.is_empty()
+    }
+}
+
+const PAL_TEX_OPTS: TextureOptions = TextureOptions {
+    magnification: egui::TextureFilter::Linear,
+    minification: egui::TextureFilter::Linear,
+};
