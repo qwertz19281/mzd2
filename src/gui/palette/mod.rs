@@ -5,7 +5,8 @@ use image::{RgbaImage, ImageBuffer};
 
 use super::init::SharedApp;
 use super::sel_matrix::SelPt;
-use super::{rector, rector_off, line2_off};
+use super::util::alloc_painter_rel;
+use super::{rector, rector_off, line2_off, line2};
 use super::texture::{RECT_0_0_1_1, ensure_texture_from_image};
 
 pub struct Palette {
@@ -33,18 +34,20 @@ const PALETTE_GAP: u32 = 16;
 
 pub fn palette_ui(state: &mut SharedApp, ui: &mut egui::Ui) {
     let plen = state.palette.paletted.len() as u32;
+    let dpi = ui.ctx().pixels_per_point();
 
     let full_w = PALETTE_SHOW_DIMS + PALETTE_GAP * 2 + (PALETTE_SHOW_DIMS + PALETTE_GAP) * plen - PALETTE_GAP;
 
-    let (mut response, painter) =
-            ui.allocate_painter(egui::vec2(full_w as f32, PALETTE_SHOW_DIMS as f32), egui::Sense::click_and_drag());
+    let mut reg = alloc_painter_rel(
+        ui,
+        egui::vec2(full_w as f32, PALETTE_SHOW_DIMS as f32), egui::Sense::click_and_drag(),
+        1. / dpi
+    );
 
-    let off = response.rect.left_top();
-
-    let hover_pos = response.hover_pos().map(|pos| pos - off ).filter(|mouse_pos| mouse_pos.y >= 0. && (mouse_pos.y as u32) < PALETTE_SHOW_DIMS);
+    let hover_pos = reg.hover_pos_rel();
 
     if let Some(mouse_pos) = hover_pos {
-        if response.clicked_by(egui::PointerButton::Primary) {
+        if reg.response.clicked_by(egui::PointerButton::Primary) {
             for (idx,i) in xbounds_iter(plen) {
                 if mouse_pos.x as u32 >= i && (mouse_pos.x as u32) < i + PALETTE_SHOW_DIMS {
                     state.palette.selected = idx;
@@ -54,7 +57,7 @@ pub fn palette_ui(state: &mut SharedApp, ui: &mut egui::Ui) {
     }
     
     let texdraw_rect = |a: u32| {
-        rector_off(a, 0, a + PALETTE_SHOW_DIMS, PALETTE_SHOW_DIMS, off.to_vec2())
+        rector(a, 0, a + PALETTE_SHOW_DIMS, PALETTE_SHOW_DIMS)
     };
 
     let mut shapes = Vec::with_capacity(plen as usize + 2);
@@ -62,7 +65,7 @@ pub fn palette_ui(state: &mut SharedApp, ui: &mut egui::Ui) {
     {
         let stroke = egui::Stroke::new(2.0, egui::Color32::RED);
         let line_x = PALETTE_SHOW_DIMS + PALETTE_GAP;
-        shapes.push(egui::Shape::line(line2_off(line_x, 0, line_x, PALETTE_SHOW_DIMS, off.to_vec2()), stroke));
+        shapes.push(egui::Shape::line(line2(line_x, 0, line_x, PALETTE_SHOW_DIMS), stroke));
     }
 
     let selected = &mut state.palette.paletted[state.palette.selected as usize];
@@ -96,8 +99,22 @@ pub fn palette_ui(state: &mut SharedApp, ui: &mut egui::Ui) {
         }
     }
 
-    painter.extend(shapes);
-    response.mark_changed();
+    // {
+    //     ui.fonts(|f| {
+    //         let text = egui::Shape::text(
+    //             f,
+    //             Default::default(),
+    //             egui::Align2::LEFT_TOP,
+    //             "AkW\nWkA",
+    //             Default::default(),
+    //             egui::Color32::WHITE
+    //         );
+    //         shapes.push(text);
+    //     });
+    // }
+
+    reg.extend_rel(shapes);
+    reg.response.mark_changed();
 }
 
 fn xbounds_iter(len: u32) -> impl Iterator<Item = (u32,u32)> {

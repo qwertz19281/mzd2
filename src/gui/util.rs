@@ -37,22 +37,22 @@ pub fn trans_shape(s: Shape, mul: f32, off: [f32;2]) -> Shape {
         Shape::Text(mut v) => {
             v.pos = trans_pos2(v.pos, mul, off);
             //only translate on the base pos
-            {
-                let v = Arc::make_mut(&mut v.galley);
-                v.mesh_bounds = mul_rect(v.mesh_bounds, mul);
-                v.rect = mul_rect(v.rect, mul);
-                for v in &mut v.rows {
-                    v.rect = mul_rect(v.rect, mul);
-                    v.visuals.mesh_bounds = mul_rect(v.visuals.mesh_bounds, mul);
-                    for v in &mut v.visuals.mesh.vertices {
-                        v.pos = mul_pos2(v.pos, mul);
-                    }
-                    for v in &mut v.glyphs {
-                        v.pos = mul_pos2(v.pos, mul);
-                        v.size = mul_vec2(v.size, mul);
-                    }
-                }
-            }
+            // {
+            //     let v = Arc::make_mut(&mut v.galley);
+            //     v.mesh_bounds = mul_rect(v.mesh_bounds, mul);
+            //     v.rect = mul_rect(v.rect, mul);
+            //     for v in &mut v.rows {
+            //         v.rect = mul_rect(v.rect, mul);
+            //         v.visuals.mesh_bounds = mul_rect(v.visuals.mesh_bounds, mul);
+            //         for v in &mut v.visuals.mesh.vertices {
+            //             v.pos = mul_pos2(v.pos, mul);
+            //         }
+            //         for v in &mut v.glyphs {
+            //             v.pos = mul_pos2(v.pos, mul);
+            //             v.size = mul_vec2(v.size, mul);
+            //         }
+            //     }
+            // }
             Shape::Text(v)
         },
         Shape::Mesh(mut v) => {
@@ -207,7 +207,7 @@ pub struct PainterRel {
 }
 
 pub fn alloc_painter_rel(ui: &mut egui::Ui, desired_size: Vec2, sense: Sense, zoom: f32) -> PainterRel {
-    let (r,p) = ui.allocate_painter(desired_size, sense);
+    let (r,p) = ui.allocate_painter(desired_size.multiply_0(zoom), sense);
     PainterRel {
         response: r,
         painter: p,
@@ -216,7 +216,7 @@ pub fn alloc_painter_rel(ui: &mut egui::Ui, desired_size: Vec2, sense: Sense, zo
 }
 
 impl PainterRel {
-    pub fn cursor_pos_rel(&self) -> Option<Pos2> {
+    pub fn hover_pos_rel(&self) -> Option<Pos2> {
         let off = self.response.rect.left_top();
         self.response.hover_pos().filter(|pos| self.response.rect.contains(*pos)).map(|pos| ((pos - off) / self.zoom).to_pos2() )
     }
@@ -224,6 +224,21 @@ impl PainterRel {
     pub fn extend_rel<I: IntoIterator<Item = Shape>>(&self, shapes: I) {
         let off = self.response.rect.left_top();
         let shapes = shapes.into_iter().map(|i| trans_shape(i, self.zoom, [off.x,off.y]));
+        self.painter.extend(shapes);
+    }
+
+    pub fn extend_rel_zoomed<I: IntoIterator<Item = Shape>>(&self, shapes: I, extra_zoom: f32) {
+        let off = self.response.rect.left_top();
+        let zoom = self.zoom * extra_zoom;
+        let shapes = shapes.into_iter().map(|i| trans_shape(i, zoom, [off.x,off.y]));
+        self.painter.extend(shapes);
+    }
+
+    pub fn extend_rel_trans<I: IntoIterator<Item = Shape>>(&self, shapes: I, extra_zoom: f32, extra_off: [f32;2]) {
+        let off = self.response.rect.left_top();
+        let zoom = self.zoom * extra_zoom;
+        let off = [off.x + (extra_off[0] * self.zoom), off.y + (extra_off[1] * self.zoom)];
+        let shapes = shapes.into_iter().map(|i| trans_shape(i, zoom, off));
         self.painter.extend(shapes);
     }
 }
