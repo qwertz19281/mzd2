@@ -4,6 +4,7 @@ use egui::{ColorImage, Color32};
 use image::RgbaImage;
 
 use crate::gui::room::{Room, self};
+use crate::map::coord_store::CoordStore;
 use crate::util::next_op_gen_evo;
 
 use super::{RoomId, Map};
@@ -148,24 +149,25 @@ impl Map {
 
         true
     }
+}
 
-    pub fn render_picomap(&self) -> ColorImage {
-        let mut pixels = Vec::with_capacity(256*256);
-        for y in 0 .. 255 {
-            for x in 0 .. 255 {
-                let is_room = self.room_matrix.get([x,y,self.state.current_level]);
-                let color = if is_room.is_some() {
-                    Color32::WHITE
-                } else {
-                    Color32::BLACK
-                };
-                pixels.push(color);
-            }
+pub fn render_picomap(current_level: u8, room_matrix: &CoordStore<RoomId>) -> ColorImage {
+    let mut pixels = Vec::with_capacity(256*256);
+    for y in 0 .. 256u32 {
+        for x in 0 .. 256u32 {
+            let [x,y] = [x as u8, y as u8];
+            let is_room = room_matrix.get([x,y,current_level]);
+            let color = if is_room.is_some() {
+                Color32::WHITE
+            } else {
+                Color32::BLACK
+            };
+            pixels.push(color);
         }
-        ColorImage {
-            size: [256,256],
-            pixels,
-        }
+    }
+    ColorImage {
+        size: [256,256],
+        pixels,
     }
 }
 

@@ -128,6 +128,7 @@ pub fn ensure_texture2<'a> (
         let max_side = ctx.input(|i| i.max_texture_side);
         assert!(image_size[0] as usize <= max_side && image_size[1] as usize <= max_side);
         let image = image();
+        assert_color_image(&image);
         //assert_eq!(image.size, image_size);
         let tex_manager = ctx.tex_manager();
         let mut tex_manager = tex_manager.write();
@@ -138,6 +139,7 @@ pub fn ensure_texture2<'a> (
         });
     } else if tex.is_none() || force {
         let image = image();
+        assert_color_image(&image);
         //assert_eq!(image.size, image_size);
         *tex = Some(ctx.load_texture(name, image, opts));
     }
@@ -225,4 +227,8 @@ impl TextureCell {
     pub fn dealloc(&mut self) {
         self.tex_handle = None;
     }
+}
+
+fn assert_color_image(c: &ColorImage) {
+    assert_eq!(c.size[0] * c.size[1], c.pixels.len(), "ColorImage vec len doesn't match ColorImage size");
 }

@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use egui::{Shape, Pos2, Rect, Vec2, Sense};
 
-use super::StupidInto;
+use super::{StupidInto, line2};
 
 pub fn trans_shape(s: Shape, mul: f32, off: [f32;2]) -> Shape {
     match s {
@@ -201,18 +201,38 @@ impl<T> MulDivonRect for Vec<T> where T: MulDivonRect {
     }
 }
 
+pub trait MulDivonRectI {
+    fn multiply_0<T>(self, v: T) -> Self where T: StupidInto<u32>;
+    fn divide_0<T>(self, v: T) -> Self where T: StupidInto<u32>;
+}
+
+impl MulDivonRectI for [u32;2] {
+    fn multiply_0<U>(self, v: U) -> Self where U: StupidInto<u32> {
+        let v = v.stupinto();
+        [self[0] * v, self[1] * v]
+    }
+
+    fn divide_0<U>(self, v: U) -> Self where U: StupidInto<u32> {
+        let v = v.stupinto();
+        [self[0] / v, self[1] / v]
+    }
+}
+
 pub struct PainterRel {
     pub response: egui::Response,
     pub painter: egui::Painter,
     pub zoom: f32,
+    pub voff: Pos2,
 }
 
 pub fn alloc_painter_rel(ui: &mut egui::Ui, desired_size: Vec2, sense: Sense, zoom: f32) -> PainterRel {
     let (r,p) = ui.allocate_painter(desired_size.multiply_0(zoom), sense);
+    let voff = r.rect.left_top();
     PainterRel {
         response: r,
         painter: p,
         zoom,
+        voff,
     }
 }
 
@@ -221,37 +241,65 @@ pub fn alloc_painter_rel_ds(ui: &mut egui::Ui, size_bound: RangeInclusive<Vec2>,
     let min = size_bound.start().multiply_0(zoom);
     let max = size_bound.end().multiply_0(zoom);
     let (r,p) = ui.allocate_painter(av_size.clamp(min, max), sense);
+    let voff = r.rect.left_top();
     PainterRel {
         response: r,
         painter: p,
         zoom,
+        voff,
     }
 }
 
 impl PainterRel {
     pub fn hover_pos_rel(&self) -> Option<Pos2> {
-        let off = self.response.rect.left_top();
-        self.response.hover_pos().filter(|pos| self.response.rect.contains(*pos)).map(|pos| ((pos - off) / self.zoom).to_pos2() )
+        self.response.hover_pos().filter(|pos| self.response.rect.contains(*pos)).map(|pos| ((pos - self.voff) / self.zoom).to_pos2() )
     }
 
     pub fn extend_rel<I: IntoIterator<Item = Shape>>(&self, shapes: I) {
-        let off = self.response.rect.left_top();
-        let shapes = shapes.into_iter().map(|i| trans_shape(i, self.zoom, [off.x,off.y]));
+        let shapes = shapes.into_iter().map(|i| trans_shape(i, self.zoom, [self.voff.x,self.voff.y]));
         self.painter.extend(shapes);
     }
 
     pub fn extend_rel_zoomed<I: IntoIterator<Item = Shape>>(&self, shapes: I, extra_zoom: f32) {
-        let off = self.response.rect.left_top();
         let zoom = self.zoom * extra_zoom;
-        let shapes = shapes.into_iter().map(|i| trans_shape(i, zoom, [off.x,off.y]));
+        let shapes = shapes.into_iter().map(|i| trans_shape(i, zoom, [self.voff.x,self.voff.y]));
         self.painter.extend(shapes);
     }
 
     pub fn extend_rel_trans<I: IntoIterator<Item = Shape>>(&self, shapes: I, extra_zoom: f32, extra_off: [f32;2]) {
-        let off = self.response.rect.left_top();
         let zoom = self.zoom * extra_zoom;
-        let off = [off.x + (extra_off[0] * self.zoom), off.y + (extra_off[1] * self.zoom)];
+        let off = [self.voff.x + (extra_off[0] * self.zoom), self.voff.y + (extra_off[1] * self.zoom)];
         let shapes = shapes.into_iter().map(|i| trans_shape(i, zoom, off));
         self.painter.extend(shapes);
     }
+}
+
+pub fn draw_grid(grid_period: [u32;2], (clip0,clip1): ([f32;2],[f32;2]), stroke: egui::Stroke, picooff: f32, mut dest: impl FnMut(egui::Shape)) {
+    draw_grid_axis(
+        grid_period, (clip0, clip1),
+        |a,b| dest(egui::Shape::line(line2(a[0]+picooff, a[1]+picooff, b[0]+picooff, b[1]+picooff), stroke))
+    );
+    draw_grid_axis(
+        swapo(grid_period), (swapo(clip0), swapo(clip1)),
+        |a,b| dest(egui::Shape::line(line2(a[1]+picooff, a[0]+picooff, b[1]+picooff, b[0]+picooff), stroke))
+    );
+}
+
+fn draw_grid_axis(grid_period: [u32;2], (clip0,clip1): ([f32;2],[f32;2]), mut dest: impl FnMut([f32;2],[f32;2])) {
+    let mut step = clip0[0] as u32 / grid_period[0] * grid_period[0];
+    while step < (clip0[0] as u32) {
+        step += grid_period[0];
+    }
+    while step <= (clip1[0] as u32) {
+        dest(
+            [step as f32, clip0[1]],
+            [step as f32, clip1[1]],
+        );
+
+        step += grid_period[0];
+    }
+}
+
+fn swapo<T>([a,b]: [T;2]) -> [T;2] {
+    [b,a]
 }

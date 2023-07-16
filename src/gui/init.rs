@@ -63,7 +63,7 @@ impl eframe::App for SharedApp {
             // TODO assert maps, remove if map or room doesn't exist anymore
         }
 
-        ctx.input(|i| eprintln!("MAX TEX SIDE {}", i.max_texture_side));
+        //ctx.input(|i| eprintln!("MAX TEX SIDE {}", i.max_texture_side));
 
         egui::TopBottomPanel::top("main_top_panel")
             .show(ctx, |ui| top_panel_ui(self, ui) );

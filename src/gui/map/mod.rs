@@ -1,7 +1,7 @@
 use std::io::ErrorKind;
 use std::path::PathBuf;
 
-use egui::TextureHandle;
+use egui::{TextureHandle, TextureOptions};
 use egui::epaint::ahash::HashSet;
 use image::RgbaImage;
 use serde::{Serialize, Deserialize};
@@ -11,6 +11,7 @@ use crate::map::coord_store::CoordStore;
 use crate::util::*;
 
 use super::room::Room;
+use super::texture::TextureCell;
 
 pub mod room_ops;
 pub mod map_ui;
@@ -23,13 +24,13 @@ pub struct Map {
     pub dirty_rooms: HashSet<RoomId>,
     pub edit_mode: MapEditMode,
     pub room_matrix: CoordStore<RoomId>,
-    pub picomap_tex: Option<TextureHandle>,
+    pub picomap_tex: TextureCell,
 }
 
 #[derive(Deserialize,Serialize)]
 pub struct MapState {
     pub title: String,
-    pub zoom: usize,
+    pub zoom: u32,
     pub rooms: HopSlotMap<RoomId,Room>,
     pub selected_room: Option<RoomId>,
     pub file_counter: u64,
@@ -94,7 +95,7 @@ impl Map {
             dirty_rooms: Default::default(),
             edit_mode: MapEditMode::DrawSel,
             room_matrix: CoordStore::new(),
-            picomap_tex: None,
+            picomap_tex: create_picomap_texcell(),
         };
 
         for (id,room) in &map.state.rooms {
@@ -139,12 +140,12 @@ impl Map {
             dirty_rooms: Default::default(),
             edit_mode: MapEditMode::DrawSel,
             room_matrix: CoordStore::new(),
-            picomap_tex: None,
+            picomap_tex: create_picomap_texcell(),
         }
     }
 
     fn update_level(&mut self, new_z: u8) {
-        self.picomap_tex = None; // TODO maybe use cell to reuse texture
+        self.picomap_tex.dirty();
         self.state.current_level = new_z;
     }
 }
@@ -154,4 +155,11 @@ pub enum MapEditMode {
     DrawSel,
     RoomSel,
     Tags,
+}
+
+fn create_picomap_texcell() -> TextureCell {
+    TextureCell::new("map_picomap", TextureOptions {
+        magnification: egui::TextureFilter::Nearest,
+        minification: egui::TextureFilter::Nearest,
+    })
 }
