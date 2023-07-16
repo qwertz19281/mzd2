@@ -34,7 +34,7 @@ const PALETTE_GAP: u32 = 16;
 
 pub fn palette_ui(state: &mut SharedApp, ui: &mut egui::Ui) {
     let plen = state.palette.paletted.len() as u32;
-    let dpi = ui.ctx().pixels_per_point();
+    let dpi = dbg!(ui.ctx().pixels_per_point());
 
     let full_w = PALETTE_SHOW_DIMS + PALETTE_GAP * 2 + (PALETTE_SHOW_DIMS + PALETTE_GAP) * plen - PALETTE_GAP;
 

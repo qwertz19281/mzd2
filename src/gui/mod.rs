@@ -58,3 +58,19 @@ convtable!(
     f32,
     i8,u8,i16,u16,i32,u32,f32
 );
+
+/// Call only one, returns old dpi
+pub fn dpi_hack(ctx: &egui::Context, frame: &mut eframe::Frame) -> f32 {
+    let dpi = ctx.pixels_per_point();
+    
+    let mut fontdef = egui::FontDefinitions::default();
+
+    for (_,font) in &mut fontdef.font_data {
+        font.tweak.scale *= dpi;
+    }
+
+    ctx.set_pixels_per_point(1.);
+    ctx.set_fonts(fontdef);
+
+    dpi
+}

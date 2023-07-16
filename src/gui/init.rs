@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 
 use crate::util::MapId;
 
-use super::MutQueue;
+use super::{MutQueue, dpi_hack};
 use super::map::RoomId;
 use super::palette::{Palette, palette_ui};
 use super::top_panel::{TopPanel, top_panel_ui};
@@ -33,6 +33,7 @@ pub struct SharedApp {
     pub mut_queue: MutQueue,
     pub warpon: Option<(MapId,RoomId,(u32,u32))>,
     pub palette: Palette,
+    pub dpi: f32,
 }
 
 impl SharedApp {
@@ -44,6 +45,7 @@ impl SharedApp {
             mut_queue: vec![],
             warpon: None,
             palette: Palette::new(),
+            dpi: 0.,
         }
     }
 }
@@ -51,7 +53,12 @@ impl SharedApp {
 impl eframe::App for SharedApp {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         //eprintln!("PPI: {}", ctx.pixels_per_point());
-        //ctx.set_pixels_per_point(1.);
+        
+        if self.dpi == 0. {
+            eprintln!("DPI HACK");
+            self.dpi = dpi_hack(ctx, frame);
+        }
+
         
         for v in std::mem::replace(&mut self.mut_queue, vec![]) {
             v(self);
