@@ -41,7 +41,7 @@ pub fn palette_ui(state: &mut SharedApp, ui: &mut egui::Ui) {
     let mut reg = alloc_painter_rel(
         ui,
         egui::vec2(full_w as f32, PALETTE_SHOW_DIMS as f32), egui::Sense::click_and_drag(),
-        1. / dpi
+        1., dpi
     );
 
     //eprintln!("AKA {:?}", reg.response.rect);
@@ -115,7 +115,7 @@ pub fn palette_ui(state: &mut SharedApp, ui: &mut egui::Ui) {
     //     });
     // }
 
-    reg.extend_rel(shapes);
+    reg.extend_rel_fixtex(shapes);
     reg.response.mark_changed();
 }
 

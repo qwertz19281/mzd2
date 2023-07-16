@@ -63,7 +63,7 @@ impl Tileset {
         let mut reg = alloc_painter_rel_ds(
             ui,
             MIN_WINDOW ..= sizev2, egui::Sense::click_and_drag(),
-            1. / dpi
+            1., dpi
         );
 
         let ts_tex = ensure_texture_from_image(
@@ -85,7 +85,7 @@ impl Tileset {
             egui::Color32::WHITE
         ));
 
-        reg.extend_rel_zoomed(shapes, 1.);
+        reg.extend_rel_fixtex(shapes);
 
         // let hover_pos = reg.hover_pos_rel();
     }

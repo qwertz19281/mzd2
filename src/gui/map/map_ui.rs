@@ -54,7 +54,7 @@ impl Map {
                     ui,
                     Vec2::new(256.,256.),
                     Sense::click_and_drag(),
-                    1. / dpi
+                    1., dpi
                 );
         
                 let picomap_tex = self.picomap_tex.ensure_colorimage(
@@ -63,7 +63,7 @@ impl Map {
                     ui.ctx()
                 );
         
-                picomap.extend_rel([
+                picomap.extend_rel_fixtex([
                     egui::Shape::Mesh(basic_tex_shape(picomap_tex.id(), rector(0, 0, 256, 256)))
                 ]);
             });
@@ -79,7 +79,7 @@ impl Map {
                 ui,
                 size_v * 2. ..= size_v * 16.,
                 Sense::click_and_drag(),
-                self.state.zoom as f32 / dpi,
+                self.state.zoom as f32, dpi,
             );
 
             // drag needs to be handled first, before the ops that require the off
@@ -98,7 +98,7 @@ impl Map {
 
             super_map.voff -= offv2 / dpi;
 
-            // super_map.extend_rel([
+            // super_map.extend_rel_fixtex([
             //     egui::Shape::rect_filled(rector(0., 0., 3200., 2400.), Rounding::default(), Color32::RED)
             // ]);
 
@@ -115,7 +115,7 @@ impl Map {
 
             draw_grid(self.state.rooms_size, (self.state.view_pos, view_pos_1), grid_stroke, 0., |s| shapes.push(s) );
 
-            super_map.extend_rel(shapes);
+            super_map.extend_rel_fixtex(shapes);
         }
     }
 

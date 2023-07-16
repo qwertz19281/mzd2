@@ -81,6 +81,22 @@ pub fn trans_shape(s: Shape, mul: f32, off: [f32;2]) -> Shape {
     }
 }
 
+pub fn trans_shape_fixtex(s: Shape, zoom: f32, ezoom: f32, dpi: f32, off: [f32;2]) -> Shape {
+    match s {
+        Shape::Mesh(mut v) => {
+            for v in &mut v.vertices {
+                v.pos = trans_pos2(v.pos, ezoom, off);
+                v.pos = v.pos.multiply_0(dpi);
+                v.pos.x = v.pos.x.trunc();
+                v.pos.y = v.pos.y.trunc();
+                v.pos = v.pos.divide_0(dpi);
+            }
+            Shape::Mesh(v)
+        },
+        s => trans_shape(s, ezoom, off)
+    }
+}
+
 pub fn trans_pos2(mut p: Pos2, mul: f32, [ox,oy]: [f32;2]) -> Pos2 {
     p.x *= mul;
     p.y *= mul;
@@ -222,53 +238,66 @@ pub struct PainterRel {
     pub response: egui::Response,
     pub painter: egui::Painter,
     pub zoom: f32,
+    pub ezoom: f32,
+    pub dpi: f32,
     pub voff: Pos2,
 }
 
-pub fn alloc_painter_rel(ui: &mut egui::Ui, desired_size: Vec2, sense: Sense, zoom: f32) -> PainterRel {
-    let (r,p) = ui.allocate_painter(desired_size.multiply_0(zoom), sense);
+pub fn alloc_painter_rel(ui: &mut egui::Ui, desired_size: Vec2, sense: Sense, zoom: f32, dpi: f32) -> PainterRel {
+    let ezoom = zoom/dpi;
+    let (r,p) = ui.allocate_painter(desired_size.multiply_0(ezoom), sense);
     let voff = r.rect.left_top();
     PainterRel {
         response: r,
         painter: p,
         zoom,
+        ezoom,
+        dpi,
         voff,
     }
 }
 
-pub fn alloc_painter_rel_ds(ui: &mut egui::Ui, size_bound: RangeInclusive<Vec2>, sense: Sense, zoom: f32) -> PainterRel {
+pub fn alloc_painter_rel_ds(ui: &mut egui::Ui, size_bound: RangeInclusive<Vec2>, sense: Sense, zoom: f32, dpi: f32) -> PainterRel {
+    let ezoom = zoom/dpi;
     let av_size = ui.available_size();
-    let min = size_bound.start().multiply_0(zoom);
-    let max = size_bound.end().multiply_0(zoom);
+    let min = size_bound.start().multiply_0(ezoom);
+    let max = size_bound.end().multiply_0(ezoom);
     let (r,p) = ui.allocate_painter(av_size.clamp(min, max), sense);
     let voff = r.rect.left_top();
     PainterRel {
         response: r,
         painter: p,
         zoom,
+        ezoom,
+        dpi,
         voff,
     }
 }
 
 impl PainterRel {
     pub fn hover_pos_rel(&self) -> Option<Pos2> {
-        self.response.hover_pos().filter(|pos| self.response.rect.contains(*pos)).map(|pos| ((pos - self.voff) / self.zoom).to_pos2() )
+        self.response.hover_pos().filter(|pos| self.response.rect.contains(*pos)).map(|pos| ((pos - self.voff) / self.ezoom).to_pos2() )
     }
 
     pub fn extend_rel<I: IntoIterator<Item = Shape>>(&self, shapes: I) {
-        let shapes = shapes.into_iter().map(|i| trans_shape(i, self.zoom, [self.voff.x,self.voff.y]));
+        let shapes = shapes.into_iter().map(|i| trans_shape(i, self.ezoom, [self.voff.x,self.voff.y]));
+        self.painter.extend(shapes);
+    }
+
+    pub fn extend_rel_fixtex<I: IntoIterator<Item = Shape>>(&self, shapes: I) {
+        let shapes = shapes.into_iter().map(|i| trans_shape_fixtex(i, self.zoom, self.ezoom, self.dpi, [self.voff.x,self.voff.y]));
         self.painter.extend(shapes);
     }
 
     pub fn extend_rel_zoomed<I: IntoIterator<Item = Shape>>(&self, shapes: I, extra_zoom: f32) {
-        let zoom = self.zoom * extra_zoom;
+        let zoom = self.ezoom * extra_zoom;
         let shapes = shapes.into_iter().map(|i| trans_shape(i, zoom, [self.voff.x,self.voff.y]));
         self.painter.extend(shapes);
     }
 
     pub fn extend_rel_trans<I: IntoIterator<Item = Shape>>(&self, shapes: I, extra_zoom: f32, extra_off: [f32;2]) {
-        let zoom = self.zoom * extra_zoom;
-        let off = [self.voff.x + (extra_off[0] * self.zoom), self.voff.y + (extra_off[1] * self.zoom)];
+        let zoom = self.ezoom * extra_zoom;
+        let off = [self.voff.x + (extra_off[0] * self.zoom), self.voff.y + (extra_off[1] * self.ezoom)];
         let shapes = shapes.into_iter().map(|i| trans_shape(i, zoom, off));
         self.painter.extend(shapes);
     }
