@@ -34,14 +34,13 @@ const PALETTE_GAP: u32 = 16;
 
 pub fn palette_ui(state: &mut SharedApp, ui: &mut egui::Ui) {
     let plen = state.palette.paletted.len() as u32;
-    let dpi = dbg!(ui.ctx().pixels_per_point());
 
     let full_w = PALETTE_SHOW_DIMS + PALETTE_GAP * 2 + (PALETTE_SHOW_DIMS + PALETTE_GAP) * plen - PALETTE_GAP;
 
     let mut reg = alloc_painter_rel(
         ui,
         egui::vec2(full_w as f32, PALETTE_SHOW_DIMS as f32), egui::Sense::click_and_drag(),
-        1., dpi
+        1.,
     );
 
     //eprintln!("AKA {:?}", reg.response.rect);

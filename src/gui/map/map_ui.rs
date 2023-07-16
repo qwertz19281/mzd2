@@ -19,8 +19,6 @@ impl Map {
         mut_queue: &mut MutQueue,
     ) {
         // on close of the map, palette textures should be unchained
-        let dpi = ui.ctx().pixels_per_point();
-
         ui.horizontal(|ui| {
             ui.vertical(|ui| {
                 ui.horizontal(|ui| {
@@ -54,7 +52,7 @@ impl Map {
                     ui,
                     Vec2::new(256.,256.),
                     Sense::click_and_drag(),
-                    1., dpi
+                    1.,
                 );
         
                 let picomap_tex = self.picomap_tex.ensure_colorimage(
@@ -79,13 +77,13 @@ impl Map {
                 ui,
                 size_v * 2. ..= size_v * 16.,
                 Sense::click_and_drag(),
-                self.state.zoom as f32, dpi,
+                self.state.zoom as f32,
             );
 
             // drag needs to be handled first, before the ops that require the off
             if let Some(_) = super_map.hover_pos_rel() {
                 if super_map.response.dragged_by(egui::PointerButton::Middle) {
-                    let delta = super_map.response.drag_delta() / self.state.zoom as f32 * dpi;
+                    let delta = super_map.response.drag_delta() / self.state.zoom as f32;
                     let new_view_pos = [
                         self.state.view_pos[0] - delta.x,
                         self.state.view_pos[1] - delta.y,
@@ -94,13 +92,13 @@ impl Map {
                 }
             }
 
-            super_map.voff -= Vec2::from(self.state.view_pos) * self.state.zoom as f32 / dpi;
+            super_map.voff -= Vec2::from(self.state.view_pos) * self.state.zoom as f32;
 
             // super_map.extend_rel_fixtex([
             //     egui::Shape::rect_filled(rector(0., 0., 3200., 2400.), Rounding::default(), Color32::RED)
             // ]);
 
-            let view_size = super_map.response.rect.size() / self.state.zoom as f32 * dpi;
+            let view_size = super_map.response.rect.size() / self.state.zoom as f32;
 
             let view_pos_1 = [
                 self.state.view_pos[0] + view_size.x,
@@ -109,7 +107,7 @@ impl Map {
 
             let mut shapes = vec![];
 
-            let grid_stroke = egui::Stroke::new(1.0 / dpi, egui::Color32::BLACK);
+            let grid_stroke = egui::Stroke::new(1., egui::Color32::BLACK);
 
             draw_grid(self.state.rooms_size, (self.state.view_pos, view_pos_1), grid_stroke, 0., |s| shapes.push(s) );
 

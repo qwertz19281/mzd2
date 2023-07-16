@@ -53,8 +53,6 @@ impl Tileset {
             }
         });
 
-        let dpi = ui.ctx().pixels_per_point();
-
         let size_v = Vec2::new(
             self.state.validate_size[0] as f32,
             self.state.validate_size[1] as f32,
@@ -64,15 +62,15 @@ impl Tileset {
             ui,
             MIN_WINDOW ..= size_v,
             egui::Sense::click_and_drag(),
-            self.state.zoom as f32, dpi,
+            self.state.zoom as f32,
         );
 
-        let view_size = reg.response.rect.size() / self.state.zoom as f32 * dpi;
+        let view_size = reg.response.rect.size() / self.state.zoom as f32;
 
         // drag needs to be handled first, before the ops that require the off
         if let Some(_) = reg.hover_pos_rel() {
             if reg.response.dragged_by(egui::PointerButton::Middle) {
-                let delta = reg.response.drag_delta() / self.state.zoom as f32 * dpi;
+                let delta = reg.response.drag_delta() / self.state.zoom as f32;
                 let new_view_pos = [
                     self.state.voff[0] - delta.x,
                     self.state.voff[1] - delta.y,
@@ -81,7 +79,7 @@ impl Tileset {
             }
         }
 
-        reg.voff -= Vec2::from(self.state.voff) * self.state.zoom as f32 / dpi;
+        reg.voff -= Vec2::from(self.state.voff) * self.state.zoom as f32;
 
         let mut shapes = vec![];
 
