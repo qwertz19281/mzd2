@@ -55,16 +55,35 @@ impl Tileset {
 
         let dpi = ui.ctx().pixels_per_point();
 
-        let sizev2 = Vec2::new(
-            (self.state.validate_size[0] * self.state.zoom) as f32,
-            (self.state.validate_size[1] * self.state.zoom) as f32,
+        let size_v = Vec2::new(
+            self.state.validate_size[0] as f32,
+            self.state.validate_size[1] as f32,
         );
 
         let mut reg = alloc_painter_rel_ds(
             ui,
-            MIN_WINDOW ..= sizev2, egui::Sense::click_and_drag(),
-            1., dpi
+            MIN_WINDOW ..= size_v,
+            egui::Sense::click_and_drag(),
+            self.state.zoom as f32, dpi,
         );
+
+        let view_size = reg.response.rect.size() / self.state.zoom as f32 * dpi;
+
+        // drag needs to be handled first, before the ops that require the off
+        if let Some(_) = reg.hover_pos_rel() {
+            if reg.response.dragged_by(egui::PointerButton::Middle) {
+                let delta = reg.response.drag_delta() / self.state.zoom as f32 * dpi;
+                let new_view_pos = [
+                    self.state.voff[0] - delta.x,
+                    self.state.voff[1] - delta.y,
+                ];
+                self.set_view_pos(new_view_pos, view_size.into());
+            }
+        }
+
+        reg.voff -= Vec2::from(self.state.voff) * self.state.zoom as f32 / dpi;
+
+        let mut shapes = vec![];
 
         let ts_tex = ensure_texture_from_image(
             &mut self.texture,
@@ -75,8 +94,6 @@ impl Tileset {
             None,
             ui.ctx()
         );
-
-        let mut shapes = vec![];
 
         shapes.push(egui::Shape::image(
             ts_tex.id(),
@@ -142,6 +159,12 @@ impl Tileset {
         Ok(ts)
     }
 
+    fn set_view_pos(&mut self, view_pos: [f32;2], viewport_size: [f32;2]) {
+        self.state.voff = [
+            view_pos[0].clamp(0., ((self.state.validate_size[0] as f32) - viewport_size[0]).max(0.)), // 265-2 is minimum size of view
+            view_pos[1].clamp(0., ((self.state.validate_size[1] as f32) - viewport_size[1]).max(0.)),
+        ];
+    }
     
 }
 

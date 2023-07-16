@@ -94,9 +94,7 @@ impl Map {
                 }
             }
 
-            let offv2 = Vec2::from(self.state.view_pos) * self.state.zoom as f32;
-
-            super_map.voff -= offv2 / dpi;
+            super_map.voff -= Vec2::from(self.state.view_pos) * self.state.zoom as f32 / dpi;
 
             // super_map.extend_rel_fixtex([
             //     egui::Shape::rect_filled(rector(0., 0., 3200., 2400.), Rounding::default(), Color32::RED)
