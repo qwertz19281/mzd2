@@ -2,13 +2,10 @@ use egui::TextureHandle;
 use image::RgbaImage;
 use serde::{Deserialize, Serialize};
 
-use crate::gui::map::RoomId;
+use crate::gui::map::{RoomId, RoomMap};
 use crate::gui::texture::TextureCell;
 
-#[derive(Default)]
-pub struct DrawImageGroup {
-    pub images: Vec<(RoomId,[u32;2])>,
-}
+use super::Room;
 
 #[derive(Deserialize,Serialize)]
 pub struct DrawImage {
@@ -145,4 +142,13 @@ fn overlap(a: usize, b: usize, len: usize) -> bool {
     let b1 = b + len;
 
     (a >= b && a < b1) | (b >= a && b < a1)
+}
+
+#[derive(Default)]
+pub struct DrawImageGroup {
+    pub rooms: Vec<(RoomId,[u32;2])>,
+}
+
+impl DrawImageGroup {
+
 }

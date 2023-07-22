@@ -27,11 +27,13 @@ pub struct Map {
     pub picomap_tex: TextureCell,
 }
 
+pub type RoomMap = HopSlotMap<RoomId,Room>;
+
 #[derive(Deserialize,Serialize)]
 pub struct MapState {
     pub title: String,
     pub zoom: u32,
-    pub rooms: HopSlotMap<RoomId,Room>,
+    pub rooms: RoomMap,
     pub selected_room: Option<RoomId>,
     pub file_counter: u64,
     pub view_pos: [f32;2],
