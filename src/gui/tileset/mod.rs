@@ -131,7 +131,7 @@ impl Tileset {
             state = serde_json::from_slice::<TilesetState>(&data)?;
             state.zoom = state.zoom.min(1).max(4);
             if state.validate_size != img_size {
-                state.sel_matrix = SelMatrix::new(sel_entry_dims(img_size));
+                state.sel_matrix = SelMatrix::new_emptyfilled(sel_entry_dims(img_size));
             }
             edit_path = Some(epath);
         } else {
@@ -139,7 +139,7 @@ impl Tileset {
                 title: path.file_name().unwrap().to_string_lossy().into_owned(),
                 zoom: 1,
                 validate_size: img_size,
-                sel_matrix: SelMatrix::new(sel_entry_dims(img_size)),
+                sel_matrix: SelMatrix::new_emptyfilled(sel_entry_dims(img_size)),
                 voff: [0.;2],
             }
         }

@@ -22,7 +22,7 @@ impl DrawState {
         todo!()
     }
 
-    pub fn draw_mouse_up(&mut self, pos: [f32;2], dest: &mut RgbaImage) {
+    pub fn draw_mouse_up(&mut self, pos: [f32;2], dest: &mut RgbaImage, img_size: [u32;2], layer: u32) {
         todo!()
     }
 }
@@ -32,6 +32,7 @@ pub enum DrawMode {
     Direct,
     Line,
     Rect,
+    TileEraseRect,
 }
 
 /// tile_size is in eight-pixel unit

@@ -32,7 +32,8 @@ impl Map {
                 file_n,
                 coord,
                 self.state.rooms_size,
-                Some(RgbaImage::new(self.state.rooms_size[0], self.state.rooms_size[1]))
+                RgbaImage::new(self.state.rooms_size[0], self.state.rooms_size[1]),
+                1
             ))
         })
     }
