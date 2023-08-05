@@ -37,23 +37,6 @@ pub fn trans_shape(s: Shape, mul: f32, off: [f32;2]) -> Shape {
         },
         Shape::Text(mut v) => {
             v.pos = trans_pos2(v.pos, mul, off);
-            //only translate on the base pos
-            // {
-            //     let v = Arc::make_mut(&mut v.galley);
-            //     v.mesh_bounds = mul_rect(v.mesh_bounds, mul);
-            //     v.rect = mul_rect(v.rect, mul);
-            //     for v in &mut v.rows {
-            //         v.rect = mul_rect(v.rect, mul);
-            //         v.visuals.mesh_bounds = mul_rect(v.visuals.mesh_bounds, mul);
-            //         for v in &mut v.visuals.mesh.vertices {
-            //             v.pos = mul_pos2(v.pos, mul);
-            //         }
-            //         for v in &mut v.glyphs {
-            //             v.pos = mul_pos2(v.pos, mul);
-            //             v.size = mul_vec2(v.size, mul);
-            //         }
-            //     }
-            // }
             Shape::Text(v)
         },
         Shape::Mesh(mut v) => {
