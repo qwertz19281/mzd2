@@ -37,6 +37,7 @@ pub fn trans_shape(s: Shape, mul: f32, off: [f32;2]) -> Shape {
         },
         Shape::Text(mut v) => {
             v.pos = trans_pos2(v.pos, mul, off);
+            // Text is not scaled!
             Shape::Text(v)
         },
         Shape::Mesh(mut v) => {
@@ -214,6 +215,113 @@ impl MulDivonRectI for [u32;2] {
         [self[0] / v, self[1] / v]
     }
 }
+
+pub trait ArrUtl {
+    type Unit: Clone + Copy;
+
+    fn add(self, v: Self) -> Self;
+    fn sub(self, v: Self) -> Self;
+    fn mul(self, v: Self) -> Self;
+    fn div(self, v: Self) -> Self;
+
+    fn add_x(self, v: Self::Unit) -> Self;
+    fn add_y(self, v: Self::Unit) -> Self;
+    fn sub_x(self, v: Self::Unit) -> Self;
+    fn sub_y(self, v: Self::Unit) -> Self;
+    
+    fn as_u8(self) -> [u8;2];
+    fn as_u16(self) -> [u16;2];
+    fn as_u32(self) -> [u32;2];
+    fn as_u64(self) -> [u64;2];
+    fn as_usize(self) -> [usize;2];
+    fn as_i8(self) -> [i8;2];
+    fn as_i16(self) -> [i16;2];
+    fn as_i32(self) -> [i32;2];
+    fn as_i64(self) -> [i64;2];
+    fn as_isize(self) -> [isize;2];
+    fn as_f32(self) -> [f32;2];
+    fn as_f64(self) -> [f64;2];
+}
+
+macro_rules! marco_arrutl {
+    ($($t:ty)*) => {
+        $(
+            impl ArrUtl for [$t;2] {
+                type Unit = $t;
+
+                fn add(self, v: Self) -> Self {
+                    [self[0]+v[0], self[1]+v[1]]
+                }
+                fn sub(self, v: Self) -> Self {
+                    [self[0]-v[0], self[1]-v[1]]
+                }
+                fn mul(self, v: Self) -> Self {
+                    [self[0]*v[0], self[1]*v[1]]
+                }
+                fn div(self, v: Self) -> Self {
+                    [self[0]/v[0], self[1]/v[1]]
+                }
+
+                fn add_x(mut self, v: Self::Unit) -> Self {
+                    self[0] += v; self
+                }
+                fn add_y(mut self, v: Self::Unit) -> Self {
+                    self[1] += v; self
+                }
+                fn sub_x(mut self, v: Self::Unit) -> Self {
+                    self[0] -= v; self
+                }
+                fn sub_y(mut self, v: Self::Unit) -> Self {
+                    self[1] -= v; self
+                }
+
+                
+                fn as_u8(self) -> [u8;2] {
+                    [self[0] as _, self[1] as _]
+                }
+                fn as_u16(self) -> [u16;2] {
+                    [self[0] as _, self[1] as _]
+                }
+                fn as_u32(self) -> [u32;2] {
+                    [self[0] as _, self[1] as _]
+                }
+                fn as_u64(self) -> [u64;2] {
+                    [self[0] as _, self[1] as _]
+                }
+                fn as_usize(self) -> [usize;2] {
+                    [self[0] as _, self[1] as _]
+                }
+                fn as_i8(self) -> [i8;2] {
+                    [self[0] as _, self[1] as _]
+                }
+                fn as_i16(self) -> [i16;2] {
+                    [self[0] as _, self[1] as _]
+                }
+                fn as_i32(self) -> [i32;2] {
+                    [self[0] as _, self[1] as _]
+                }
+                fn as_i64(self) -> [i64;2] {
+                    [self[0] as _, self[1] as _]
+                }
+                fn as_isize(self) -> [isize;2] {
+                    [self[0] as _, self[1] as _]
+                }
+                fn as_f32(self) -> [f32;2] {
+                    [self[0] as _, self[1] as _]
+                }
+                fn as_f64(self) -> [f64;2] {
+                    [self[0] as _, self[1] as _]
+                }
+            }
+        )*
+    };
+}
+
+marco_arrutl!(
+    u8 u16 u32 u64 usize
+    i8 i16 i32 i64 isize
+    f32 f64
+);
 
 pub struct PainterRel {
     pub response: egui::Response,

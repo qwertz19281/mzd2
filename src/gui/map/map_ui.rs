@@ -4,7 +4,7 @@ use crate::gui::{MutQueue, rector};
 use crate::gui::init::SharedApp;
 use crate::gui::palette::Palette;
 use crate::gui::texture::basic_tex_shape;
-use crate::gui::util::{alloc_painter_rel, alloc_painter_rel_ds, draw_grid};
+use crate::gui::util::{alloc_painter_rel, alloc_painter_rel_ds, draw_grid, ArrUtl};
 use crate::util::MapId;
 
 use super::room_ops::render_picomap;
@@ -68,10 +68,7 @@ impl Map {
         });
 
         {
-            let size_v = Vec2::new(
-                self.state.rooms_size[0] as f32,
-                self.state.rooms_size[1] as f32,
-            );
+            let size_v: Vec2 = self.state.rooms_size.as_f32().into();
             
             let mut super_map = alloc_painter_rel_ds(
                 ui,
@@ -84,10 +81,7 @@ impl Map {
             if let Some(_) = super_map.hover_pos_rel() {
                 if super_map.response.dragged_by(egui::PointerButton::Middle) {
                     let delta = super_map.response.drag_delta() / self.state.map_zoom as f32;
-                    let new_view_pos = [
-                        self.state.view_pos[0] - delta.x,
-                        self.state.view_pos[1] - delta.y,
-                    ];
+                    let new_view_pos = self.state.view_pos.sub(delta.into());
                     self.set_view_pos(new_view_pos);
                 }
             }
@@ -100,10 +94,7 @@ impl Map {
 
             let view_size = super_map.response.rect.size() / self.state.map_zoom as f32;
 
-            let view_pos_1 = [
-                self.state.view_pos[0] + view_size.x,
-                self.state.view_pos[1] + view_size.y,
-            ];
+            let view_pos_1 = self.state.view_pos.add(view_size.into());
 
             let mut shapes = vec![];
 

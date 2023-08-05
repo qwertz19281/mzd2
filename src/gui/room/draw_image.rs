@@ -240,10 +240,10 @@ impl DrawImageGroup {
                 tc.dirty_region((
                     [
                         op_0[0],
-                        op_0[0] + (dest_layer as u32 * rooms_size[1] as u32),
+                        op_0[1] + (dest_layer as u32 * rooms_size[1] as u32),
                     ],[
                         op_1[0],
-                        op_1[0] + (dest_layer as u32 * rooms_size[1] as u32),
+                        op_1[1] + (dest_layer as u32 * rooms_size[1] as u32),
                     ]
                 ));
             }

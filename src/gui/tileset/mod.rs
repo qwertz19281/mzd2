@@ -11,7 +11,7 @@ use super::{MutQueue, rector};
 use super::init::SharedApp;
 use super::sel_matrix::{SelMatrix, sel_entry_dims};
 use super::texture::{ensure_texture_from_image, RECT_0_0_1_1};
-use super::util::{alloc_painter_rel, alloc_painter_rel_ds};
+use super::util::{alloc_painter_rel, alloc_painter_rel_ds, ArrUtl};
 
 pub struct Tileset {
     pub id: TilesetId,
@@ -53,10 +53,7 @@ impl Tileset {
             }
         });
 
-        let size_v = Vec2::new(
-            self.state.validate_size[0] as f32,
-            self.state.validate_size[1] as f32,
-        );
+        let size_v = self.state.validate_size.as_f32().into();
 
         let mut reg = alloc_painter_rel_ds(
             ui,
@@ -71,10 +68,7 @@ impl Tileset {
         if let Some(_) = reg.hover_pos_rel() {
             if reg.response.dragged_by(egui::PointerButton::Middle) {
                 let delta = reg.response.drag_delta() / self.state.zoom as f32;
-                let new_view_pos = [
-                    self.state.voff[0] - delta.x,
-                    self.state.voff[1] - delta.y,
-                ];
+                let new_view_pos = self.state.voff.sub(delta.into());
                 self.set_view_pos(new_view_pos, view_size.into());
             }
         }
@@ -159,7 +153,7 @@ impl Tileset {
 
     fn set_view_pos(&mut self, view_pos: [f32;2], viewport_size: [f32;2]) {
         self.state.voff = [
-            view_pos[0].clamp(0., ((self.state.validate_size[0] as f32) - viewport_size[0]).max(0.)), // 265-2 is minimum size of view
+            view_pos[0].clamp(0., ((self.state.validate_size[0] as f32) - viewport_size[0]).max(0.)),
             view_pos[1].clamp(0., ((self.state.validate_size[1] as f32) - viewport_size[1]).max(0.)),
         ];
     }

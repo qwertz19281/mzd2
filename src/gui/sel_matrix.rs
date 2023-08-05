@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use super::util::ArrUtl;
+
 #[derive(Deserialize,Serialize)]
 pub struct SelMatrix {
     pub dims: [u32;2],
@@ -78,7 +80,7 @@ impl SelEntry {
     pub fn to_sel_pt(&self, at_off: [u32;2]) -> SelPt {
         let oo = [at_off[0] as i32, at_off[1] as i32];
         SelPt {
-            start: [(self.start[0] as i32 + oo[0]) as u16, (self.start[1] as i32 + oo[1]) as u16],
+            start: self.start.as_i32().add(oo).as_u16(),
             size: self.size,
         }
     }

@@ -4,7 +4,7 @@ use crate::gui::MutQueue;
 use crate::gui::draw_state::DrawMode;
 use crate::gui::dsel_state::DSelMode;
 use crate::gui::palette::Palette;
-use crate::gui::util::{alloc_painter_rel_ds, alloc_painter_rel};
+use crate::gui::util::{alloc_painter_rel_ds, alloc_painter_rel, ArrUtl};
 use crate::util::MapId;
 
 use super::{RoomId, Map, DrawOp};
@@ -46,10 +46,7 @@ impl Map {
         });
         
         if self.editsel.region_size[0] != 0 && self.editsel.region_size[1] != 0 && !self.editsel.rooms.is_empty() {
-            let size_v = Vec2::new(
-                self.editsel.region_size[0] as f32,
-                self.editsel.region_size[1] as f32,
-            );
+            let size_v = self.editsel.region_size.as_f32().into();
     
             let mut reg = alloc_painter_rel(
                 ui,
