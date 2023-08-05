@@ -63,22 +63,28 @@ impl Room {
     }
 
     pub fn load_tex<'a>(&'a mut self, map_path: impl Into<PathBuf>, rooms_size: [u32;2], ctx: &egui::Context) -> Option<&'a mut TextureHandle> {
+        if !self.ensure_file_loaded(map_path, rooms_size) {return None;}
+
+        self.get_tex(ctx)
+    }
+
+    pub fn ensure_file_loaded(&mut self, map_path: impl Into<PathBuf>, rooms_size: [u32;2]) -> bool {
         assert_eq!(self.image.layers, self.sel_matrix.layers.len());
 
         if self.image.img.is_empty() && self.locked.is_none() {
             match self.load_tex2(map_path, rooms_size) {
-                Ok(_) => {},
+                Ok(_) => return true,
                 Err(e) => {
                     gui_error("Failed to load room image", &e);
                     self.image.img = Default::default();
                     self.image.tex = None;
                     self.locked = Some(format!("{}",&e));
-                    return None;
+                    return false;
                 },
             }
         }
 
-        self.get_tex(ctx)
+        true
     }
 
     pub fn get_tex<'a>(&'a mut self, ctx: &egui::Context) -> Option<&'a mut TextureHandle> {
@@ -94,6 +100,8 @@ impl Room {
         let img_size = [rooms_size[0], rooms_size[1] * self.image.layers as u32];
 
         let tex_file = self.tex_file(map_path);
+
+        eprintln!("Load tex path {}", tex_file.to_string_lossy());
 
         let file_content = match std::fs::read(tex_file) {
             Err(e) if e.kind() == ErrorKind::NotFound => {

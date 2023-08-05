@@ -34,6 +34,7 @@ pub fn maps_ui(state: &mut SharedApp, ctx: &egui::Context, frame: &mut eframe::F
             ) );
         egui::Window::new(format!("Draw - {}", &t.state.title))
             .id(t_id.egui_id_draw())
+            .resizable(false)
             .show(ctx, |ui| t.ui_draw(
                 &mut state.warpon,
                 &mut state.palette,

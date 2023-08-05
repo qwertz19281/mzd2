@@ -109,10 +109,22 @@ impl Map {
             picomap_tex: create_picomap_texcell(),
         };
 
+        let mut corrupted = vec![];
+
         for (id,room) in &map.state.rooms {
             if room.dirty_file {
                 map.dirty_rooms.insert(id);
             }
+            eprintln!("Romer X{}Y{}Z{}",room.coord[0],room.coord[1],room.coord[2]);
+            if let Some(prev) = map.room_matrix.insert(room.coord, id) {
+                eprintln!("CORRUPTED ROOM @ X{}Y{}Z{}",room.coord[0],room.coord[1],room.coord[2]);
+                corrupted.push(prev);
+            }
+        }
+
+        for room in corrupted {
+            //TODO try to put it into empty spaces
+            map.state.rooms.remove(room);
         }
 
         if map.state.selected_room.is_none() {

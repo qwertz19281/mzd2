@@ -61,6 +61,7 @@ impl Map {
                 &mut self.state.rooms,
                 self.state.rooms_size,
                 |shape| shapes.push(shape),
+                &self.path,
                 ui.ctx(),
             );
 

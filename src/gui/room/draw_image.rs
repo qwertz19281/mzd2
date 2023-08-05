@@ -1,4 +1,5 @@
 use std::hash::{Hash, Hasher};
+use std::path::{PathBuf, Path};
 
 use egui::TextureHandle;
 use egui::epaint::ahash::AHasher;
@@ -213,10 +214,17 @@ impl DrawImageGroup {
         }
     }
 
+    pub fn single(room_id: RoomId, coord: [u8;3], rooms_size: [u32;2]) -> Self {
+        Self {
+            rooms: vec![(room_id,coord,[0,0])],
+            region_size: rooms_size,
+        }
+    }
+
     // full-scale bounds unit
     pub fn draw(&self, rooms: &mut RoomMap, src: &RgbaImage, off: [u32;2], size: [u32;2], dest_layer: usize, rooms_size: [u32;2]) {
         assert!(rooms_size[0] % 8 == 0 && rooms_size[1] % 8 == 0);
-        
+        //TODO Room::ensure_loaded
         for &(room_id,_,roff) in &self.rooms {
             let Some(room) = rooms.get_mut(room_id) else {continue};
             let off1 = [off[0]+roff[0],off[1]+roff[1]];
@@ -250,7 +258,7 @@ impl DrawImageGroup {
         }
     }
 
-    pub fn render(&self, rooms: &mut RoomMap, rooms_size: [u32;2], mut dest: impl FnMut(egui::Shape), ctx: &egui::Context) {
+    pub fn render(&self, rooms: &mut RoomMap, rooms_size: [u32;2], mut dest: impl FnMut(egui::Shape), map_path: &Path, ctx: &egui::Context) {
         let Some(visible_layers) = self.rooms.get(0)
             .and_then(|&(r,_,_)| rooms.get(r) )
             .map(|r| r.visible_layers.clone() )
@@ -264,6 +272,7 @@ impl DrawImageGroup {
                 visible_layers.iter().enumerate().filter(|&(_,&v)| v ).map(|(i,_)| i ),
                 rooms_size,
                 |v| dest(v),
+                map_path,
                 ctx,
             );
         }
@@ -272,14 +281,16 @@ impl DrawImageGroup {
     pub fn try_attach(&mut self, room_id: RoomId, rooms_size: [u32;2], rooms: &RoomMap) -> bool {
         let Some(room) = rooms.get(room_id) else {return false};  
         let coord = room.coord;
+        let n_layers = room.image.layers;
 
         let mut attached = false;
 
-        if self.rooms.is_empty() {
-            self.rooms.push((room_id,coord,[0,0]));
-            attached = true;
-        } else {
+        if !self.rooms.is_empty() && rooms.contains_key(self.rooms[0].0) {
             let base_coord = self.rooms[0].1;
+            let base_room = rooms.get(self.rooms[0].0).unwrap();
+            if n_layers != base_room.image.layers {
+                return false;
+            }
             if 
                 (coord == [base_coord[0]+1,base_coord[1]  ,base_coord[2]] ||
                  coord == [base_coord[0]  ,base_coord[1]+1,base_coord[2]] ||
@@ -293,6 +304,10 @@ impl DrawImageGroup {
                 self.rooms.push((room_id,coord,off));
                 attached = true;
             }
+        } else {
+            self.rooms.clear();
+            self.rooms.push((room_id,coord,[0,0]));
+            attached = true;
         }
 
         self.region_size = rooms_size;
@@ -307,11 +322,13 @@ impl DrawImageGroup {
 }
 
 impl Room {
-    pub fn render(&mut self, off: [u32;2], visible_layers: impl Iterator<Item=usize>, rooms_size: [u32;2], mut dest: impl FnMut(egui::Shape), ctx: &egui::Context) {
+    pub fn render(&mut self, off: [u32;2], visible_layers: impl Iterator<Item=usize>, rooms_size: [u32;2], mut dest: impl FnMut(egui::Shape), map_path: &Path, ctx: &egui::Context) {
+        if self.load_tex(map_path,rooms_size,ctx).is_none() {return}
+
+        if self.image.img.is_empty() {return}
+
         assert!(self.image.img.width() == rooms_size[0]);
         assert!(self.image.img.height() % rooms_size[1] == 0);
-        
-        if self.get_tex(ctx).is_none() {return}
 
         let Some(tex) = self.image.tex.as_ref().and_then(|t| t.tex_handle.as_ref() ) else {return};
 

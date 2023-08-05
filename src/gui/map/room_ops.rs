@@ -28,13 +28,15 @@ impl Map {
         *self.room_matrix.get_or_insert_with(coord, || {
             let file_n = self.state.file_counter;
             self.state.file_counter += 1;
-            self.state.rooms.insert(Room::create_empty(
+            let room_id = self.state.rooms.insert(Room::create_empty(
                 file_n,
                 coord,
                 self.state.rooms_size,
-                RgbaImage::new(self.state.rooms_size[0], self.state.rooms_size[1]),
+                RgbaImage::new(self.state.rooms_size[0], self.state.rooms_size[1] * 1),
                 1
-            ))
+            ));
+            self.dirty_rooms.insert(room_id);
+            room_id
         })
     }
 
