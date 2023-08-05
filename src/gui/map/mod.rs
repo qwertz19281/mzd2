@@ -35,7 +35,7 @@ pub type RoomMap = HopSlotMap<RoomId,Room>;
 #[derive(Deserialize,Serialize)]
 pub struct MapState {
     pub title: String,
-    pub map_zoom: u32,
+    pub map_zoom: i32,
     pub draw_zoom: u32,
     pub rooms: RoomMap,
     pub selected_room: Option<RoomId>,
@@ -171,13 +171,13 @@ impl Map {
             id: MapId::new(),
             state: MapState {
                 title,
-                map_zoom: 1,
+                map_zoom: 0,
                 draw_zoom: 2,
                 rooms: HopSlotMap::with_capacity_and_key(1024),
                 selected_room: None,
                 selected_coord: None,
                 file_counter: 0,
-                view_pos: [0.,0.],
+                view_pos: [(rooms_size[0]*128) as f32,(rooms_size[1]*128) as f32],
                 rooms_size,
                 current_level: 128,
                 edit_mode: MapEditMode::DrawSel,
@@ -219,4 +219,12 @@ fn create_picomap_texcell() -> TextureCell {
         magnification: egui::TextureFilter::Nearest,
         minification: egui::TextureFilter::Nearest,
     })
+}
+
+fn zoomf(zoom: i32) -> f32 {
+    if zoom >= 0 {
+        (zoom+1) as f32
+    } else {
+        1. / (((-zoom)+1) as f32)
+    }
 }

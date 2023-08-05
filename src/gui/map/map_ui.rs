@@ -9,7 +9,7 @@ use crate::gui::util::{alloc_painter_rel, alloc_painter_rel_ds, draw_grid, ArrUt
 use crate::util::MapId;
 
 use super::room_ops::render_picomap;
-use super::{RoomId, MapEditMode, Map};
+use super::{RoomId, MapEditMode, Map, zoomf};
 
 impl Map {
     pub fn ui_map(
@@ -33,7 +33,7 @@ impl Map {
                     }
                     ui.text_edit_singleline(&mut self.state.title);
                     ui.label("| Zoom: ");
-                    ui.add(egui::Slider::new(&mut self.state.map_zoom, 1..=2).drag_value_speed(0.0625));
+                    ui.add(egui::Slider::new(&mut self.state.map_zoom, -1..=1).drag_value_speed(0.0625));
                 });
                 ui.horizontal(|ui| {
                     ui.radio_value(&mut self.state.edit_mode, MapEditMode::DrawSel, "Draw Sel");
@@ -46,6 +46,21 @@ impl Map {
                     ui.add(egui::DragValue::new(&mut level).speed(0.0625).clamp_range(0..=255));
                     if level != self.state.current_level {
                         self.update_level(level);
+                    }
+                    ui.label("| XY: ");
+                    let oldx = self.state.view_pos[0] / self.state.rooms_size[0] as f32;
+                    let oldy = self.state.view_pos[1] / self.state.rooms_size[1] as f32;
+                    let mut x = oldx;
+                    let mut y = oldy;
+                    ui.add(egui::DragValue::new(&mut x).speed(0.0625).clamp_range(0..=255));
+                    ui.add(egui::DragValue::new(&mut y).speed(0.0625).clamp_range(0..=255));
+                    if x != oldx {
+                        eprintln!("MODX");
+                        self.state.view_pos[0] = x * self.state.rooms_size[0] as f32;
+                    }
+                    if y != oldy {
+                        eprintln!("MODX");
+                        self.state.view_pos[1] = y * self.state.rooms_size[1] as f32;
                     }
                 });
                 ui.horizontal(|ui| {
@@ -98,7 +113,7 @@ impl Map {
                 ui,
                 size_v * 2. ..= size_v * 16.,
                 Sense::click_and_drag(),
-                self.state.map_zoom as f32,
+                zoomf(self.state.map_zoom),
             );
 
             let kp_plus = ui.input(|i| i.key_down(egui::Key::P) );
@@ -106,13 +121,13 @@ impl Map {
             // drag needs to be handled first, before the ops that require the off
             if let Some(_) = super_map.hover_pos_rel() {
                 if super_map.response.dragged_by(egui::PointerButton::Middle) {
-                    let delta = super_map.response.drag_delta() / self.state.map_zoom as f32;
+                    let delta = super_map.response.drag_delta() / zoomf(self.state.map_zoom);
                     let new_view_pos = self.state.view_pos.sub(delta.into());
                     self.set_view_pos(new_view_pos);
                 }
             }
 
-            super_map.voff -= Vec2::from(self.state.view_pos) * self.state.map_zoom as f32;
+            super_map.voff -= Vec2::from(self.state.view_pos) * zoomf(self.state.map_zoom);
 
             if let Some(hover_abs) = super_map.hover_pos_rel() {
                 let click_coord = <[f32;2]>::from(hover_abs).as_u32().div(self.state.rooms_size);
@@ -150,7 +165,7 @@ impl Map {
             //     egui::Shape::rect_filled(rector(0., 0., 3200., 2400.), Rounding::default(), Color32::RED)
             // ]);
 
-            let view_size = super_map.response.rect.size() / self.state.map_zoom as f32;
+            let view_size = super_map.response.rect.size() / zoomf(self.state.map_zoom);
 
             let view_pos_1 = self.state.view_pos.add(view_size.into());
 
