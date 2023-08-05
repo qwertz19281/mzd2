@@ -86,7 +86,7 @@ impl DrawImage {
 
     pub fn layer_uv(&self, layer: usize, rooms_size: [u32;2]) -> egui::Rect {
         let y0 = ((layer * rooms_size[1] as usize) as f64 / self.img.height() as f64) as f32;
-        let y1 = ((layer+1 * rooms_size[1] as usize) as f64 / self.img.height() as f64) as f32;
+        let y1 = (((layer+1) * rooms_size[1] as usize) as f64 / self.img.height() as f64) as f32;
         egui::Rect {
             min: egui::Pos2 { x: 0., y: y0 },
             max: egui::Pos2 { x: 1., y: y1 },

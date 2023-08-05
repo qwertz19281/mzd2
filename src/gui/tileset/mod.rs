@@ -70,6 +70,7 @@ impl Tileset {
                 let delta = reg.response.drag_delta() / self.state.zoom as f32;
                 let new_view_pos = self.state.voff.sub(delta.into());
                 self.set_view_pos(new_view_pos, view_size.into());
+                ui.output_mut(|o| o.cursor_icon = egui::CursorIcon::AllScroll );
             }
         }
 

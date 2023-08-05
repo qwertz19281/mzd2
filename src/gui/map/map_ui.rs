@@ -124,6 +124,7 @@ impl Map {
                     let delta = super_map.response.drag_delta() / zoomf(self.state.map_zoom);
                     let new_view_pos = self.state.view_pos.sub(delta.into());
                     self.set_view_pos(new_view_pos);
+                    ui.output_mut(|o| o.cursor_icon = egui::CursorIcon::AllScroll );
                 }
             }
 
