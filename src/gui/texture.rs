@@ -149,7 +149,7 @@ pub fn ensure_texture2<'a> (
 
 #[derive(Clone)]
 pub struct TextureCell {
-    tex_handle: Option<TextureHandle>,
+    pub tex_handle: Option<TextureHandle>,
     dirty_full: bool,
     dirty_region: Option<([u32;2],[u32;2])>,
     name: String,

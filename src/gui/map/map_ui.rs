@@ -31,12 +31,12 @@ impl Map {
                         mut_queue.push(Box::new(move |state: &mut SharedApp| {state.maps.open_maps.remove(&id);} ))
                     }
                     ui.label("| Zoom: ");
-                    ui.add(egui::Slider::new(&mut self.state.zoom, 1..=2).drag_value_speed(0.0625));
+                    ui.add(egui::Slider::new(&mut self.state.map_zoom, 1..=2).drag_value_speed(0.0625));
                 });
                 ui.horizontal(|ui| {
-                    ui.radio_value(&mut self.edit_mode, MapEditMode::DrawSel, "Draw Sel");
-                    ui.radio_value(&mut self.edit_mode, MapEditMode::RoomSel, "Room Sel");
-                    ui.radio_value(&mut self.edit_mode, MapEditMode::Tags, "Tags");
+                    ui.radio_value(&mut self.state.edit_mode, MapEditMode::DrawSel, "Draw Sel");
+                    ui.radio_value(&mut self.state.edit_mode, MapEditMode::RoomSel, "Room Sel");
+                    ui.radio_value(&mut self.state.edit_mode, MapEditMode::Tags, "Tags");
                 });
                 ui.horizontal(|ui| {
                     let mut level = self.state.current_level;
@@ -77,13 +77,13 @@ impl Map {
                 ui,
                 size_v * 2. ..= size_v * 16.,
                 Sense::click_and_drag(),
-                self.state.zoom as f32,
+                self.state.map_zoom as f32,
             );
 
             // drag needs to be handled first, before the ops that require the off
             if let Some(_) = super_map.hover_pos_rel() {
                 if super_map.response.dragged_by(egui::PointerButton::Middle) {
-                    let delta = super_map.response.drag_delta() / self.state.zoom as f32;
+                    let delta = super_map.response.drag_delta() / self.state.map_zoom as f32;
                     let new_view_pos = [
                         self.state.view_pos[0] - delta.x,
                         self.state.view_pos[1] - delta.y,
@@ -92,13 +92,13 @@ impl Map {
                 }
             }
 
-            super_map.voff -= Vec2::from(self.state.view_pos) * self.state.zoom as f32;
+            super_map.voff -= Vec2::from(self.state.view_pos) * self.state.map_zoom as f32;
 
             // super_map.extend_rel_fixtex([
             //     egui::Shape::rect_filled(rector(0., 0., 3200., 2400.), Rounding::default(), Color32::RED)
             // ]);
 
-            let view_size = super_map.response.rect.size() / self.state.zoom as f32;
+            let view_size = super_map.response.rect.size() / self.state.map_zoom as f32;
 
             let view_pos_1 = [
                 self.state.view_pos[0] + view_size.x,

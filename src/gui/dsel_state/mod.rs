@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use egui::Shape;
 use image::RgbaImage;
+use serde::{Serialize, Deserialize};
 
 use super::palette::{PaletteItem, SelImg};
 
@@ -34,6 +35,7 @@ impl DSelState {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Serialize, Deserialize)]
 pub enum DSelMode {
     Direct,
     Rect,

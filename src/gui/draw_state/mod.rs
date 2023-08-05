@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use egui::Shape;
 use image::RgbaImage;
+use serde::{Serialize, Deserialize};
 
 use super::palette::PaletteItem;
 
@@ -28,6 +29,7 @@ impl DrawState {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Serialize, Deserialize)]
 pub enum DrawMode {
     Direct,
     Line,

@@ -10,7 +10,10 @@ use slotmap::HopSlotMap;
 use crate::map::coord_store::CoordStore;
 use crate::util::*;
 
+use super::draw_state::DrawMode;
+use super::dsel_state::DSelMode;
 use super::room::Room;
+use super::room::draw_image::DrawImageGroup;
 use super::texture::TextureCell;
 
 pub mod room_ops;
@@ -22,9 +25,9 @@ pub struct Map {
     pub state: MapState,
     pub path: PathBuf,
     pub dirty_rooms: HashSet<RoomId>,
-    pub edit_mode: MapEditMode,
     pub room_matrix: CoordStore<RoomId>,
     pub picomap_tex: TextureCell,
+    pub editsel: DrawImageGroup,
 }
 
 pub type RoomMap = HopSlotMap<RoomId,Room>;
@@ -32,13 +35,19 @@ pub type RoomMap = HopSlotMap<RoomId,Room>;
 #[derive(Deserialize,Serialize)]
 pub struct MapState {
     pub title: String,
-    pub zoom: u32,
+    pub map_zoom: u32,
+    pub draw_zoom: u32,
     pub rooms: RoomMap,
     pub selected_room: Option<RoomId>,
+    pub selected_coord: Option<[u8;3]>,
     pub file_counter: u64,
     pub view_pos: [f32;2],
     pub rooms_size: [u32;2],
     pub current_level: u8,
+    pub edit_mode: MapEditMode,
+    pub draw_mode: DrawOp,
+    pub draw_draw_mode: DrawMode,
+    pub draw_sel: DSelMode,
 }
 
 slotmap::new_key_type! {
@@ -92,10 +101,10 @@ impl Map {
 
         let mut map = Self {
             id: MapId::new(),
+            editsel: DrawImageGroup::unsel(state.rooms_size),
             state,
             path,
             dirty_rooms: Default::default(),
-            edit_mode: MapEditMode::DrawSel,
             room_matrix: CoordStore::new(),
             picomap_tex: create_picomap_texcell(),
         };
@@ -103,6 +112,26 @@ impl Map {
         for (id,room) in &map.state.rooms {
             if room.dirty_file {
                 map.dirty_rooms.insert(id);
+            }
+        }
+
+        if map.state.selected_room.is_none() {
+            if let Some(coord) = map.state.selected_coord {
+                if let Some(&room) = map.room_matrix.get(coord) {
+                    if map.state.rooms.contains_key(room) {
+                        map.state.selected_room = Some(room);
+                    }
+                }
+            }
+        }
+
+        if let Some(sel_room) = map.state.selected_room {
+            if let Some(room) = map.state.rooms.get(sel_room) {
+                map.state.selected_coord = Some(room.coord);
+            }
+
+            if map.editsel.rooms.is_empty() {
+                map.editsel.rooms.push((sel_room,map.state.selected_coord.unwrap(),[0,0]));
             }
         }
 
@@ -130,19 +159,25 @@ impl Map {
             id: MapId::new(),
             state: MapState {
                 title,
-                zoom: 1,
+                map_zoom: 1,
+                draw_zoom: 2,
                 rooms: HopSlotMap::with_capacity_and_key(1024),
                 selected_room: None,
+                selected_coord: None,
                 file_counter: 0,
                 view_pos: [0.,0.],
                 rooms_size,
                 current_level: 128,
+                edit_mode: MapEditMode::DrawSel,
+                draw_mode: DrawOp::Draw,
+                draw_draw_mode: DrawMode::Direct,
+                draw_sel: DSelMode::Direct,
             },
             path,
             dirty_rooms: Default::default(),
-            edit_mode: MapEditMode::DrawSel,
             room_matrix: CoordStore::new(),
             picomap_tex: create_picomap_texcell(),
+            editsel: DrawImageGroup::unsel(rooms_size),
         }
     }
 
@@ -153,10 +188,18 @@ impl Map {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Serialize, Deserialize)]
 pub enum MapEditMode {
     DrawSel,
     RoomSel,
     Tags,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Serialize, Deserialize)]
+pub enum DrawOp {
+    Draw,
+    Sel,
 }
 
 fn create_picomap_texcell() -> TextureCell {

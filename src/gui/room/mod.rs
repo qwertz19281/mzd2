@@ -6,6 +6,7 @@ use egui::epaint::ahash::{HashMap, HashSet};
 use image::{RgbaImage, ImageFormat};
 use serde::{Deserialize, Serialize};
 
+use crate::gui::texture::TextureCell;
 use crate::util::{attached_to_path, gui_error, ResultExt, next_tex_id};
 
 use self::draw_image::DrawImage;
@@ -29,6 +30,8 @@ pub struct Room {
     pub op_evo: u64,
     pub locked: Option<String>,
     pub sel_matrix: SelMatrixLayered,
+    pub visible_layers: Vec<bool>,
+    pub selected_layer: usize,
 }
 
 impl Room {
@@ -40,10 +43,11 @@ impl Room {
 
     pub fn create_empty(file_id: u64, coord: [u8;3], rooms_size: [u32;2], image: RgbaImage, initial_layers: usize) -> Self {
         assert!(rooms_size[0] % 16 == 0 && rooms_size[1] % 16 == 0);
+        assert!(image.width() == rooms_size[0] && image.height() as usize == rooms_size[1] as usize * initial_layers as usize);
         Self {
             image: DrawImage {
                 img: image,
-                tex: None,
+                tex: Some(TextureCell::new(format!("RoomTex{file_id}"), ROOM_TEX_OPTS)),
                 layers: initial_layers,
             },
             file_id,
@@ -52,11 +56,13 @@ impl Room {
             coord,
             op_evo: 0,
             locked: None,
-            sel_matrix: SelMatrixLayered::new(sel_entry_dims(rooms_size),initial_layers)
+            sel_matrix: SelMatrixLayered::new(sel_entry_dims(rooms_size),initial_layers),
+            visible_layers: vec![true;initial_layers],
+            selected_layer: 0,
         }
     }
 
-    pub fn load_tex(&mut self, map_path: impl Into<PathBuf>, rooms_size: [u32;2], ctx: &egui::Context) {
+    pub fn load_tex<'a>(&'a mut self, map_path: impl Into<PathBuf>, rooms_size: [u32;2], ctx: &egui::Context) -> Option<&'a mut TextureHandle> {
         assert_eq!(self.image.layers, self.sel_matrix.layers.len());
 
         if self.image.img.is_empty() && self.locked.is_none() {
@@ -67,22 +73,21 @@ impl Room {
                     self.image.img = Default::default();
                     self.image.tex = None;
                     self.locked = Some(format!("{}",&e));
-                    return;
+                    return None;
                 },
             }
         }
 
-        // if let Some(img) = &self.image {
-        //     ensure_texture_from_image(
-        //         &mut self.texture,
-        //         format!("room_tex_{}",self.file_id),
-        //         ROOM_TEX_OPTS,
-        //         img,
-        //         false,
-        //         None,
-        //         ctx
-        //     );
-        // }
+        self.get_tex(ctx)
+    }
+
+    pub fn get_tex<'a>(&'a mut self, ctx: &egui::Context) -> Option<&'a mut TextureHandle> {
+        if self.image.img.is_empty() || self.locked.is_some() {
+            return None;
+        }
+        Some(self.image.tex
+            .get_or_insert_with(|| TextureCell::new(format!("RoomTex{}",self.file_id), ROOM_TEX_OPTS) )
+            .ensure_image(&self.image.img, ctx))
     }
 
     fn load_tex2(&mut self, map_path: impl Into<PathBuf>, rooms_size: [u32;2]) -> anyhow::Result<()> {
@@ -109,8 +114,14 @@ impl Room {
             image::imageops::overlay(&mut nimg, &image, 0, 0);
             image = nimg;
         }
+        
+        self.visible_layers.resize(self.image.layers, true);
 
         self.image.img = image;
+
+        self.image.deser_fixup(rooms_size);
+
+        self.image.tex = Some(TextureCell::new(format!("RoomTex{}",self.file_id), ROOM_TEX_OPTS));
 
         Ok(())
     }
@@ -128,6 +139,19 @@ impl Room {
         }
 
         Ok(())
+    }
+
+    pub fn insert_layer(&mut self, off: usize) {
+        assert!(off <= self.image.layers);
+        todo!()
+    }
+
+    pub fn remove_layer(&mut self, off: usize) {
+        todo!()
+    }
+
+    pub fn swap_layer(&mut self, off: usize) {
+        todo!()
     }
 }
 

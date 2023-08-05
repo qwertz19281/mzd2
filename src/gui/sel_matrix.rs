@@ -78,7 +78,7 @@ impl SelEntry {
     pub fn to_sel_pt(&self, at_off: [u32;2]) -> SelPt {
         let oo = [at_off[0] as i32, at_off[1] as i32];
         SelPt {
-            start: [(self.start[0] as i32 + oo[0]) as u8, (self.start[1] as i32 + oo[1]) as u8],
+            start: [(self.start[0] as i32 + oo[0]) as u16, (self.start[1] as i32 + oo[1]) as u16],
             size: self.size,
         }
     }
@@ -89,8 +89,9 @@ impl SelEntry {
 }
 
 /// SelEntry is relative to that one SelEntry, while SelPt is "absolute" (relative to whole img)
+#[derive(PartialEq)]
 pub struct SelPt {
-    pub start: [u8;2],
+    pub start: [u16;2], // should be u16!
     pub size: [u8;2],
 }
 
@@ -142,4 +143,42 @@ impl SelMatrixLayered {
         }
         None
     }
+}
+
+pub fn deoverlap(i: impl Iterator<Item=SelPt>, matrix: &SelMatrix) -> Vec<[u16;2]> {
+    let mut collect = vec![];
+    for i in i {
+        for y in i.start[1] .. i.start[1] + i.size[1] as u16 {
+            for x in i.start[0] .. i.start[0] + i.size[0] as u16 {
+                let pos = [x as u32, y as u32];
+                if let Some(pt) = matrix.get(pos).map(|e| e.to_sel_pt(pos) ) {
+                    if pt == i {
+                        collect.push([x,y]);
+                    }
+                }
+            }
+        }
+    }
+    collect.sort_by_key(|&[x,y]| [y,x] );
+    collect.dedup();
+    collect
+}
+
+pub fn deoverlap_layered(i: impl Iterator<Item=(usize,SelPt)>, matrix: &[SelMatrix]) -> Vec<(usize,[u16;2])> {
+    let mut collect = vec![];
+    for (layer,i) in i {
+        for y in i.start[1] .. i.start[1] + i.size[1] as u16 {
+            for x in i.start[0] .. i.start[0] + i.size[0] as u16 {
+                let pos = [x as u32, y as u32];
+                if let Some(pt) = matrix.get(layer).and_then(|matrix| matrix.get(pos) ).map(|e| e.to_sel_pt(pos) ) {
+                    if pt == i {
+                        collect.push((layer,[x,y]));
+                    }
+                }
+            }
+        }
+    }
+    collect.sort_by_key(|&(layer,[x,y])| (layer,y,x) );
+    collect.dedup();
+    collect
 }
