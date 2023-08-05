@@ -1,9 +1,13 @@
+use std::hash::{Hash, Hasher};
+
 use egui::TextureHandle;
+use egui::epaint::ahash::AHasher;
 use image::{RgbaImage, GenericImage, GenericImageView, ImageBuffer};
 use serde::{Deserialize, Serialize};
 
 use crate::gui::map::{RoomId, RoomMap};
 use crate::gui::rector;
+use crate::gui::sel_matrix::SelPt;
 use crate::gui::texture::TextureCell;
 
 use super::Room;
@@ -86,6 +90,37 @@ impl DrawImage {
             min: egui::Pos2 { x: 0., y: y0 },
             max: egui::Pos2 { x: 1., y: y1 },
         }
+    }
+
+    pub fn pt_hash(&self, pt: SelPt, layer: usize, rooms_size: [u32;2]) -> u64 {
+        assert!(layer < self.layers);
+
+        if pt.size[0] == 0 || pt.size[1] == 0 {return 0;}
+
+        let x0 = pt.start[0] as u32 * 8 + (layer as u32 * rooms_size[1]);
+        let y0 = pt.start[1] as u32 * 8;
+        let x1 = x0 + pt.size[0] as u32 * 8;
+        let y1 = y0 + pt.size[1] as u32 * 8;
+
+        assert!(x0 < self.img.width() && y0 < self.img.height() && x1 <= self.img.width() && y1 <= self.img.height());
+
+        let mut hasher = AHasher::default();
+
+        pt.size.hash(&mut hasher);
+
+        for y in y0 .. y1 {
+            for x in x0 .. x1 {
+                let mut pix = unsafe { self.img.get_pixel_checked(x, y).unwrap_unchecked().clone() };
+                if pix.0[3] < 16 {
+                    pix.0[0] = 0; pix.0[1] = 0; pix.0[2] = 0;
+                }
+                pix.hash(&mut hasher);
+            }
+        }
+
+        pt.size.hash(&mut hasher);
+        
+        hasher.finish().saturating_add(1)
     }
 }
 
@@ -224,21 +259,13 @@ impl DrawImageGroup {
         for &(room_id,_,roff) in &self.rooms {
             let Some(room) = rooms.get_mut(room_id) else {continue};
 
-            assert!(room.image.img.width() == rooms_size[0]);
-            assert!(room.image.img.height() % rooms_size[1] == 0);
-
-            if room.get_tex(ctx).is_none() {continue}
-
-            let Some(tex) = room.image.tex.as_ref().and_then(|t| t.tex_handle.as_ref() ) else {continue};
-
-            let mut mesh = egui::Mesh::with_texture(tex.id());
-            let dest_rect = rector(roff[0], roff[1], roff[0]+rooms_size[0], roff[1]+rooms_size[1]);
-            
-            for (i,_) in visible_layers.iter().enumerate().filter(|&(_,&v)| v ) {
-                mesh.add_rect_with_uv(dest_rect, room.image.layer_uv(i, rooms_size), egui::Color32::WHITE);
-            }
-            
-            dest(egui::Shape::Mesh(mesh));
+            room.render(
+                roff,
+                visible_layers.iter().enumerate().filter(|&(_,&v)| v ).map(|(i,_)| i ),
+                rooms_size,
+                |v| dest(v),
+                ctx,
+            );
         }
     }
 
@@ -276,6 +303,26 @@ impl DrawImageGroup {
         }
 
         attached
+    }
+}
+
+impl Room {
+    pub fn render(&mut self, off: [u32;2], visible_layers: impl Iterator<Item=usize>, rooms_size: [u32;2], mut dest: impl FnMut(egui::Shape), ctx: &egui::Context) {
+        assert!(self.image.img.width() == rooms_size[0]);
+        assert!(self.image.img.height() % rooms_size[1] == 0);
+        
+        if self.get_tex(ctx).is_none() {return}
+
+        let Some(tex) = self.image.tex.as_ref().and_then(|t| t.tex_handle.as_ref() ) else {return};
+
+        let mut mesh = egui::Mesh::with_texture(tex.id());
+        let dest_rect = rector(off[0], off[1], off[0]+rooms_size[0], off[1]+rooms_size[1]);
+        
+        for i in visible_layers {
+            mesh.add_rect_with_uv(dest_rect, self.image.layer_uv(i, rooms_size), egui::Color32::WHITE);
+        }
+        
+        dest(egui::Shape::Mesh(mesh));
     }
 }
 

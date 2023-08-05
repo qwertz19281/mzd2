@@ -50,7 +50,7 @@ fn new_map(state: &mut SharedApp) {
     let Some(mut path) = result else {return};
 
     if path.extension() != Some(OsStr::new("mzdmap")) {
-        path.set_extension("mzdmap"); // append but not replace
+        path.set_extension("mzdmap"); // TODO append but not replace
     }
 
     state.top_panel.last_map_path = Some(path.clone());
