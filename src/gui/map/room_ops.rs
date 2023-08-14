@@ -339,28 +339,22 @@ impl Map {
     /// try move room and base_coord and all directly connected into a direction
     fn shift_smart_apply(&mut self, all_list: &[RoomId], op_evo: u64, n_sift: u8, axis: OpAxis, dir: bool, unconnect_new: bool) {
         for &id in all_list {
-            let room = unsafe { self.state.rooms.get_unchecked_mut(id) };
+            let Some(room) = self.state.rooms.get_mut(id) else {continue};
 
             let removed = self.room_matrix.remove(room.coord, false);
             assert!(removed == Some(id));
 
-            if unconnect_new {
-                try_6_sides(room.coord, |side_coord,sidetest_a,sidetest_b| {
-                    room.temp_empty_mark[sidetest_a as usize][sidetest_b as usize] = self.room_matrix.get(side_coord).is_none();
-                });
-            }
-
             room.coord = apply_sift(room.coord, n_sift, axis, dir);
 
-            let temp_empty_mark = room.temp_empty_mark;
+            let dconn = room.dirconn;
 
             if unconnect_new {
                 try_6_sides(room.coord, |side_coord,sidetest_a,sidetest_b| {
-                    if temp_empty_mark[sidetest_a as usize][sidetest_b as usize] {
+                    if dconn[sidetest_a as usize][sidetest_b as usize] {
                         if let Some(&sid) = self.room_matrix.get(side_coord) {
                             // now we have a new neighbor at that side, if not ours, we shall unconnect
                             if let Some(nroom) = self.state.rooms.get_mut(sid) {
-                                if nroom.op_evo != op_evo {
+                                if nroom.op_evo != op_evo && nroom.dirconn[sidetest_a as usize][!sidetest_b as usize] {
                                     nroom.dirconn[sidetest_a as usize][!sidetest_b as usize] = false;
                                     let room = unsafe { self.state.rooms.get_unchecked_mut(id) };
                                     room.dirconn[sidetest_a as usize][sidetest_b as usize] = false;
@@ -372,8 +366,7 @@ impl Map {
             }
         }
         for &id in all_list {
-            let room = unsafe { self.state.rooms.get_unchecked_mut(id) };
-
+            let Some(room) = self.state.rooms.get_mut(id) else {continue};
 
             self.room_matrix.insert(room.coord, id);
         }
