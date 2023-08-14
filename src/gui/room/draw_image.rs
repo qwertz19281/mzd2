@@ -1,13 +1,13 @@
 use std::hash::{Hash, Hasher};
 use std::path::{PathBuf, Path};
 
-use egui::TextureHandle;
+use egui::{TextureHandle, Color32, Rounding, Stroke};
 use egui::epaint::ahash::AHasher;
 use image::{RgbaImage, GenericImage, GenericImageView, ImageBuffer};
 use serde::{Deserialize, Serialize};
 
-use crate::gui::map::{RoomId, RoomMap, DirtyRooms};
-use crate::gui::rector;
+use crate::gui::map::{RoomId, RoomMap, DirtyRooms, MapEditMode, Map};
+use crate::gui::{rector, line2};
 use crate::gui::sel_matrix::SelPt;
 use crate::gui::texture::TextureCell;
 
@@ -317,8 +317,19 @@ impl DrawImageGroup {
                 map_path,
                 ctx,
             );
+        }
+    }
 
-            //TODO render the conns
+    pub fn render_conns(&self, rooms: &mut RoomMap, mode: MapEditMode, rooms_size: [u32;2], mut dest: impl FnMut(egui::Shape)) {
+        for &(room_id,_,roff) in &self.rooms {
+            let Some(room) = rooms.get_mut(room_id) else {continue};
+
+            room.render_conns(
+                mode,
+                roff,
+                rooms_size,
+                |v| dest(v),
+            );
         }
     }
 
@@ -384,6 +395,38 @@ impl Room {
         }
         
         dest(egui::Shape::Mesh(mesh));
+    }
+
+    pub fn render_conns(&self, mode: MapEditMode, off: [u32;2], rooms_size: [u32;2], mut dest: impl FnMut(egui::Shape)) {
+        let dest_rect = rector(off[0], off[1], off[0]+rooms_size[0], off[1]+rooms_size[1]);
+
+        let unconn_color = Color32::RED;
+        let unconn_color_fill = Color32::from_rgba_unmultiplied(255, 0, 0, 64);
+
+        let unconn_stroke = Stroke::new(1.5, unconn_color);
+
+        if mode == MapEditMode::ConnDown {
+            if !self.dirconn[2][0] {
+                dest(egui::Shape::rect_filled(dest_rect, Rounding::none(), unconn_color_fill))
+            }
+        } else if mode == MapEditMode::ConnUp {
+            if !self.dirconn[2][1] {
+                dest(egui::Shape::rect_filled(dest_rect, Rounding::none(), unconn_color_fill))
+            }
+        } else if mode == MapEditMode::ConnXY || mode == MapEditMode::RoomSel {
+            if !self.dirconn[0][0] {
+                dest(egui::Shape::line(line2(off[0], off[1], off[0], off[1]+rooms_size[1]), unconn_stroke));
+            }
+            if !self.dirconn[0][1] {
+                dest(egui::Shape::line(line2(off[0]+rooms_size[0], off[1], off[0]+rooms_size[0], off[1]+rooms_size[1]), unconn_stroke));
+            }
+            if !self.dirconn[1][0] {
+                dest(egui::Shape::line(line2(off[0], off[1], off[0]+rooms_size[0], off[1]), unconn_stroke));
+            }
+            if !self.dirconn[1][1] {
+                dest(egui::Shape::line(line2(off[0], off[1]+rooms_size[1], off[0]+rooms_size[0], off[1]+rooms_size[1]), unconn_stroke));
+            }
+        }
     }
 }
 

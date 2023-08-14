@@ -210,6 +210,24 @@ impl Map {
 
             draw_grid(self.state.rooms_size, (self.state.view_pos, view_pos_1), grid_stroke, 0., |s| shapes.push(s) );
 
+            rooms_in_view(
+                self.state.view_pos,
+                view_size.into(),
+                self.state.rooms_size,
+                |[cx,cy]| {
+                    if cx < 256 && cy < 256 {
+                        if let Some(room) = self.room_matrix.get([cx as u8,cy as u8,self.state.current_level]).and_then(|&rid| self.state.rooms.get_mut(rid) ) {
+                            room.render_conns(
+                                self.state.edit_mode,
+                                [cx,cy].mul(self.state.rooms_size),
+                                self.state.rooms_size,
+                                |s| shapes.push(s),
+                            );
+                        }
+                    }
+                }
+            );
+
             if let Some([x,y,_]) = self.state.selected_coord {
                 let rect = rector(
                     x as u32 * self.state.rooms_size[0], y as u32 * self.state.rooms_size[1],
