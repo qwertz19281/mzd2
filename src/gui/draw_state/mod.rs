@@ -11,7 +11,7 @@ pub struct DrawState {
 }
 
 impl DrawState {
-    pub fn draw_mouse_down(&mut self, pos: [f32;2], src: &Rc<PaletteItem>, mode: DrawMode) {
+    pub fn draw_mouse_down(&mut self, pos: [f32;2], src: &PaletteItem, mode: DrawMode) {
         todo!()
     }
 

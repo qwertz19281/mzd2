@@ -20,6 +20,8 @@ pub mod room_ops;
 pub mod map_ui;
 pub mod draw_ui;
 
+pub type DirtyRooms = HashSet<RoomId>;
+
 pub struct Map {
     pub id: MapId,
     pub state: MapState,

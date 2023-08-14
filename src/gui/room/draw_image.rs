@@ -6,7 +6,7 @@ use egui::epaint::ahash::AHasher;
 use image::{RgbaImage, GenericImage, GenericImageView, ImageBuffer};
 use serde::{Deserialize, Serialize};
 
-use crate::gui::map::{RoomId, RoomMap};
+use crate::gui::map::{RoomId, RoomMap, DirtyRooms};
 use crate::gui::rector;
 use crate::gui::sel_matrix::SelPt;
 use crate::gui::texture::TextureCell;
@@ -222,7 +222,7 @@ impl DrawImageGroup {
     }
 
     // full-scale bounds unit
-    pub fn draw(&self, rooms: &mut RoomMap, src: &RgbaImage, off: [u32;2], size: [u32;2], dest_layer: usize, rooms_size: [u32;2]) {
+    pub fn draw(&self, rooms: &mut RoomMap, src: &RgbaImage, off: [u32;2], size: [u32;2], dest_layer: usize, rooms_size: [u32;2], dirty_map: &mut DirtyRooms) {
         assert!(rooms_size[0] % 8 == 0 && rooms_size[1] % 8 == 0);
         //TODO Room::ensure_loaded
         for &(room_id,_,roff) in &self.rooms {
@@ -243,6 +243,48 @@ impl DrawImageGroup {
                 op_0[0] as i64,
                 op_0[1] as i64 + (dest_layer as i64 * rooms_size[1] as i64),
             );
+
+            room.dirty_file = true;
+            dirty_map.insert(room_id);
+
+            if let Some(tc) = &mut room.image.tex {
+                tc.dirty_region((
+                    [
+                        op_0[0],
+                        op_0[1] + (dest_layer as u32 * rooms_size[1] as u32),
+                    ],[
+                        op_1[0],
+                        op_1[1] + (dest_layer as u32 * rooms_size[1] as u32),
+                    ]
+                ));
+            }
+        }
+    }
+
+    pub fn erase(&self, rooms: &mut RoomMap, src: &RgbaImage, off: [u32;2], size: [u32;2], dest_layer: usize, rooms_size: [u32;2], dirty_map: &mut DirtyRooms) {
+        assert!(rooms_size[0] % 8 == 0 && rooms_size[1] % 8 == 0);
+        //TODO Room::ensure_loaded
+        for &(room_id,_,roff) in &self.rooms {
+            let Some(room) = rooms.get_mut(room_id) else {continue};
+            let off1 = [off[0]+roff[0],off[1]+roff[1]];
+            let Some((op_0,op_1)) = effective_bounds((off1,size),(roff,rooms_size)) else {continue};
+            
+            assert!(room.image.img.width() == rooms_size[0]);
+            assert!(room.image.img.height() % rooms_size[1] == 0);
+            assert!((dest_layer * rooms_size[0] as usize) < room.image.img.height() as usize, "Layer overflow");
+
+            assert!(roff[0] % 8 == 0 && roff[1] % 8 == 0 && room.image.img.width() % 8 == 0 && room.image.img.height() % 8 == 0);
+            assert!(op_0[0] % 8 == 0 && op_0[1] % 8 == 0 && op_1[0] % 8 == 0 && op_1[1] % 8 == 0);
+
+            for y in op_0[1] .. op_1[1] {
+                for x in op_0[0] .. op_1[0] {
+                    let y = y + (dest_layer as u32 * rooms_size[1] as u32);
+                    unsafe { room.image.img.unsafe_put_pixel(x, y, image::Rgba([0,0,0,0])); }
+                }
+            }
+
+            room.dirty_file = true;
+            dirty_map.insert(room_id);
 
             if let Some(tc) = &mut room.image.tex {
                 tc.dirty_region((
