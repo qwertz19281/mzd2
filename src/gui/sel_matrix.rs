@@ -5,6 +5,8 @@ use super::util::ArrUtl;
 #[derive(Deserialize,Serialize)]
 pub struct SelMatrix {
     pub dims: [u32;2],
+    #[serde(serialize_with = "ser_selentry")]
+    #[serde(deserialize_with = "deser_selentry")]
     pub entries: Vec<SelEntry>,
 }
 
@@ -87,6 +89,34 @@ impl SelEntry {
 
     pub fn is_empty(&self) -> bool {
         (self.size[0] == 0) | (self.size[1] == 0)
+    }
+
+    fn enc(&self) -> [u8;4] {
+        [
+            unsafe {
+                std::mem::transmute(self.start[0])
+            },
+            unsafe {
+                std::mem::transmute(self.start[1])
+            },
+            self.size[0],
+            self.size[1],
+        ]
+    }
+
+    fn dec(v: &[u8]) -> Self {
+        assert!(v.len() >= 4);
+        Self {
+            start: [
+                unsafe {
+                    std::mem::transmute(v[0])
+                },
+                unsafe {
+                    std::mem::transmute(v[1])
+                },
+            ],
+            size: [v[2],v[3]],
+        }
     }
 }
 
@@ -183,4 +213,39 @@ pub fn deoverlap_layered(i: impl Iterator<Item=(usize,SelPt)>, matrix: &[SelMatr
     collect.sort_by_key(|&(layer,[x,y])| (layer,y,x) );
     collect.dedup();
     collect
+}
+
+fn ser_selentry<S>(se: &Vec<SelEntry>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer
+{
+    let mut sdest = vec![0;se.len()*8];
+    let mut sd1 = &mut sdest[..];
+    for s in se {
+        let sob = s.enc();
+        assert!(sd1.len() >= 8);
+        hex::encode_to_slice(sob, &mut sd1[..8]).unwrap();
+        sd1 = &mut sd1[8..];
+    }
+    let str = unsafe { String::from_utf8_unchecked(sdest) };
+    str.serialize(serializer)
+}
+
+fn deser_selentry<'de,D>(deserializer: D) -> Result<Vec<SelEntry>, D::Error>
+where
+    D: serde::Deserializer<'de>
+{
+    let str = String::deserialize(deserializer)?;
+
+    let mut entries = Vec::with_capacity(str.len()/8);
+
+    assert!(str.len()%8 == 0);
+
+    for s in str.as_bytes().chunks_exact(8) {
+        let mut sob = [0;4];
+        hex::decode_to_slice(s, &mut sob).unwrap();
+        entries.push(SelEntry::dec(&sob));
+    }
+
+    Ok(entries)
 }

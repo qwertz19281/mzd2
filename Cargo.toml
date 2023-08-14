@@ -21,6 +21,7 @@ qcell = "0.5"
 slotmap = { version = "1.0", features = ["serde"] }
 #egui-toast = "0.8"
 chrono = "0.4"
+hex = "0.4"
 
 [profile.dev.package."*"]
 opt-level = 3
