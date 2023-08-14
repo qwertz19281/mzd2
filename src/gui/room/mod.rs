@@ -32,6 +32,7 @@ pub struct Room {
     pub sel_matrix: SelMatrixLayered,
     pub visible_layers: Vec<bool>,
     pub selected_layer: usize,
+    pub dirconn: [[bool;2];3],
 }
 
 impl Room {
@@ -59,6 +60,7 @@ impl Room {
             sel_matrix: SelMatrixLayered::new(sel_entry_dims(rooms_size),initial_layers),
             visible_layers: vec![true;initial_layers],
             selected_layer: 0,
+            dirconn: Default::default(),
         }
     }
 

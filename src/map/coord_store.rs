@@ -1,6 +1,8 @@
 use std::hint::unreachable_unchecked;
 use std::mem::MaybeUninit;
 
+use crate::gui::map::room_ops::OpAxis;
+
 pub struct CoordStore<T> {
     v: Box<[[[Option<Box<CoordStoreSub<T>>>;16];16];16]>,
     pub laser: Laser,
@@ -153,6 +155,22 @@ impl<T> CoordStore<T> {
     pub fn zuckerbounds(&mut self) -> Option<([u8;3],[u8;3])> {
         self.laser.rezucker();
         self.laser.zuckerbounds.clone()
+    }
+
+    pub fn vacant_axis(&self, v: u8, axis: OpAxis) -> usize {
+        match axis {
+            OpAxis::X => self.laser.laser_x[v as usize],
+            OpAxis::Y => self.laser.laser_y[v as usize],
+            OpAxis::Z => self.laser.laser_z[v as usize],
+        }
+    }
+
+    pub fn vacant_axis2(&self, [x,y,z]: [u8;3], axis: OpAxis) -> usize {
+        match axis {
+            OpAxis::X => self.laser.laser_x[x as usize],
+            OpAxis::Y => self.laser.laser_y[y as usize],
+            OpAxis::Z => self.laser.laser_z[z as usize],
+        }
     }
 }
 

@@ -1,5 +1,6 @@
 use std::collections::VecDeque;
 use std::fmt::Write;
+use std::sync::Arc;
 
 use egui::{ColorImage, Color32};
 use image::RgbaImage;
@@ -14,8 +15,12 @@ pub type RoomOps = Vec<RoomOp>;
 
 pub enum RoomOp {
     Move(RoomId,[u8;3]),
+    SiftSmart(Arc<[RoomId]>,u64,u8,OpAxis,bool),
+    SiftAway([u8;3],u8,OpAxis,bool),
+    Collapse([u8;3],u8,OpAxis,bool),
     Del(RoomId),
-    Undel(UROrphanId,[u8;3]),
+    Ins(Box<Room>),
+    Multi(Vec<RoomOp>),
 }
 
 impl Map {
@@ -30,22 +35,39 @@ impl Map {
             },
             RoomOp::Del(r) => {
                 let removed = self.delete_room(r).unwrap();
-                let coord = removed.coord;
-                let r = self.ur_orphan.insert(removed);
-
-                RoomOp::Undel(r, coord)
+                RoomOp::Ins(Box::new(removed))
             },
-            RoomOp::Undel(r,c) => {
-                if self.room_matrix.get(c).is_some() {
+            RoomOp::Ins(r) => {
+                if self.room_matrix.get(r.coord).is_some() {
                     panic!();
                 }
 
-                let mut room = self.ur_orphan.remove(r).unwrap();
-                room.coord = c;
-
-                let (r,_) = self.insert_room_force(room);
+                let (r,_) = self.insert_room_force(*r);
 
                 RoomOp::Del(r)
+            },
+            RoomOp::SiftAway(a, b, c, d) => {
+                self.shift_away(a, b, c, d);
+
+                RoomOp::Collapse(a, b, c, d)
+            },
+            RoomOp::Collapse(a, b, c, d) => {
+                self.collapse(a, b, c, d);
+
+                RoomOp::SiftAway(a, b, c, d)
+            },
+            RoomOp::SiftSmart(rooms, op_evo, n_sift, axis, dir) => {
+                self.shift_smart_apply(&rooms, op_evo, n_sift, axis, dir);
+
+                RoomOp::SiftSmart(rooms.clone(), op_evo, n_sift, axis, !dir)
+            },
+            RoomOp::Multi(v) => {
+                let v = v.into_iter()
+                    .map(|v| self.apply_room_op(v) )
+                    .rev() // The ops obviously needs to reverted in reverse
+                    .collect();
+
+                RoomOp::Multi(v)
             },
         }
     }
@@ -70,9 +92,20 @@ impl Map {
             RoomOp::Del(r) => {
                 testo!(self.state.rooms.contains_key(*r), "to-delete room doesn't exist");
             },
-            RoomOp::Undel(r,c) => {
-                testo!(self.ur_orphan.contains_key(*r), "to-undelete room doesn't exist");
-                testo!(self.room_matrix.get(*c).is_none(), "undelete-dest is occupied");
+            RoomOp::Ins(r) => {
+                testo!(self.room_matrix.get(r.coord).is_none(), "undelete-dest is occupied");
+            },
+            RoomOp::SiftAway(a, b, c, d) => {
+                testo!(self.check_shift_away(*a, *b, *c, *d), "check_shift_away failure");
+            },
+            RoomOp::Collapse(a, b, c, d) => {
+                testo!(self.check_collapse(*a, *b, *c, *d), "check_collapse failure");
+            },
+            RoomOp::SiftSmart(_, _, _, _, _) => {
+                // UNCHECKED
+            },
+            RoomOp::Multi(v) => {
+                ok &= v.into_iter().all(|v| self.validate_apply(op, messages) );
             },
         }
 
@@ -149,12 +182,37 @@ impl Map {
         }
     }
 
-    /// create a gap next to base_coord with n size
-    pub fn shift_away(&mut self, base_coord: [u8;3], n_sift: u8, axis: OpAxis, dir: bool) {
+    pub fn create_move_room(&self, id: RoomId, dest: [u8;3]) -> Option<RoomOp> {
+        if self.room_at(dest).is_none() && self.state.rooms.contains_key(id) {
+            Some(RoomOp::Move(id, dest))
+        } else {
+            None
+        }
+    }
+
+    pub fn create_add_room(&self, room: Room) -> Option<RoomOp> {
+        if self.room_matrix.get(room.coord).is_some() {return None;}
+
+        Some(RoomOp::Ins(Box::new(room)))
+    }
+
+    pub fn create_delete_room(&self, id: RoomId) -> Option<RoomOp> {
+        if !self.state.rooms.contains_key(id) {return None;}
+
+        Some(RoomOp::Del(id))
+    }
+
+    fn check_shift_away(&self, base_coord: [u8;3], n_sift: u8, axis: OpAxis, dir: bool) -> bool {
         assert!(n_sift != 0);
-        let Some(zuckerbounds) = self.room_matrix.zuckerbounds() else {return};
-        if !sift_vali(zuckerbounds, n_sift, axis, dir) {return;}
-        if !sift_range_big_enough(base_coord, n_sift, axis, dir) {return;}
+        let Some(zuckerbounds) = self.room_matrix.zuckerbounds() else {return false};
+        if !sift_vali(zuckerbounds, n_sift, axis, dir) {return false;}
+        if !sift_range_big_enough(base_coord, n_sift, axis, dir) {return false;}
+        true
+    }
+
+    /// create a gap next to base_coord with n size
+    fn shift_away(&mut self, base_coord: [u8;3], n_sift: u8, axis: OpAxis, dir: bool) -> bool {
+        if !self.check_shift_away(base_coord, n_sift, axis, dir) {return false;}
         let op_evo = next_op_gen_evo();
         for (id,room) in self.state.rooms.iter_mut() {
             if in_sift_range(room.coord, base_coord, axis, dir) {
@@ -169,14 +227,45 @@ impl Map {
                 self.room_matrix.insert(room.coord, id);
             }
         }
+        true
     }
 
-    /// try move room and base_coord and all directly connected into a direction
-    pub fn shift_smart(&mut self, base_coord: [u8;3], n_sift: u8, axis: OpAxis, dir: bool, away_lock: bool, no_new_connect: bool) -> bool {
+    fn check_collapse(&self, base_coord: [u8;3], n_sift: u8, axis: OpAxis, dir: bool) -> bool {
         assert!(n_sift != 0);
-        if self.room_matrix.total() == 0 {return false}
-        let Some(&my_room) = self.room_matrix.get(base_coord) else {return false};
-        if !sift_range_big_enough(base_coord, n_sift, axis, dir) {return false;}
+        for ns in 1 ..= n_sift {
+            if self.room_matrix.vacant_axis2(apply_sift(base_coord, n_sift, axis, dir), axis) != 0 {return false;}
+        }
+        true
+    }
+
+    fn collapse(&mut self, base_coord: [u8;3], n_sift: u8, axis: OpAxis, dir: bool) -> bool {
+        if !self.check_collapse(base_coord, n_sift, axis, dir) {return false;}
+        let op_evo = next_op_gen_evo();
+        for (id,room) in self.state.rooms.iter_mut() {
+            if in_unsift_range(room.coord, n_sift, base_coord, axis, dir) {
+                let removed = self.room_matrix.remove(room.coord, false);
+                assert!(removed == Some(id));
+                room.coord = apply_unsift(room.coord, n_sift, axis, dir);
+                room.op_evo = op_evo;
+            }
+        }
+        for (id,room) in self.state.rooms.iter_mut() {
+            if room.op_evo == op_evo {
+                self.room_matrix.insert(room.coord, id);
+            }
+        }
+        true
+    }
+
+    fn check_shift_smart1(&self, base_coord: [u8;3], n_sift: u8, axis: OpAxis, dir: bool, away_lock: bool, no_new_connect: bool) -> Option<RoomId> {
+        assert!(n_sift != 0);
+        let Some(&my_room) = self.room_matrix.get(base_coord) else {return None};
+        if !sift_range_big_enough(base_coord, n_sift, axis, dir) {return None;}
+        Some(my_room)
+    }
+
+    fn shift_smart_collect(&mut self, base_coord: [u8;3], n_sift: u8, axis: OpAxis, dir: bool, away_lock: bool, no_new_connect: bool) -> Option<(Vec<RoomId>,u64)> {
+        let Some(my_room) = self.check_shift_smart1(base_coord, n_sift, axis, dir, away_lock, no_new_connect) else {return None};
         
         let (mut area_min, mut area_max) = ([255,255,255],[0,0,0]);
         let mut flood_spin = VecDeque::<RoomId>::with_capacity(65536);
@@ -210,7 +299,7 @@ impl Map {
 
         drop(flood_spin);
 
-        if !sift_vali((area_min,area_max), n_sift, axis, dir) {return false;}
+        if !sift_vali((area_min,area_max), n_sift, axis, dir) {return None;}
 
         if no_new_connect {
             let mut no_new_collect_violated = false;
@@ -234,25 +323,28 @@ impl Map {
                 });
 
                 if no_new_collect_violated {
-                    return false;
+                    return None;
                 }
             }
         }
 
-        for &id in &all_list {
+        Some((all_list,op_evo))
+    }
+
+    /// try move room and base_coord and all directly connected into a direction
+    fn shift_smart_apply(&mut self, all_list: &[RoomId], op_evo: u64, n_sift: u8, axis: OpAxis, dir: bool) {
+        for &id in all_list {
             let room = unsafe { self.state.rooms.get_unchecked_mut(id) };
 
             let removed = self.room_matrix.remove(room.coord, false);
             assert!(removed == Some(id));
             room.coord = apply_sift(room.coord, n_sift, axis, dir);
         }
-        for &id in &all_list {
+        for &id in all_list {
             let room = unsafe { self.state.rooms.get_unchecked_mut(id) };
 
             self.room_matrix.insert(room.coord, id);
         }
-
-        true
     }
 }
 
@@ -294,6 +386,11 @@ fn in_sift_range(v: [u8;3], base: [u8;3], axis: OpAxis, dir: bool) -> bool {
     }
 }
 
+fn in_unsift_range(v: [u8;3], n_sift: u8, base: [u8;3], axis: OpAxis, dir: bool) -> bool {
+    let base = apply_sift(base, n_sift, axis, dir);
+    in_sift_range(v, base, axis, dir)
+}
+
 fn sift_range_big_enough(base: [u8;3], n_sift: u8, axis: OpAxis, dir: bool) -> bool {
     match (axis,dir) {
         (OpAxis::X, true ) => (255 - base[0]) >= n_sift,
@@ -329,6 +426,10 @@ fn apply_sift(mut v: [u8;3], n_sift: u8, axis: OpAxis, dir: bool) -> [u8;3] {
         (OpAxis::Z, false) => v[2] -= n_sift,
     }
     v
+}
+
+fn apply_unsift(mut v: [u8;3], n_sift: u8, axis: OpAxis, dir: bool) -> [u8;3] {
+    apply_sift(v, n_sift, axis, !dir)
 }
 
 fn try_6_sides(v: [u8;3], mut fun: impl FnMut([u8;3])) {

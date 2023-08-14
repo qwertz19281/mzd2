@@ -39,6 +39,9 @@ impl Map {
                     ui.radio_value(&mut self.state.edit_mode, MapEditMode::DrawSel, "Draw Sel");
                     ui.radio_value(&mut self.state.edit_mode, MapEditMode::RoomSel, "Room Sel");
                     ui.radio_value(&mut self.state.edit_mode, MapEditMode::Tags, "Tags");
+                    ui.radio_value(&mut self.state.edit_mode, MapEditMode::ConnXY, "ConnXY");
+                    ui.radio_value(&mut self.state.edit_mode, MapEditMode::ConnDown, "ConnZ-");
+                    ui.radio_value(&mut self.state.edit_mode, MapEditMode::ConnUp, "ConnZ+");
                 });
                 ui.horizontal(|ui| {
                     let mut level = self.state.current_level;
@@ -159,6 +162,16 @@ impl Map {
                     MapEditMode::Tags => {
                         //TODO
                     },
+                    MapEditMode::ConnXY => {
+                        //TODO
+                    },
+                    MapEditMode::ConnDown => {
+                        //TODO
+                    },
+                    MapEditMode::ConnUp => {
+                        //TODO
+                    },
+                    
                 }
             }
 

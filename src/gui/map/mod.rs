@@ -30,7 +30,6 @@ pub struct Map {
     pub room_matrix: CoordStore<RoomId>,
     pub picomap_tex: TextureCell,
     pub editsel: DrawImageGroup,
-    pub ur_orphan: UROrphanMap,
 }
 
 pub type RoomMap = HopSlotMap<RoomId,Room>;
@@ -112,7 +111,6 @@ impl Map {
             dirty_rooms: Default::default(),
             room_matrix: CoordStore::new(),
             picomap_tex: create_picomap_texcell(),
-            ur_orphan: SlotMap::with_capacity_and_key(1024),
         };
 
         let mut corrupted = vec![];
@@ -196,7 +194,6 @@ impl Map {
             room_matrix: CoordStore::new(),
             picomap_tex: create_picomap_texcell(),
             editsel: DrawImageGroup::unsel(rooms_size),
-            ur_orphan: SlotMap::with_capacity_and_key(1024),
         }
     }
 
@@ -212,6 +209,9 @@ pub enum MapEditMode {
     DrawSel,
     RoomSel,
     Tags,
+    ConnXY,
+    ConnDown,
+    ConnUp,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
