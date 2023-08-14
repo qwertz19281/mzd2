@@ -32,6 +32,7 @@ pub struct Room {
     pub sel_matrix: SelMatrixLayered,
     pub visible_layers: Vec<bool>,
     pub selected_layer: usize,
+    #[serde(default)]
     pub dirconn: [[bool;2];3],
 }
 

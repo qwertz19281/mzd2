@@ -41,8 +41,12 @@ pub struct MapState {
     pub map_zoom: i32,
     pub draw_zoom: u32,
     pub rooms: RoomMap,
-    pub selected_room: Option<RoomId>,
-    pub selected_coord: Option<[u8;3]>,
+    #[serde(default)]
+    pub dsel_room: Option<RoomId>,
+    #[serde(default)]
+    pub ssel_room: Option<RoomId>,
+    #[serde(default)]
+    pub dsel_coord: Option<[u8;3]>,
     pub file_counter: u64,
     pub view_pos: [f32;2],
     pub rooms_size: [u32;2],
@@ -131,23 +135,23 @@ impl Map {
             map.state.rooms.remove(room);
         }
 
-        if map.state.selected_room.is_none() {
-            if let Some(coord) = map.state.selected_coord {
+        if map.state.dsel_room.is_none() {
+            if let Some(coord) = map.state.dsel_coord {
                 if let Some(&room) = map.room_matrix.get(coord) {
                     if map.state.rooms.contains_key(room) {
-                        map.state.selected_room = Some(room);
+                        map.state.dsel_room = Some(room);
                     }
                 }
             }
         }
 
-        if let Some(sel_room) = map.state.selected_room {
+        if let Some(sel_room) = map.state.dsel_room {
             if let Some(room) = map.state.rooms.get(sel_room) {
-                map.state.selected_coord = Some(room.coord);
+                map.state.dsel_coord = Some(room.coord);
             }
 
             if map.editsel.rooms.is_empty() {
-                map.editsel.rooms.push((sel_room,map.state.selected_coord.unwrap(),[0,0]));
+                map.editsel.rooms.push((sel_room,map.state.dsel_coord.unwrap(),[0,0]));
             }
         }
 
@@ -178,8 +182,9 @@ impl Map {
                 map_zoom: 0,
                 draw_zoom: 2,
                 rooms: HopSlotMap::with_capacity_and_key(1024),
-                selected_room: None,
-                selected_coord: None,
+                dsel_room: None,
+                ssel_room: None,
+                dsel_coord: None,
                 file_counter: 0,
                 view_pos: [(rooms_size[0]*128) as f32,(rooms_size[1]*128) as f32],
                 rooms_size,

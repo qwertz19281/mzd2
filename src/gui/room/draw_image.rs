@@ -1,7 +1,7 @@
 use std::hash::{Hash, Hasher};
 use std::path::{PathBuf, Path};
 
-use egui::{TextureHandle, Color32, Rounding, Stroke};
+use egui::{TextureHandle, Color32, Rounding, Stroke, Pos2, Align2, FontId};
 use egui::epaint::ahash::AHasher;
 use image::{RgbaImage, GenericImage, GenericImageView, ImageBuffer};
 use serde::{Deserialize, Serialize};
@@ -320,7 +320,7 @@ impl DrawImageGroup {
         }
     }
 
-    pub fn render_conns(&self, rooms: &mut RoomMap, mode: MapEditMode, rooms_size: [u32;2], mut dest: impl FnMut(egui::Shape)) {
+    pub fn render_conns(&self, rooms: &mut RoomMap, mode: MapEditMode, rooms_size: [u32;2], mut dest: impl FnMut(egui::Shape), ctx: &egui::Context) {
         for &(room_id,_,roff) in &self.rooms {
             let Some(room) = rooms.get_mut(room_id) else {continue};
 
@@ -329,6 +329,7 @@ impl DrawImageGroup {
                 roff,
                 rooms_size,
                 |v| dest(v),
+                ctx,
             );
         }
     }
@@ -397,7 +398,7 @@ impl Room {
         dest(egui::Shape::Mesh(mesh));
     }
 
-    pub fn render_conns(&self, mode: MapEditMode, off: [u32;2], rooms_size: [u32;2], mut dest: impl FnMut(egui::Shape)) {
+    pub fn render_conns(&self, mode: MapEditMode, off: [u32;2], rooms_size: [u32;2], mut dest: impl FnMut(egui::Shape), ctx: &egui::Context) {
         let dest_rect = rector(off[0], off[1], off[0]+rooms_size[0], off[1]+rooms_size[1]);
 
         let unconn_color = Color32::RED;
@@ -413,7 +414,8 @@ impl Room {
             if !self.dirconn[2][1] {
                 dest(egui::Shape::rect_filled(dest_rect, Rounding::none(), unconn_color_fill))
             }
-        } else if mode == MapEditMode::ConnXY || mode == MapEditMode::RoomSel {
+        }
+        if mode == MapEditMode::ConnDown || mode == MapEditMode::ConnUp || mode == MapEditMode::ConnXY || mode == MapEditMode::RoomSel {
             if !self.dirconn[0][0] {
                 dest(egui::Shape::line(line2(off[0], off[1], off[0], off[1]+rooms_size[1]), unconn_stroke));
             }
@@ -425,6 +427,26 @@ impl Room {
             }
             if !self.dirconn[1][1] {
                 dest(egui::Shape::line(line2(off[0], off[1]+rooms_size[1], off[0]+rooms_size[0], off[1]+rooms_size[1]), unconn_stroke));
+            }
+            
+            if mode == MapEditMode::ConnXY || mode == MapEditMode::RoomSel {
+                let note = match self.dirconn[2] {
+                    [false, false] => "\n",
+                    [false, true] => "U",
+                    [true, false] => "\nD",
+                    [true, true] => "U\nD",
+                };
+
+                ctx.fonts(|fonts| {
+                    dest(egui::Shape::text(
+                        fonts,
+                        Pos2 { x: (off[0]+rooms_size[0]) as f32 - 8., y: off[1] as f32 + 8. }, //TODO multiply dpi?
+                        Align2::RIGHT_TOP,
+                        note,
+                        FontId::monospace(16.),
+                        Color32::GREEN,
+                    ));
+                });
             }
         }
     }

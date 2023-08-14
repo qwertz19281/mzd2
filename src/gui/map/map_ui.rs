@@ -67,17 +67,18 @@ impl Map {
                     }
                 });
                 ui.horizontal(|ui| {
-                    if let Some(v) = self.state.selected_room.filter(|&v| self.state.rooms.contains_key(v) ) {
+                    if let Some(v) = self.state.dsel_room.filter(|&v| self.state.rooms.contains_key(v) ) {
                         if ui.button("Delete").double_clicked() {
-                            self.state.selected_coord = None;
-                            self.state.selected_room = None;
+                            self.state.dsel_coord = None;
+                            self.state.dsel_room = None;
+                            todo!();
                             //self.delete_room(v);
                             self.editsel = DrawImageGroup::unsel(self.state.rooms_size);
                         }
-                    } else if let Some(v) = self.state.selected_coord {
+                    } else if let Some(v) = self.state.dsel_coord {
                         if ui.button("Create").clicked() {
                             let room_id = self.get_or_create_room_at(v);
-                            self.state.selected_room = Some(room_id);
+                            self.state.dsel_room = Some(room_id);
                             self.editsel = DrawImageGroup::single(room_id, v, self.state.rooms_size);
                         }
                     }
@@ -141,10 +142,10 @@ impl Map {
                     MapEditMode::DrawSel => {
                         if super_map.response.clicked_by(egui::PointerButton::Primary) {
                             if !kp_plus {
-                                self.state.selected_coord = Some(click_coord);
-                                self.state.selected_room = self.room_matrix.get(click_coord).cloned();
+                                self.state.dsel_coord = Some(click_coord);
+                                self.state.dsel_room = self.room_matrix.get(click_coord).cloned();
                                 
-                                if let Some(room) = self.state.selected_room {
+                                if let Some(room) = self.state.dsel_room {
                                     self.editsel = DrawImageGroup::single(room, click_coord, self.state.rooms_size);
                                 } else {
                                     self.editsel = DrawImageGroup::unsel(self.state.rooms_size);
@@ -186,6 +187,7 @@ impl Map {
 
             let grid_stroke = egui::Stroke::new(1., egui::Color32::BLACK);
             let drawsel_stroke = egui::Stroke::new(1.5, egui::Color32::BLUE);
+            let ssel_stroke = egui::Stroke::new(2., egui::Color32::BLUE);
 
             rooms_in_view(
                 self.state.view_pos,
@@ -222,18 +224,32 @@ impl Map {
                                 [cx,cy].mul(self.state.rooms_size),
                                 self.state.rooms_size,
                                 |s| shapes.push(s),
+                                ui.ctx(),
                             );
                         }
                     }
                 }
             );
 
-            if let Some([x,y,_]) = self.state.selected_coord {
-                let rect = rector(
-                    x as u32 * self.state.rooms_size[0], y as u32 * self.state.rooms_size[1],
-                    (x as u32+1) * self.state.rooms_size[0], (y as u32+1) * self.state.rooms_size[1],
-                );
-                shapes.push(egui::Shape::rect_stroke(rect, Rounding::none(), drawsel_stroke));
+            if self.state.edit_mode == MapEditMode::DrawSel {
+                if let Some([x,y,_]) = self.state.dsel_coord {
+                    let rect = rector(
+                        x as u32 * self.state.rooms_size[0], y as u32 * self.state.rooms_size[1],
+                        (x as u32+1) * self.state.rooms_size[0], (y as u32+1) * self.state.rooms_size[1],
+                    );
+                    shapes.push(egui::Shape::rect_stroke(rect, Rounding::none(), drawsel_stroke));
+                }
+            }
+
+            if self.state.edit_mode == MapEditMode::RoomSel {
+                if let Some(room) = self.state.ssel_room.and_then(|v| self.state.rooms.get(v) ) {
+                    let [x,y,_] = room.coord;
+                    let rect = rector(
+                        x as u32 * self.state.rooms_size[0] + 8, y as u32 * self.state.rooms_size[1] + 8,
+                        (x as u32+1) * self.state.rooms_size[0] - 8, (y as u32+1) * self.state.rooms_size[1] - 8,
+                    );
+                    shapes.push(egui::Shape::rect_stroke(rect, Rounding::none(), ssel_stroke));
+                }
             }
 
             super_map.extend_rel_fixtex(shapes);
