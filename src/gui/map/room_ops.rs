@@ -1,4 +1,5 @@
 use std::collections::VecDeque;
+use std::fmt::Write;
 
 use egui::{ColorImage, Color32};
 use image::RgbaImage;
@@ -7,17 +8,114 @@ use crate::gui::room::{Room, self};
 use crate::map::coord_store::CoordStore;
 use crate::util::next_op_gen_evo;
 
-use super::{RoomId, Map};
+use super::{RoomId, Map, UROrphanId};
+
+pub type RoomOps = Vec<RoomOp>;
+
+pub enum RoomOp {
+    Move(RoomId,[u8;3]),
+    Del(RoomId),
+    Undel(UROrphanId,[u8;3]),
+}
 
 impl Map {
-    pub fn move_room(&mut self, id: RoomId, dest: [u8;3]) -> bool {
+    pub fn apply_room_op(&mut self, op: RoomOp) -> RoomOp {
+        match op {
+            RoomOp::Move(r,c) => {
+                // move room
+                let old_pos = self.state.rooms.get(r).unwrap().coord;
+                self.move_room_force(r, c);
+
+                RoomOp::Move(r, old_pos)
+            },
+            RoomOp::Del(r) => {
+                let removed = self.delete_room(r).unwrap();
+                let coord = removed.coord;
+                let r = self.ur_orphan.insert(removed);
+
+                RoomOp::Undel(r, coord)
+            },
+            RoomOp::Undel(r,c) => {
+                if self.room_matrix.get(c).is_some() {
+                    panic!();
+                }
+
+                let mut room = self.ur_orphan.remove(r).unwrap();
+                room.coord = c;
+
+                let (r,_) = self.insert_room_force(room);
+
+                RoomOp::Del(r)
+            },
+        }
+    }
+
+    pub fn validate_apply(&self, op: &RoomOp, messages: &mut String) -> bool {
+        let mut ok = true;
+
+        macro_rules! testo {
+            ($cond:expr,$($formatr:tt)*) => {
+                if ! ( $cond ) {
+                    let _ = writeln!(messages, $($formatr)*);
+                    ok = false;
+                }
+            };
+        }
+
+        match op {
+            RoomOp::Move(r,c) => {
+                testo!(self.state.rooms.contains_key(*r), "to-move room doesn't exist");
+                testo!(self.room_matrix.get(*c).is_none(), "move-dest is occupied");
+            },
+            RoomOp::Del(r) => {
+                testo!(self.state.rooms.contains_key(*r), "to-delete room doesn't exist");
+            },
+            RoomOp::Undel(r,c) => {
+                testo!(self.ur_orphan.contains_key(*r), "to-undelete room doesn't exist");
+                testo!(self.room_matrix.get(*c).is_none(), "undelete-dest is occupied");
+            },
+        }
+
+        ok
+    }
+}
+
+impl Map {
+    fn move_room(&mut self, id: RoomId, dest: [u8;3]) -> bool {
         if self.room_matrix.get(dest).is_some() {return false;}
         let room = self.state.rooms.get_mut(id).unwrap();
         let old_pos = room.coord;
         room.coord = dest;
         self.room_matrix.insert(dest, id);
-        self.room_matrix.remove(old_pos, true);
+        if old_pos != dest {
+            self.room_matrix.remove(old_pos, true);
+        }
         true
+    }
+
+    fn move_room_force(&mut self, id: RoomId, dest: [u8;3]) -> (Option<[u8;3]>,Option<RoomId>) {
+        let old_coord = self.state.rooms.get(id)
+            .map(|r| r.coord )
+            .filter(|&c| self.room_matrix.get(c) == Some(&id) );
+        let prev_at_coord = self.room_matrix.get(dest).cloned();
+
+        let room = self.state.rooms.get_mut(id).unwrap();
+        room.coord = dest;
+
+        self.room_matrix.insert(dest, id);
+
+        if old_coord.is_some() && old_coord != Some(dest) {
+            self.room_matrix.remove(old_coord.unwrap(), true);
+        }
+
+        (old_coord,prev_at_coord)
+    }
+
+    fn insert_room_force(&mut self, room: Room) -> (RoomId,Option<RoomId>) {
+        let coord = room.coord;
+        let room_id = self.state.rooms.insert(room);
+        let prev_room = self.room_matrix.insert(coord, room_id);
+        (room_id, prev_room)
     }
 
     pub fn room_at(&self, coord: [u8;3]) -> Option<RoomId> {
@@ -40,10 +138,14 @@ impl Map {
         })
     }
 
-    pub fn delete_room(&mut self, id: RoomId) {
+    /// The removed room's coord is invalid!
+    fn delete_room(&mut self, id: RoomId) -> Option<Room> {
         if let Some(removed) = self.state.rooms.remove(id) {
             assert!(self.room_matrix.get(removed.coord) == Some(&id));
             self.room_matrix.remove(removed.coord, true);
+            Some(removed)
+        } else {
+            None
         }
     }
 

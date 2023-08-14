@@ -5,7 +5,7 @@ use egui::{TextureHandle, TextureOptions};
 use egui::epaint::ahash::HashSet;
 use image::RgbaImage;
 use serde::{Serialize, Deserialize};
-use slotmap::HopSlotMap;
+use slotmap::{HopSlotMap, SlotMap};
 
 use crate::map::coord_store::CoordStore;
 use crate::util::*;
@@ -30,9 +30,11 @@ pub struct Map {
     pub room_matrix: CoordStore<RoomId>,
     pub picomap_tex: TextureCell,
     pub editsel: DrawImageGroup,
+    pub ur_orphan: UROrphanMap,
 }
 
 pub type RoomMap = HopSlotMap<RoomId,Room>;
+pub type UROrphanMap = SlotMap<UROrphanId,Room>;
 
 #[derive(Deserialize,Serialize)]
 pub struct MapState {
@@ -54,6 +56,7 @@ pub struct MapState {
 
 slotmap::new_key_type! {
     pub struct RoomId;
+    pub struct UROrphanId;
 }
 
 impl Map {
@@ -109,6 +112,7 @@ impl Map {
             dirty_rooms: Default::default(),
             room_matrix: CoordStore::new(),
             picomap_tex: create_picomap_texcell(),
+            ur_orphan: SlotMap::with_capacity_and_key(1024),
         };
 
         let mut corrupted = vec![];
@@ -192,6 +196,7 @@ impl Map {
             room_matrix: CoordStore::new(),
             picomap_tex: create_picomap_texcell(),
             editsel: DrawImageGroup::unsel(rooms_size),
+            ur_orphan: SlotMap::with_capacity_and_key(1024),
         }
     }
 
