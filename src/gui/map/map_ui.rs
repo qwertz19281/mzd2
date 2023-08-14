@@ -71,7 +71,7 @@ impl Map {
                         if ui.button("Delete").double_clicked() {
                             self.state.selected_coord = None;
                             self.state.selected_room = None;
-                            self.delete_room(v);
+                            //self.delete_room(v);
                             self.editsel = DrawImageGroup::unsel(self.state.rooms_size);
                         }
                     } else if let Some(v) = self.state.selected_coord {
@@ -171,7 +171,6 @@ impl Map {
                     MapEditMode::ConnUp => {
                         //TODO
                     },
-                    
                 }
             }
 

@@ -15,7 +15,7 @@ pub type RoomOps = Vec<RoomOp>;
 
 pub enum RoomOp {
     Move(RoomId,[u8;3]),
-    SiftSmart(Arc<[RoomId]>,u64,u8,OpAxis,bool),
+    SiftSmart(Arc<[RoomId]>,u64,u8,OpAxis,bool,bool),
     SiftAway([u8;3],u8,OpAxis,bool),
     Collapse([u8;3],u8,OpAxis,bool),
     Del(RoomId),
@@ -56,10 +56,10 @@ impl Map {
 
                 RoomOp::SiftAway(a, b, c, d)
             },
-            RoomOp::SiftSmart(rooms, op_evo, n_sift, axis, dir) => {
-                self.shift_smart_apply(&rooms, op_evo, n_sift, axis, dir);
+            RoomOp::SiftSmart(rooms, op_evo, n_sift, axis, dir, unconnect_new) => {
+                self.shift_smart_apply(&rooms, op_evo, n_sift, axis, dir, unconnect_new);
 
-                RoomOp::SiftSmart(rooms.clone(), op_evo, n_sift, axis, !dir)
+                RoomOp::SiftSmart(rooms.clone(), op_evo, n_sift, axis, !dir, unconnect_new)
             },
             RoomOp::Multi(v) => {
                 let v = v.into_iter()
@@ -72,7 +72,7 @@ impl Map {
         }
     }
 
-    pub fn validate_apply(&self, op: &RoomOp, messages: &mut String) -> bool {
+    pub fn validate_apply(&mut self, op: &RoomOp, messages: &mut String) -> bool {
         let mut ok = true;
 
         macro_rules! testo {
@@ -101,7 +101,7 @@ impl Map {
             RoomOp::Collapse(a, b, c, d) => {
                 testo!(self.check_collapse(*a, *b, *c, *d), "check_collapse failure");
             },
-            RoomOp::SiftSmart(_, _, _, _, _) => {
+            RoomOp::SiftSmart(_, _, _, _, _, _) => {
                 // UNCHECKED
             },
             RoomOp::Multi(v) => {
@@ -202,7 +202,7 @@ impl Map {
         Some(RoomOp::Del(id))
     }
 
-    fn check_shift_away(&self, base_coord: [u8;3], n_sift: u8, axis: OpAxis, dir: bool) -> bool {
+    fn check_shift_away(&mut self, base_coord: [u8;3], n_sift: u8, axis: OpAxis, dir: bool) -> bool {
         assert!(n_sift != 0);
         let Some(zuckerbounds) = self.room_matrix.zuckerbounds() else {return false};
         if !sift_vali(zuckerbounds, n_sift, axis, dir) {return false;}
@@ -268,17 +268,20 @@ impl Map {
         let Some(my_room) = self.check_shift_smart1(base_coord, n_sift, axis, dir, away_lock, no_new_connect) else {return None};
         
         let (mut area_min, mut area_max) = ([255,255,255],[0,0,0]);
-        let mut flood_spin = VecDeque::<RoomId>::with_capacity(65536);
+        let mut flood_spin = VecDeque::<(RoomId,Option<(u8,bool)>)>::with_capacity(65536);
         let mut all_list = Vec::with_capacity(65536);
 
         let op_evo = next_op_gen_evo();
 
-        flood_spin.push_back(my_room);
+        flood_spin.push_back((my_room,None));
 
         // this is the super flood fill
-        while let Some(next_id) = flood_spin.pop_front() {
+        while let Some((next_id,sidetest)) = flood_spin.pop_front() {
             if let Some(room) = self.state.rooms.get_mut(next_id) {
                 if away_lock && !in_sift_range(room.coord, base_coord, axis, dir) {continue}
+                if let Some((sidetest_a,sidetest_b)) = sidetest {
+                    if !room.dirconn[sidetest_a as usize][sidetest_b as usize] {continue}
+                }
                 if room.op_evo != room.op_evo {
                     area_min[0] = area_min[0].min(room.coord[0]); area_max[0] = area_max[0].max(room.coord[0]);
                     area_min[1] = area_min[1].min(room.coord[1]); area_max[1] = area_max[1].max(room.coord[1]);
@@ -286,9 +289,11 @@ impl Map {
 
                     room.op_evo = op_evo;
 
-                    try_6_sides(room.coord, |side_coord| {
-                        if let Some(&side_room_id) = self.room_matrix.get(side_coord) {
-                            flood_spin.push_back(side_room_id);
+                    try_6_sides(room.coord, |side_coord,sidetest_a,sidetest_b| {
+                        if room.dirconn[sidetest_a as usize][sidetest_b as usize] {
+                            if let Some(&side_room_id) = self.room_matrix.get(side_coord) {
+                                flood_spin.push_back((side_room_id,Some((sidetest_a,!sidetest_b))));
+                            }
                         }
                     });
 
@@ -309,7 +314,7 @@ impl Map {
     
                 try_side(room.coord, axis, dir, |aside| {
                     if self.room_matrix.get(aside).is_none() {
-                        try_6_sides(aside, |sideside| {
+                        try_6_sides(aside, |sideside,_,_| {
                             if sideside == aside {return}
                             if let Some(&ssroom) = self.room_matrix.get(sideside) {
                                 if let Some(ssroom) = self.state.rooms.get(ssroom) {
@@ -332,16 +337,43 @@ impl Map {
     }
 
     /// try move room and base_coord and all directly connected into a direction
-    fn shift_smart_apply(&mut self, all_list: &[RoomId], op_evo: u64, n_sift: u8, axis: OpAxis, dir: bool) {
+    fn shift_smart_apply(&mut self, all_list: &[RoomId], op_evo: u64, n_sift: u8, axis: OpAxis, dir: bool, unconnect_new: bool) {
         for &id in all_list {
             let room = unsafe { self.state.rooms.get_unchecked_mut(id) };
 
             let removed = self.room_matrix.remove(room.coord, false);
             assert!(removed == Some(id));
+
+            if unconnect_new {
+                try_6_sides(room.coord, |side_coord,sidetest_a,sidetest_b| {
+                    room.temp_empty_mark[sidetest_a as usize][sidetest_b as usize] = self.room_matrix.get(side_coord).is_none();
+                });
+            }
+
             room.coord = apply_sift(room.coord, n_sift, axis, dir);
+
+            let temp_empty_mark = room.temp_empty_mark;
+
+            if unconnect_new {
+                try_6_sides(room.coord, |side_coord,sidetest_a,sidetest_b| {
+                    if temp_empty_mark[sidetest_a as usize][sidetest_b as usize] {
+                        if let Some(&sid) = self.room_matrix.get(side_coord) {
+                            // now we have a new neighbor at that side, if not ours, we shall unconnect
+                            if let Some(nroom) = self.state.rooms.get_mut(sid) {
+                                if nroom.op_evo != op_evo {
+                                    nroom.dirconn[sidetest_a as usize][!sidetest_b as usize] = false;
+                                    let room = unsafe { self.state.rooms.get_unchecked_mut(id) };
+                                    room.dirconn[sidetest_a as usize][sidetest_b as usize] = false;
+                                }
+                            }
+                        }
+                    }
+                });
+            }
         }
         for &id in all_list {
             let room = unsafe { self.state.rooms.get_unchecked_mut(id) };
+
 
             self.room_matrix.insert(room.coord, id);
         }
@@ -432,24 +464,24 @@ fn apply_unsift(mut v: [u8;3], n_sift: u8, axis: OpAxis, dir: bool) -> [u8;3] {
     apply_sift(v, n_sift, axis, !dir)
 }
 
-fn try_6_sides(v: [u8;3], mut fun: impl FnMut([u8;3])) {
+fn try_6_sides(v: [u8;3], mut fun: impl FnMut([u8;3],u8,bool)) {
     if v[0] != 255 {
-        fun([v[0]+1, v[1]  , v[2]  ]);
+        fun([v[0]+1, v[1]  , v[2]  ], 0,true);
     }
     if v[0] !=   0 {
-        fun([v[0]-1, v[1]  , v[2]  ]);
+        fun([v[0]-1, v[1]  , v[2]  ], 0,false);
     }
     if v[1] != 255 {
-        fun([v[0]  , v[1]+1, v[2]  ]);
+        fun([v[0]  , v[1]+1, v[2]  ], 1,true);
     }
     if v[1] !=   0 {
-        fun([v[0]  , v[1]-1, v[2]  ]);
+        fun([v[0]  , v[1]-1, v[2]  ], 1,false);
     }
     if v[2] != 255 {
-        fun([v[0]  , v[1]  , v[2]+1]);
+        fun([v[0]  , v[1]  , v[2]+1], 2,true);
     }
     if v[2] !=   0 {
-        fun([v[0]  , v[1]  , v[2]-1]);
+        fun([v[0]  , v[1]  , v[2]-1], 2,false);
     }
 }
 

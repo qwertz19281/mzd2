@@ -33,6 +33,8 @@ pub struct Room {
     pub visible_layers: Vec<bool>,
     pub selected_layer: usize,
     pub dirconn: [[bool;2];3],
+    #[serde(skip)]
+    pub temp_empty_mark: [[bool;2];3],
 }
 
 impl Room {
@@ -61,6 +63,7 @@ impl Room {
             visible_layers: vec![true;initial_layers],
             selected_layer: 0,
             dirconn: Default::default(),
+            temp_empty_mark: Default::default(),
         }
     }
 

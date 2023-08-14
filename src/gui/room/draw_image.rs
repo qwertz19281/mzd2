@@ -317,6 +317,8 @@ impl DrawImageGroup {
                 map_path,
                 ctx,
             );
+
+            //TODO render the conns
         }
     }
 
