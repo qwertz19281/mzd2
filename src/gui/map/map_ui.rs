@@ -47,23 +47,24 @@ impl Map {
         }
         let coord = self.state.rooms.get(self.state.ssel_room.unwrap()).unwrap().coord;
         let mut regen = true;
-        if let &Some((a,b,c,d,_,e,f,g)) = &self.smartmove_preview {
+        if let &Some((a,b,_,c,d,_,e,f,g)) = &self.smartmove_preview {
             if (a,b,c,d,e,f,g) == (coord,self.state.sift_size,axis,dir,self.latest_used_opevo,false,false) {
                 regen = false;
             }
         }
+        if !self.check_shift_smart1(coord, self.state.sift_size, axis, dir).is_some() {
+            self.smartmove_preview = None;
+            return;
+        }
         if regen {
             self.smartmove_preview = None;
-        }
-        let ok = self.check_shift_smart1(coord, self.state.sift_size, axis, dir, false, false).is_some();
-        if regen && ok {
-            if let Some((c,d)) = self.shift_smart_collect(coord, self.state.sift_size, axis, dir, false, false) {
-                self.smartmove_preview = Some((coord,self.state.sift_size,axis,dir,c,d,false,false));
+            if let Some((c,d,e)) = self.shift_smart_collect(coord, self.state.sift_size, axis, dir, false, false, true) {
+                self.smartmove_preview = Some((coord,self.state.sift_size,e,axis,dir,c,d,false,false));
             }
         }
-        if clicked && ok {
-            let (_,_,_,_,collected,op_evo,_,_) = self.smartmove_preview.as_ref().unwrap();
-            let op = RoomOp::SiftSmart(collected.clone(), *op_evo, self.state.sift_size, axis, dir, true);
+        if !clicked {return;}
+        if let Some((_,_,n_sift,_,_,collected,op_evo,_,_)) = self.smartmove_preview.as_ref() {
+            let op = RoomOp::SiftSmart(collected.clone(), *op_evo, *n_sift, axis, dir, true);
             self.ui_apply_roomop(op);
         }
     }
@@ -464,7 +465,7 @@ impl Map {
 
             let view_pos_1 = self.state.view_pos.add(view_size.into());
 
-            if let Some((_,_,_,_,_,e,_,_)) = &self.smartmove_preview {
+            if let Some((_,_,_,_,_,_,e,_,_)) = &self.smartmove_preview {
                 if smart_preview_hovered && *e == self.latest_used_opevo {
                     preview_smart_move = Some(*e);
                 }

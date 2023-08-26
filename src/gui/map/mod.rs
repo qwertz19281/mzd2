@@ -35,7 +35,7 @@ pub struct Map {
     pub room_matrix: CoordStore<RoomId>,
     pub picomap_tex: TextureCell,
     pub editsel: DrawImageGroup,
-    pub smartmove_preview: Option<([u8;3],u8,OpAxis,bool,Arc<[RoomId]>,u64,bool,bool)>,
+    pub smartmove_preview: Option<([u8;3],u8,u8,OpAxis,bool,Arc<[RoomId]>,u64,bool,bool)>,
     pub latest_used_opevo: u64,
     pub undo_buf: VecDeque<RoomOp>,
     pub redo_buf: VecDeque<RoomOp>,

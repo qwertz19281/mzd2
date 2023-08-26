@@ -376,15 +376,15 @@ impl Map {
         true
     }
 
-    pub(super) fn check_shift_smart1(&self, base_coord: [u8;3], n_sift: u8, axis: OpAxis, dir: bool, away_lock: bool, no_new_connect: bool) -> Option<RoomId> {
-        assert!(n_sift != 0);
+    pub(super) fn check_shift_smart1(&self, base_coord: [u8;3], n_sift: u8, axis: OpAxis, dir: bool) -> Option<RoomId> {
+        if n_sift == 0 || n_sift == 255 {return None;}
         let Some(&my_room) = self.room_matrix.get(base_coord) else {return None};
         if !sift_range_big_enough(base_coord, n_sift, axis, dir) {return None;}
         Some(my_room)
     }
 
-    pub(super) fn shift_smart_collect(&mut self, base_coord: [u8;3], n_sift: u8, axis: OpAxis, dir: bool, away_lock: bool, no_new_connect: bool) -> Option<(Arc<[RoomId]>,u64)> {
-        let Some(my_room) = self.check_shift_smart1(base_coord, n_sift, axis, dir, away_lock, no_new_connect) else {return None};
+    pub(super) fn shift_smart_collect(&mut self, base_coord: [u8;3], mut n_sift: u8, axis: OpAxis, dir: bool, away_lock: bool, no_new_connect: bool, allow_siftshrink: bool) -> Option<(Arc<[RoomId]>,u64,u8)> {
+        let Some(my_room) = self.check_shift_smart1(base_coord, n_sift, axis, dir) else {return None};
         
         let (mut area_min, mut area_max) = ([255,255,255],[0,0,0]);
         let mut flood_spin = VecDeque::<(RoomId,Option<(u8,bool)>)>::with_capacity(65536);
@@ -424,6 +424,25 @@ impl Map {
 
         drop(flood_spin);
 
+        for &id in &all_list {
+            let room = unsafe { self.state.rooms.get_unchecked_mut(id) };
+
+            let my_coord = room.coord;
+
+            for test_sift in 1 .. n_sift+1 {
+                let scoord = apply_sift(my_coord, test_sift, axis, dir);
+                if let Some(r) = self.room_matrix.get(scoord).and_then(|&r| self.state.rooms.get(r) ) {
+                    if r.op_evo != op_evo {
+                        n_sift = test_sift - 1;
+                        if n_sift == 0 || !allow_siftshrink {
+                            return None;
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+
         if !sift_vali((area_min,area_max), n_sift, axis, dir) {return None;}
 
         if no_new_connect {
@@ -453,7 +472,7 @@ impl Map {
             }
         }
 
-        Some((all_list.into(),op_evo))
+        Some((all_list.into(),op_evo,n_sift))
     }
 
     /// try move room and base_coord and all directly connected into a direction
