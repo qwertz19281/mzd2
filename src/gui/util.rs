@@ -231,6 +231,7 @@ pub trait ArrUtl {
     fn sub_y(self, v: Self::Unit) -> Self;
     
     fn as_u8(self) -> [u8;2];
+    fn as_u8_clamped(self) -> [u8;2];
     fn as_u16(self) -> [u16;2];
     fn as_u32(self) -> [u32;2];
     fn as_u64(self) -> [u64;2];
@@ -277,6 +278,13 @@ macro_rules! marco_arrutl {
                 }
 
                 
+                fn as_u8_clamped(self) -> [u8;2] {
+                    [
+                        (self[0] as u64).clamp(0,255) as u8,
+                        (self[1] as u64).clamp(0,255) as u8,
+                    ]
+                }
+
                 fn as_u8(self) -> [u8;2] {
                     [self[0] as _, self[1] as _]
                 }
@@ -360,6 +368,10 @@ pub fn alloc_painter_rel_ds(ui: &mut egui::Ui, size_bound: RangeInclusive<Vec2>,
 impl PainterRel {
     pub fn hover_pos_rel(&self) -> Option<Pos2> {
         self.response.hover_pos().filter(|pos| self.response.rect.contains(*pos)).map(|pos| ((pos - self.voff) / self.zoom).to_pos2() )
+    }
+
+    pub fn area_size(&self) -> Vec2 {
+        self.response.rect.size() / self.zoom
     }
 
     pub fn extend_rel<I: IntoIterator<Item = Shape>>(&self, shapes: I) {

@@ -155,6 +155,20 @@ impl Map {
         if !redo {
             self.redo_buf.clear();
         }
+        if self.state.dsel_room.is_none() {
+            if let Some(coord) = self.state.dsel_coord {
+                if let Some(&id) = self.room_matrix.get(coord) {
+                    self.state.dsel_room = Some(id);
+                }
+            }
+        }
+        if self.state.ssel_room.is_none() {
+            if let Some(coord) = self.state.ssel_coord {
+                if let Some(&id) = self.room_matrix.get(coord) {
+                    self.state.ssel_room = Some(id);
+                }
+            }
+        }
     }
 }
 
@@ -488,7 +502,7 @@ pub fn render_picomap(current_level: u8, room_matrix: &CoordStore<RoomId>) -> Co
             let color = if is_room.is_some() {
                 Color32::WHITE
             } else {
-                Color32::BLACK
+                Color32::TRANSPARENT
             };
             pixels.push(color);
         }

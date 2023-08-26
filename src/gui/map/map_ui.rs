@@ -68,6 +68,13 @@ impl Map {
         }
     }
 
+    fn move_viewpos_centred(&mut self, coord: [u8;2]) {
+        self.set_view_pos([
+            (coord[0] as f32 + 0.5) * self.state.rooms_size[0] as f32 - (self.windowsize_estim.x.max(self.state.rooms_size[0] as f32) / 2.),
+            (coord[1] as f32 + 0.5) * self.state.rooms_size[1] as f32 - (self.windowsize_estim.y.max(self.state.rooms_size[1] as f32) / 2.),
+        ]);
+    }
+
     pub fn ui_map(
         &mut self,
         warp_setter: &mut Option<(MapId,RoomId,(u32,u32))>,
@@ -83,6 +90,8 @@ impl Map {
         }
 
         let mut smart_preview_hovered = false;
+
+        let mods = ui.input(|i| i.modifiers );
 
         // on close of the map, palette textures should be unchained
         ui.horizontal(|ui| {
@@ -100,7 +109,7 @@ impl Map {
                         let id = self.id;
                         sam.mut_queue.push(Box::new(move |state: &mut SharedApp| {state.maps.open_maps.remove(&id);} ))
                     }
-                    ui.text_edit_singleline(&mut self.state.title);
+                    ui.add(egui::TextEdit::singleline(&mut self.state.title).desired_width(200. * sam.dpi_scale));
                     ui.label("| Zoom: ");
                     ui.add(egui::Slider::new(&mut self.state.map_zoom, -1..=1).drag_value_speed(0.0625));
                 });
@@ -133,6 +142,17 @@ impl Map {
                     if y != oldy {
                         eprintln!("MODY");
                         self.state.view_pos[1] = y * self.state.rooms_size[1] as f32;
+                    }
+                    ui.label("|");
+                    if ui.button("Jump2DSel").clicked() {
+                        if let Some([x,y,_]) = self.state.dsel_coord {
+                            self.move_viewpos_centred([x,y]);
+                        }
+                    }
+                    if ui.button("Jump2SSel").clicked() {
+                        if let Some([x,y,_]) = self.state.ssel_coord {
+                            self.move_viewpos_centred([x,y]);
+                        }
                     }
                 });
                 ui.horizontal(|ui| {
@@ -304,14 +324,36 @@ impl Map {
                     || render_picomap(self.state.current_level,&self.room_matrix),
                     ui.ctx()
                 );
+
+                let bg_rect = rector(
+                    (self.state.view_pos[0] / self.state.rooms_size[0] as f32).floor(),
+                    (self.state.view_pos[1] / self.state.rooms_size[1] as f32).floor(),
+                    ((self.state.view_pos[0] + self.windowsize_estim.x) / self.state.rooms_size[0] as f32).ceil(),
+                    ((self.state.view_pos[1] + self.windowsize_estim.y) / self.state.rooms_size[1] as f32).ceil(),
+                );
         
                 picomap.extend_rel_fixtex([
-                    egui::Shape::Mesh(basic_tex_shape(picomap_tex.id(), rector(0, 0, 256, 256)))
+                    egui::Shape::rect_filled(
+                        rector(0, 0, 256, 256),
+                        Rounding::none(),
+                        Color32::BLACK,
+                    ),
+                    egui::Shape::rect_filled(
+                        bg_rect,
+                        Rounding::none(),
+                        Color32::from_rgba_unmultiplied(0, 0, 255, 255),
+                    ),
+                    egui::Shape::Mesh(basic_tex_shape(picomap_tex.id(), rector(0, 0, 256, 256))),
+                    egui::Shape::rect_filled(
+                        bg_rect,
+                        Rounding::none(),
+                        Color32::from_rgba_unmultiplied(0, 0, 255, 64),
+                    )
                 ]);
 
                 if let Some(h) = picomap.hover_pos_rel() {
-                    if picomap.response.double_clicked_by(egui::PointerButton::Primary) {
-                        // TODO jump to
+                    if mods.ctrl && picomap.response.dragged_by(egui::PointerButton::Secondary) {
+                        self.move_viewpos_centred(<[f32;2]>::from(h).as_u8_clamped());
                     }
                 }
             });
@@ -326,6 +368,8 @@ impl Map {
                 Sense::click_and_drag(),
                 zoomf(self.state.map_zoom),
             );
+
+            self.windowsize_estim = super_map.area_size();
 
             let kp_plus = ui.input(|i| i.key_down(egui::Key::P) );
 
@@ -352,7 +396,7 @@ impl Map {
                 match self.state.edit_mode {
                     MapEditMode::DrawSel => {
                         if super_map.response.clicked_by(egui::PointerButton::Primary) {
-                            if !kp_plus {
+                            if !mods.ctrl {
                                 self.state.dsel_coord = Some(click_coord);
                                 self.state.dsel_room = self.room_matrix.get(click_coord).cloned();
                                 
@@ -505,7 +549,7 @@ impl Map {
         }
     }
 
-    fn set_view_pos(&mut self, view_pos: [f32;2]) {
+    pub(super) fn set_view_pos(&mut self, view_pos: [f32;2]) {
         self.state.view_pos = [
             view_pos[0].clamp(0., self.state.rooms_size[0] as f32 * 254.), // 265-2 is minimum size of view
             view_pos[1].clamp(0., self.state.rooms_size[1] as f32 * 254.),

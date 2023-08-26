@@ -19,6 +19,7 @@ use super::dsel_state::DSelMode;
 use super::room::Room;
 use super::room::draw_image::DrawImageGroup;
 use super::texture::TextureCell;
+use super::util::ArrUtl;
 
 pub mod room_ops;
 pub mod map_ui;
@@ -38,6 +39,7 @@ pub struct Map {
     pub latest_used_opevo: u64,
     pub undo_buf: VecDeque<RoomOp>,
     pub redo_buf: VecDeque<RoomOp>,
+    pub windowsize_estim: egui::Vec2,
 }
 
 pub type RoomMap = HopSlotMap<RoomId,Room>;
@@ -123,7 +125,6 @@ impl Map {
         let mut map = Self {
             id: MapId::new(),
             editsel: DrawImageGroup::unsel(state.rooms_size),
-            state,
             path,
             dirty_rooms: Default::default(),
             room_matrix: CoordStore::new(),
@@ -132,7 +133,11 @@ impl Map {
             undo_buf: VecDeque::with_capacity(64),
             redo_buf: VecDeque::with_capacity(64),
             latest_used_opevo: 0,
+            windowsize_estim: state.rooms_size.as_f32().into(),
+            state,
         };
+
+        map.set_view_pos(map.state.view_pos);
 
         let mut corrupted = vec![];
 
@@ -223,6 +228,7 @@ impl Map {
             undo_buf: VecDeque::with_capacity(64),
             redo_buf: VecDeque::with_capacity(64),
             latest_used_opevo: 0,
+            windowsize_estim: rooms_size.as_f32().into(),
         }
     }
 
