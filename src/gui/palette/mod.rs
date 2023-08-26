@@ -1,4 +1,5 @@
 use std::rc::Rc;
+use std::sync::Arc;
 
 use egui::{TextureHandle, Pos2, TextureOptions, Rounding};
 use image::{RgbaImage, ImageBuffer};
@@ -17,15 +18,16 @@ pub struct Palette {
 impl Palette {
     pub fn new() -> Self {
         Self {
-            paletted: (0..10).map(|_| PaletteItem { texture: None, uv: RECT_0_0_1_1, src: SelImg::empty() }).collect(),
+            paletted: (0..10).map(|_| PaletteItem { texture: None, uv: RECT_0_0_1_1, src: Arc::new(SelImg::empty()) }).collect(),
             selected: 0
         }
     }
 }
 
+#[derive(Clone)]
 pub struct PaletteItem {
     pub texture: Option<TextureHandle>,
-    pub src: SelImg,
+    pub src: Arc<SelImg>,
     pub uv: egui::Rect,
 }
 
@@ -141,10 +143,11 @@ fn xbounds_iter(len: u32) -> impl Iterator<Item = (u32,u32)> {
         })
 }
 
-
+#[derive(Clone)]
 pub struct SelImg {
     pub img: RgbaImage,
     pub selpts: Vec<SelPt>,
+    pub deoverlapped: Vec<[u16;2]>,
 }
 
 impl SelImg {
@@ -152,6 +155,7 @@ impl SelImg {
         Self {
             img: RgbaImage::new(0,0),
             selpts: vec![],
+            deoverlapped: vec![],
         }
     }
 

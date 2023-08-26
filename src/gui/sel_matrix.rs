@@ -136,7 +136,7 @@ impl SelEntry {
 }
 
 /// SelEntry is relative to that one SelEntry, while SelPt is "absolute" (relative to whole img)
-#[derive(PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct SelPt {
     pub start: [u16;2], // should be u16!
     pub size: [u8;2],

@@ -36,10 +36,19 @@ pub struct TilesetState {
 impl Tileset {
     pub fn ui(&mut self, ui: &mut egui::Ui, sam: &mut SAM) {
         ui.horizontal(|ui| {
-            if ui.button("Close").clicked() {
+            if ui.button("Save").clicked() {
                 if self.edit_path.is_some() {
                     self.save_editstate();
                 }
+            }
+            if ui.button("Save&Close").clicked() {
+                if self.edit_path.is_some() {
+                    self.save_editstate();
+                }
+                let id = self.id;
+                sam.mut_queue.push(Box::new(move |state: &mut SharedApp| {state.tilesets.open_tilesets.remove(&id);} ))
+            }
+            if ui.button("Abort&Close").double_clicked() {
                 let id = self.id;
                 sam.mut_queue.push(Box::new(move |state: &mut SharedApp| {state.tilesets.open_tilesets.remove(&id);} ))
             }
