@@ -33,7 +33,11 @@ pub struct SharedApp {
     pub mut_queue: MutQueue,
     pub warpon: Option<(MapId,RoomId,(u32,u32))>,
     pub palette: Palette,
-    pub dpi: f32,
+    pub sam: SAM,
+}
+
+pub struct SAM {
+    pub dpi_scale: f32,
 }
 
 impl SharedApp {
@@ -45,7 +49,9 @@ impl SharedApp {
             mut_queue: vec![],
             warpon: None,
             palette: Palette::new(),
-            dpi: 0.,
+            sam: SAM {
+                dpi_scale: 0.,
+            },
         }
     }
 }
@@ -54,9 +60,9 @@ impl eframe::App for SharedApp {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         //eprintln!("PPI: {}", ctx.pixels_per_point());
         
-        if self.dpi == 0. {
+        if self.sam.dpi_scale == 0. {
             eprintln!("DPI HACK");
-            self.dpi = dpi_hack(ctx, frame);
+            self.sam.dpi_scale = dpi_hack(ctx, frame);
         }
 
         

@@ -19,6 +19,8 @@ pub mod draw_image;
 
 #[derive(Deserialize,Serialize)]
 pub struct Room {
+    #[serde(default)]
+    pub desc_text: String,
     #[serde(flatten)]
     pub image: DrawImage,
     file_id: u64,
@@ -62,6 +64,7 @@ impl Room {
             visible_layers: vec![true;initial_layers],
             selected_layer: 0,
             dirconn: Default::default(),
+            desc_text: Default::default(),
         }
     }
 

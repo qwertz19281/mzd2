@@ -62,12 +62,12 @@ convtable!(
 
 /// Call only one, returns old dpi
 pub fn dpi_hack(ctx: &egui::Context, frame: &mut eframe::Frame) -> f32 {
-    let dpi = ctx.pixels_per_point();
+    let scale = ctx.pixels_per_point();
     
     let mut fontdef = egui::FontDefinitions::default();
 
     for (_,font) in &mut fontdef.font_data {
-        font.tweak.scale *= dpi;
+        font.tweak.scale *= scale;
     }
 
     let mut style = ctx.style();
@@ -91,37 +91,37 @@ pub fn dpi_hack(ctx: &egui::Context, frame: &mut eframe::Frame) -> f32 {
         
         {
             let s = &mut style.spacing;
-            s.button_padding *= dpi;
-            s.combo_height *= dpi;
-            s.combo_width *= dpi;
-            s.icon_spacing *= dpi;
-            s.icon_width *= dpi;
-            s.icon_width_inner *= dpi;
-            s.indent *= dpi;
-            s.interact_size *= dpi;
-            s.item_spacing *= dpi;
-            marge(&mut s.menu_margin, dpi);
-            s.scroll_bar_inner_margin *= dpi;
-            s.scroll_bar_outer_margin *= dpi;
-            s.scroll_bar_width *= dpi;
-            s.scroll_handle_min_length *= dpi;
-            s.slider_width *= dpi;
-            s.text_edit_width *= dpi;
-            s.tooltip_width *= dpi;
-            s.tooltip_width *= dpi;
-            marge(&mut s.window_margin, dpi);
+            s.button_padding *= scale;
+            s.combo_height *= scale;
+            s.combo_width *= scale;
+            s.icon_spacing *= scale;
+            s.icon_width *= scale;
+            s.icon_width_inner *= scale;
+            s.indent *= scale;
+            s.interact_size *= scale;
+            s.item_spacing *= scale;
+            marge(&mut s.menu_margin, scale);
+            s.scroll_bar_inner_margin *= scale;
+            s.scroll_bar_outer_margin *= scale;
+            s.scroll_bar_width *= scale;
+            s.scroll_handle_min_length *= scale;
+            s.slider_width *= scale;
+            s.text_edit_width *= scale;
+            s.tooltip_width *= scale;
+            s.tooltip_width *= scale;
+            marge(&mut s.window_margin, scale);
         }
         {
             let s = &mut style.visuals;
-            s.clip_rect_margin *= dpi;
-            rond(&mut s.menu_rounding, dpi);
-            s.popup_shadow.extrusion *= dpi;
-            s.resize_corner_size *= dpi;
-            s.selection.stroke.width *= dpi;
-            s.text_cursor_width *= dpi;
-            rond(&mut s.window_rounding, dpi);
-            s.window_shadow.extrusion *= dpi;
-            s.window_stroke.width *= dpi;
+            s.clip_rect_margin *= scale;
+            rond(&mut s.menu_rounding, scale);
+            s.popup_shadow.extrusion *= scale;
+            s.resize_corner_size *= scale;
+            s.selection.stroke.width *= scale;
+            s.text_cursor_width *= scale;
+            rond(&mut s.window_rounding, scale);
+            s.window_shadow.extrusion *= scale;
+            s.window_stroke.width *= scale;
         }
         {
             let s = &mut style.visuals.widgets;
@@ -133,11 +133,11 @@ pub fn dpi_hack(ctx: &egui::Context, frame: &mut eframe::Frame) -> f32 {
                 rond(&mut s.rounding, dpi);
             }
 
-            wv(&mut s.active, dpi);
-            wv(&mut s.hovered, dpi);
-            wv(&mut s.inactive, dpi);
-            wv(&mut s.noninteractive, dpi);
-            wv(&mut s.open, dpi);
+            wv(&mut s.active, scale);
+            wv(&mut s.hovered, scale);
+            wv(&mut s.inactive, scale);
+            wv(&mut s.noninteractive, scale);
+            wv(&mut s.open, scale);
         }
     }
 
@@ -145,5 +145,5 @@ pub fn dpi_hack(ctx: &egui::Context, frame: &mut eframe::Frame) -> f32 {
     ctx.set_fonts(fontdef);
     ctx.set_style(style);
 
-    dpi
+    scale
 }

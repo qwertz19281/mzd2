@@ -6,7 +6,7 @@ use crate::gui::init::SharedApp;
 use crate::gui::palette::Palette;
 use crate::gui::texture::basic_tex_shape;
 use crate::gui::util::{alloc_painter_rel, alloc_painter_rel_ds, draw_grid, ArrUtl};
-use crate::util::MapId;
+use crate::util::{MapId, gui_error};
 
 use super::room_ops::render_picomap;
 use super::{RoomId, MapEditMode, Map, zoomf};
@@ -19,6 +19,9 @@ impl Map {
         ui: &mut egui::Ui,
         mut_queue: &mut MutQueue,
     ) {
+        if let Some(r) = self.state.dsel_room.and_then(|r| self.state.rooms.get(r) ) {
+            self.state.dsel_coord = Some(r.coord);
+        }
         // on close of the map, palette textures should be unchained
         ui.horizontal(|ui| {
             ui.vertical(|ui| {
@@ -26,8 +29,12 @@ impl Map {
                     if ui.button("Save").clicked() {
                         self.save_map();
                     }
-                    if ui.button("Close").clicked() {
+                    if ui.button("Save&Close").clicked() {
                         self.save_map();
+                        let id = self.id;
+                        mut_queue.push(Box::new(move |state: &mut SharedApp| {state.maps.open_maps.remove(&id);} ))
+                    }
+                    if ui.button("Abort&Close").double_clicked() {
                         let id = self.id;
                         mut_queue.push(Box::new(move |state: &mut SharedApp| {state.maps.open_maps.remove(&id);} ))
                     }
@@ -67,22 +74,108 @@ impl Map {
                     }
                 });
                 ui.horizontal(|ui| {
-                    if let Some(v) = self.state.dsel_room.filter(|&v| self.state.rooms.contains_key(v) ) {
-                        if ui.button("Delete").double_clicked() {
-                            self.state.dsel_coord = None;
-                            self.state.dsel_room = None;
-                            todo!();
-                            //self.delete_room(v);
-                            self.editsel = DrawImageGroup::unsel(self.state.rooms_size);
-                        }
-                    } else if let Some(v) = self.state.dsel_coord {
-                        if ui.button("Create").clicked() {
-                            let room_id = self.get_or_create_room_at(v);
-                            self.state.dsel_room = Some(room_id);
-                            self.editsel = DrawImageGroup::single(room_id, v, self.state.rooms_size);
+                    let resp = ui.add_enabled(
+                        !self.undo_buf.is_empty(),
+                        egui::Button::new("Undo")
+                    )
+                        .on_hover_text(self.undo_buf.back().map_or(String::default(), |op| op.describe(&self.state)));
+
+                    if resp.clicked() && !self.undo_buf.is_empty() {
+                        let op = self.undo_buf.pop_back().unwrap();
+                        let mut mesbuf = String::new();
+                        if self.validate_apply(&op, &mut mesbuf) {
+                            let ur = self.apply_room_op(op);
+                            self.redo_buf.push_back(ur);
+                            self.after_room_op_apply_invalidation(true);
+                        } else {
+                            gui_error("Cannot apply undo", mesbuf);
                         }
                     }
+
+                    let resp = ui.add_enabled(
+                        !self.redo_buf.is_empty(),
+                        egui::Button::new("Redo")
+                    )
+                        .on_hover_text(self.redo_buf.back().map_or(String::default(), |op| op.describe(&self.state)));
+
+                    if resp.clicked() && !self.redo_buf.is_empty() {
+                        let op = self.redo_buf.pop_back().unwrap();
+                        let mut mesbuf = String::new();
+                        if self.validate_apply(&op, &mut mesbuf) {
+                            let ur = self.apply_room_op(op);
+                            self.undo_buf.push_back(ur);
+                            self.after_room_op_apply_invalidation(true);
+                        } else {
+                            gui_error("Cannot apply redo", mesbuf);
+                        }
+                    }
+
+                    ui.label("|");
+
+                    match self.state.edit_mode {
+                        MapEditMode::DrawSel => {
+                            ui.horizontal(|ui| {
+                                if let Some(v) = self.state.dsel_room.filter(|&v| self.state.rooms.contains_key(v) ) {
+                                    if ui.button("Delete Room").double_clicked() {
+                                        self.state.dsel_coord = None;
+                                        self.state.dsel_room = None;
+                                        self.editsel = DrawImageGroup::unsel(self.state.rooms_size);
+                                        if let Some(r) = self.create_delete_room(v) {
+                                            let ur = self.apply_room_op(r);
+                                            self.undo_buf.push_back(ur);
+                                            self.after_room_op_apply_invalidation(false);
+                                        }
+                                        
+                                    }
+                                } else if let Some(v) = self.state.dsel_coord {
+                                    if ui.button("Create Room").clicked() {
+                                        if let Some(roomcreate_op) = self.create_create_room(v) {
+                                            let ur = self.apply_room_op(roomcreate_op);
+                                            let room_id = match &ur {
+                                                &super::room_ops::RoomOp::Del(id) => id,
+                                                _ => panic!(),
+                                            };
+                                            self.undo_buf.push_back(ur);
+                                            self.after_room_op_apply_invalidation(false);
+            
+                                            self.state.dsel_room = Some(room_id);
+                                            self.editsel = DrawImageGroup::single(room_id, v, self.state.rooms_size);
+                                        }
+                                    }
+                                }
+                            });
+                        },
+                        _ => {
+                            if let Some(v) = self.state.ssel_room.filter(|&v| self.state.rooms.contains_key(v) ) {
+                                if ui.button("Delete Room").double_clicked() {
+                                    self.state.ssel_room = None;
+                                    if let Some(r) = self.create_delete_room(v) {
+                                        let ur = self.apply_room_op(r);
+                                        self.undo_buf.push_back(ur);
+                                        self.after_room_op_apply_invalidation(false);
+                                    }
+                                }
+                            }
+                        },
+                    }
                 });
+                match self.state.edit_mode {
+                    MapEditMode::DrawSel => {
+                        
+                        if let Some(v) = self.state.dsel_room.filter(|&v| self.state.rooms.contains_key(v) ) {
+                            let room = self.state.rooms.get_mut(v).unwrap();
+                            ui.add(
+                                egui::TextEdit::multiline(&mut room.desc_text)
+                                .id_source(("RoomDescTB",v))
+                            );
+                        }
+                    },
+                    _ => {
+                        ui.horizontal(|ui| {
+                            
+                        });
+                    }
+                };
             });
             ui.vertical(|ui| {
                 let picomap = alloc_painter_rel(
@@ -134,6 +227,10 @@ impl Map {
 
             super_map.voff -= Vec2::from(self.state.view_pos) * zoomf(self.state.map_zoom);
 
+            //eprintln!("---------");
+
+            let mut preview_smart_move: Option<u64> = None;
+
             if let Some(hover_abs) = super_map.hover_pos_rel() {
                 let click_coord = <[f32;2]>::from(hover_abs).as_u32().div(self.state.rooms_size);
                 let click_coord = [click_coord[0].min(255) as u8, click_coord[1].min(255) as u8, self.state.current_level];
@@ -173,7 +270,30 @@ impl Map {
                         //TODO
                     },
                 }
+
+                // eprintln!("HOV: {:?}", hover_abs);
             }
+
+            // if super_map.response.drag_started_by(egui::PointerButton::Primary) {
+            //     eprint!("DRAGSTART1 ");
+            // }
+            // if super_map.response.drag_started_by(egui::PointerButton::Secondary) {
+            //     eprint!("DRAGSTART2 ");
+            // }
+            // if super_map.response.dragged_by(egui::PointerButton::Primary) {
+            //     eprint!("DRAGGED1 ");
+            // }
+            // if super_map.response.dragged_by(egui::PointerButton::Secondary) {
+            //     eprint!("DRAGGED2 ");
+            // }
+            // if super_map.response.drag_released_by(egui::PointerButton::Primary) {
+            //     eprint!("DRAGEND1 ");
+            // }
+            // if super_map.response.drag_released_by(egui::PointerButton::Secondary) {
+            //     eprint!("DRAGEND2 ");
+            // }
+
+            // eprintln!("");
 
             // super_map.extend_rel_fixtex([
             //     egui::Shape::rect_filled(rector(0., 0., 3200., 2400.), Rounding::default(), Color32::RED)
@@ -183,11 +303,15 @@ impl Map {
 
             let view_pos_1 = self.state.view_pos.add(view_size.into());
 
+            if Some(self.latest_used_opevo) != preview_smart_move {
+                preview_smart_move = None;
+            }
+
             let mut shapes = vec![];
 
-            let grid_stroke = egui::Stroke::new(1., egui::Color32::BLACK);
-            let drawsel_stroke = egui::Stroke::new(1.5, egui::Color32::BLUE);
-            let ssel_stroke = egui::Stroke::new(2., egui::Color32::BLUE);
+            let grid_stroke = egui::Stroke::new(1., Color32::BLACK);
+            let drawsel_stroke = egui::Stroke::new(1.5, Color32::BLUE);
+            let ssel_stroke = egui::Stroke::new(2., Color32::BLUE);
 
             rooms_in_view(
                 self.state.view_pos,
@@ -205,6 +329,13 @@ impl Map {
                                 &self.path,
                                 ui.ctx(),
                             );
+                            if preview_smart_move == Some(room.op_evo) {
+                                let rect = rector(
+                                    cx as u32 * self.state.rooms_size[0], cy as u32 * self.state.rooms_size[1],
+                                    (cx as u32+1) * self.state.rooms_size[0], (cy as u32+1) * self.state.rooms_size[1],
+                                );
+                                shapes.push(egui::Shape::rect_filled(rect, Rounding::none(), Color32::from_rgba_unmultiplied(255, 255, 0, 64)));
+                            }
                         }
                     }
                 }

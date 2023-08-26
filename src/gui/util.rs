@@ -1,8 +1,9 @@
 use std::ops::{Range, RangeInclusive};
 use std::sync::Arc;
 
-use egui::{Shape, Pos2, Rect, Vec2, Sense};
+use egui::{Shape, Pos2, Rect, Vec2, Sense, PointerButton};
 
+use super::map::room_ops::OpAxis;
 use super::{StupidInto, line2};
 
 pub fn trans_shape(s: Shape, mul: f32, off: [f32;2]) -> Shape {
@@ -383,6 +384,30 @@ impl PainterRel {
         let shapes = shapes.into_iter().map(|i| trans_shape(i, zoom, off));
         self.painter.extend(shapes);
     }
+
+    pub fn drag_decode(&self, button: PointerButton, ui: &egui::Ui) -> DragOp {
+        if ui.input(|i| i.key_down(egui::Key::Escape) ) {
+            return DragOp::Abort;
+        }
+        let hov = self.hover_pos_rel();
+        if self.response.drag_released_by(button) {
+            if let Some(v) = self.hover_pos_rel() {
+                DragOp::End(v)
+            } else {
+                DragOp::Abort
+            }
+        } else if self.response.drag_started_by(button) {
+            if let Some(v) = self.hover_pos_rel() {
+                DragOp::Start(v)
+            } else {
+                DragOp::Abort
+            }
+        } else if self.response.dragged_by(button) {
+            DragOp::Tick(hov)
+        } else {
+            DragOp::Idle(hov)
+        }
+    }
 }
 
 pub fn draw_grid(grid_period: [u32;2], (clip0,clip1): ([f32;2],[f32;2]), stroke: egui::Stroke, picooff: f32, mut dest: impl FnMut(egui::Shape)) {
@@ -413,4 +438,21 @@ fn draw_grid_axis(grid_period: [u32;2], (clip0,clip1): ([f32;2],[f32;2]), mut de
 
 fn swapo<T>([a,b]: [T;2]) -> [T;2] {
     [b,a]
+}
+
+pub enum DragOp {
+    Start(Pos2),
+    Tick(Option<Pos2>),
+    End(Pos2),
+    Abort,
+    Idle(Option<Pos2>),
+}
+
+pub fn dpad(
+    desc: impl Into<String>,
+    ui: &mut egui::Ui,
+    hovered: impl FnMut(&mut egui::Ui,OpAxis,bool),
+    clicked: impl FnMut(&mut egui::Ui,OpAxis,bool),
+) {
+    
 }

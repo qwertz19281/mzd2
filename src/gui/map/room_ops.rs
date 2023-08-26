@@ -1,5 +1,5 @@
 use std::collections::VecDeque;
-use std::fmt::Write;
+use std::fmt::{Write, format};
 use std::sync::Arc;
 
 use egui::{ColorImage, Color32};
@@ -9,9 +9,7 @@ use crate::gui::room::{Room, self};
 use crate::map::coord_store::CoordStore;
 use crate::util::next_op_gen_evo;
 
-use super::{RoomId, Map, UROrphanId};
-
-pub type RoomOps = Vec<RoomOp>;
+use super::{RoomId, Map, UROrphanId, MapState};
 
 pub enum RoomOp {
     Move(RoomId,[u8;3]),
@@ -21,6 +19,46 @@ pub enum RoomOp {
     Del(RoomId),
     Ins(Box<Room>),
     Multi(Vec<RoomOp>),
+}
+
+impl RoomOp {
+    pub fn describe(&self, state: &MapState) -> String {
+        match self {
+            &RoomOp::Move(id, dest) => format!("Move room{} to x{}y{}z{}",try_print_roomcoord2(state,id),dest[0],dest[1],dest[2]),
+            &RoomOp::SiftSmart(_, _, n, ax, dir, un) => format!("SiftSmart n{n} dir {} {}",describe_direction(ax,dir),if un {"unconnect_new"} else {""}),
+            &RoomOp::SiftAway(_, n, ax, dir) => format!("SiftAway n{n} {}",describe_direction(ax,dir)),
+            &RoomOp::Collapse(_, n, ax, dir) => format!("Collapse n{n} {}",describe_direction(ax,dir)),
+            &RoomOp::Del(id) => format!("Delete room {}",try_print_roomcoord(state,id)),
+            RoomOp::Ins(room) => format!("Insert room at x{}y{}z{}",room.coord[0],room.coord[1],room.coord[2]),
+            RoomOp::Multi(n) => format!("Multiple ops n{}",n.len()),
+        }
+    }
+}
+
+pub fn describe_direction(axis: OpAxis, dir: bool) -> &'static str {
+    match (axis,dir) {
+        (OpAxis::X, true) => "Right (East)",
+        (OpAxis::X, false) => "Left (West)",
+        (OpAxis::Y, true) => "Down (South)",
+        (OpAxis::Y, false) => "Up (North)",
+        (OpAxis::Z, true) => "Z+ (Sky)",
+        (OpAxis::Z, false) => "Z- (Ground)",
+    }
+}
+
+fn try_print_roomcoord(s: &MapState, room_id: RoomId) -> String {
+    if let Some(room) = s.rooms.get(room_id) {
+        format!("x{}y{}z{}",room.coord[0],room.coord[1],room.coord[2])
+    } else {
+        String::new()
+    }
+}
+fn try_print_roomcoord2(s: &MapState, room_id: RoomId) -> String {
+    if let Some(room) = s.rooms.get(room_id) {
+        format!(" from x{}y{}z{}",room.coord[0],room.coord[1],room.coord[2])
+    } else {
+        String::new()
+    }
 }
 
 impl Map {
@@ -111,6 +149,13 @@ impl Map {
 
         ok
     }
+
+    pub fn after_room_op_apply_invalidation(&mut self, redo: bool) {
+        self.smartmove_preview = None;
+        if !redo {
+            self.redo_buf.clear();
+        }
+    }
 }
 
 impl Map {
@@ -146,7 +191,11 @@ impl Map {
 
     fn insert_room_force(&mut self, room: Room) -> (RoomId,Option<RoomId>) {
         let coord = room.coord;
+        let dirty_file = room.dirty_file;
         let room_id = self.state.rooms.insert(room);
+        if dirty_file {
+            self.dirty_rooms.insert(room_id);
+        }
         let prev_room = self.room_matrix.insert(coord, room_id);
         (room_id, prev_room)
     }
@@ -176,6 +225,7 @@ impl Map {
         if let Some(removed) = self.state.rooms.remove(id) {
             assert!(self.room_matrix.get(removed.coord) == Some(&id));
             self.room_matrix.remove(removed.coord, true);
+            //TODO should we save the rooms here if dirty_file?
             Some(removed)
         } else {
             None
@@ -188,6 +238,22 @@ impl Map {
         } else {
             None
         }
+    }
+
+    pub fn create_create_room(&mut self, coord: [u8;3]) -> Option<RoomOp> {
+        if self.room_matrix.get(coord).is_some() {return None;}
+
+        let file_n = self.state.file_counter;
+        self.state.file_counter += 1;
+        let room = Room::create_empty(
+            file_n,
+            coord,
+            self.state.rooms_size,
+            RgbaImage::new(self.state.rooms_size[0], self.state.rooms_size[1] * 1),
+            1
+        );
+
+        self.create_add_room(room)
     }
 
     pub fn create_add_room(&self, room: Room) -> Option<RoomOp> {
@@ -214,6 +280,7 @@ impl Map {
     fn shift_away(&mut self, base_coord: [u8;3], n_sift: u8, axis: OpAxis, dir: bool) -> bool {
         if !self.check_shift_away(base_coord, n_sift, axis, dir) {return false;}
         let op_evo = next_op_gen_evo();
+        self.latest_used_opevo = op_evo;
         for (id,room) in self.state.rooms.iter_mut() {
             if in_sift_range(room.coord, base_coord, axis, dir) {
                 let removed = self.room_matrix.remove(room.coord, false);
@@ -241,6 +308,7 @@ impl Map {
     fn collapse(&mut self, base_coord: [u8;3], n_sift: u8, axis: OpAxis, dir: bool) -> bool {
         if !self.check_collapse(base_coord, n_sift, axis, dir) {return false;}
         let op_evo = next_op_gen_evo();
+        self.latest_used_opevo = op_evo;
         for (id,room) in self.state.rooms.iter_mut() {
             if in_unsift_range(room.coord, n_sift, base_coord, axis, dir) {
                 let removed = self.room_matrix.remove(room.coord, false);
@@ -272,6 +340,7 @@ impl Map {
         let mut all_list = Vec::with_capacity(65536);
 
         let op_evo = next_op_gen_evo();
+        self.latest_used_opevo = op_evo;
 
         flood_spin.push_back((my_room,None));
 

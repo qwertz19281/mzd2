@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use std::io::ErrorKind;
 use std::path::PathBuf;
 
@@ -9,6 +10,8 @@ use slotmap::{HopSlotMap, SlotMap};
 
 use crate::map::coord_store::CoordStore;
 use crate::util::*;
+
+use self::room_ops::{OpAxis, RoomOp};
 
 use super::draw_state::DrawMode;
 use super::dsel_state::DSelMode;
@@ -30,6 +33,10 @@ pub struct Map {
     pub room_matrix: CoordStore<RoomId>,
     pub picomap_tex: TextureCell,
     pub editsel: DrawImageGroup,
+    pub smartmove_preview: Option<(OpAxis,bool,Vec<RoomId>,u64)>,
+    pub latest_used_opevo: u64,
+    pub undo_buf: VecDeque<RoomOp>,
+    pub redo_buf: VecDeque<RoomOp>,
 }
 
 pub type RoomMap = HopSlotMap<RoomId,Room>;
@@ -115,6 +122,10 @@ impl Map {
             dirty_rooms: Default::default(),
             room_matrix: CoordStore::new(),
             picomap_tex: create_picomap_texcell(),
+            smartmove_preview: None,
+            undo_buf: VecDeque::with_capacity(64),
+            redo_buf: VecDeque::with_capacity(64),
+            latest_used_opevo: 0,
         };
 
         let mut corrupted = vec![];
@@ -199,6 +210,10 @@ impl Map {
             room_matrix: CoordStore::new(),
             picomap_tex: create_picomap_texcell(),
             editsel: DrawImageGroup::unsel(rooms_size),
+            smartmove_preview: None,
+            undo_buf: VecDeque::with_capacity(64),
+            redo_buf: VecDeque::with_capacity(64),
+            latest_used_opevo: 0,
         }
     }
 
