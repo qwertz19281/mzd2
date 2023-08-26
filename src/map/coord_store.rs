@@ -43,14 +43,6 @@ impl<T> CoordStore<T> {
     pub fn get(&self, [x,y,z]: [u8;3]) -> Option<&T> {
         let x1 = x / 16; let y1 = y / 16; let z1 = z / 16;
         let x2 = x % 16; let y2 = y % 16; let z2 = z % 16;
-        unsafe {
-            if x1 >= 16 { unreachable_unchecked(); }
-            if y1 >= 16 { unreachable_unchecked(); }
-            if z1 >= 16 { unreachable_unchecked(); }
-            if x2 >= 16 { unreachable_unchecked(); }
-            if y2 >= 16 { unreachable_unchecked(); }
-            if z2 >= 16 { unreachable_unchecked(); }
-        }
         let sub = &self.v[z1 as usize][y1 as usize][x1 as usize];
         let Some(sub) = sub else {return None};
         let cell = &sub.v[z2 as usize][y2 as usize][x2 as usize];
@@ -60,14 +52,6 @@ impl<T> CoordStore<T> {
     pub fn get_mut(&mut self, [x,y,z]: [u8;3]) -> Option<&mut T> {
         let x1 = x / 16; let y1 = y / 16; let z1 = z / 16;
         let x2 = x % 16; let y2 = y % 16; let z2 = z % 16;
-        unsafe {
-            if x1 >= 16 { unreachable_unchecked(); }
-            if y1 >= 16 { unreachable_unchecked(); }
-            if z1 >= 16 { unreachable_unchecked(); }
-            if x2 >= 16 { unreachable_unchecked(); }
-            if y2 >= 16 { unreachable_unchecked(); }
-            if z2 >= 16 { unreachable_unchecked(); }
-        }
         let sub = &mut self.v[z1 as usize][y1 as usize][x1 as usize];
         let Some(sub) = sub else {return None};
         let cell = &mut sub.v[z2 as usize][y2 as usize][x2 as usize];
@@ -77,14 +61,6 @@ impl<T> CoordStore<T> {
     pub fn insert(&mut self, [x,y,z]: [u8;3], v: T) -> Option<T> {
         let x1 = x / 16; let y1 = y / 16; let z1 = z / 16;
         let x2 = x % 16; let y2 = y % 16; let z2 = z % 16;
-        unsafe {
-            if x1 >= 16 { unreachable_unchecked(); }
-            if y1 >= 16 { unreachable_unchecked(); }
-            if z1 >= 16 { unreachable_unchecked(); }
-            if x2 >= 16 { unreachable_unchecked(); }
-            if y2 >= 16 { unreachable_unchecked(); }
-            if z2 >= 16 { unreachable_unchecked(); }
-        }
         let sub = &mut self.v[z1 as usize][y1 as usize][x1 as usize];
         let sub = sub.get_or_insert_with(|| Box::new(CoordStoreSub::new()));
         let cell = &mut sub.v[z2 as usize][y2 as usize][x2 as usize];
@@ -98,14 +74,6 @@ impl<T> CoordStore<T> {
     pub fn remove(&mut self, [x,y,z]: [u8;3], autofree: bool) -> Option<T> {
         let x1 = x / 16; let y1 = y / 16; let z1 = z / 16;
         let x2 = x % 16; let y2 = y % 16; let z2 = z % 16;
-        unsafe {
-            if x1 >= 16 { unreachable_unchecked(); }
-            if y1 >= 16 { unreachable_unchecked(); }
-            if z1 >= 16 { unreachable_unchecked(); }
-            if x2 >= 16 { unreachable_unchecked(); }
-            if y2 >= 16 { unreachable_unchecked(); }
-            if z2 >= 16 { unreachable_unchecked(); }
-        }
         let osub = &mut self.v[z1 as usize][y1 as usize][x1 as usize];
         let Some(sub) = osub else {return None};
         let cell = &mut sub.v[z2 as usize][y2 as usize][x2 as usize];
@@ -130,14 +98,6 @@ impl<T> CoordStore<T> {
     pub fn get_or_insert_with(&mut self, [x,y,z]: [u8;3], v: impl FnOnce() -> T) -> &mut T {
         let x1 = x / 16; let y1 = y / 16; let z1 = z / 16;
         let x2 = x % 16; let y2 = y % 16; let z2 = z % 16;
-        unsafe {
-            if x1 >= 16 { unreachable_unchecked(); }
-            if y1 >= 16 { unreachable_unchecked(); }
-            if z1 >= 16 { unreachable_unchecked(); }
-            if x2 >= 16 { unreachable_unchecked(); }
-            if y2 >= 16 { unreachable_unchecked(); }
-            if z2 >= 16 { unreachable_unchecked(); }
-        }
         let sub = &mut self.v[z1 as usize][y1 as usize][x1 as usize];
         let sub = sub.get_or_insert_with(|| Box::new(CoordStoreSub::new()));
         let cell = &mut sub.v[z2 as usize][y2 as usize][x2 as usize];

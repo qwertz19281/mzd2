@@ -47,8 +47,17 @@ impl Map {
         }
         let coord = self.state.rooms.get(self.state.ssel_room.unwrap()).unwrap().coord;
         let mut regen = true;
-        if let &Some((a,b,_,c,d,_,e,f,g)) = &self.smartmove_preview {
-            if (a,b,c,d,e,f,g) == (coord,self.state.sift_size,axis,dir,self.latest_used_opevo,false,false) {
+        if let Some(v) = &self.smartmove_preview {
+            if
+                v.base_coord == coord &&
+                v.n_sift_old == self.state.sift_size &&
+                v.axis == axis &&
+                v.dir == dir &&
+                v.op_evo == self.latest_used_opevo &&
+                v.away_lock == false &&
+                v.no_new_connect == false &&
+                v.allow_siftshrink == true
+            {
                 regen = false;
             }
         }
@@ -57,14 +66,11 @@ impl Map {
             return;
         }
         if regen {
-            self.smartmove_preview = None;
-            if let Some((c,d,e)) = self.shift_smart_collect(coord, self.state.sift_size, axis, dir, false, false, true) {
-                self.smartmove_preview = Some((coord,self.state.sift_size,e,axis,dir,c,d,false,false));
-            }
+            self.smartmove_preview = self.shift_smart_collect(coord, self.state.sift_size, axis, dir, false, false, true);
         }
         if !clicked {return;}
-        if let Some((_,_,n_sift,_,_,collected,op_evo,_,_)) = self.smartmove_preview.as_ref() {
-            let op = RoomOp::SiftSmart(collected.clone(), *op_evo, *n_sift, axis, dir, true);
+        if let Some(opts) = self.smartmove_preview.as_ref() {
+            let op = RoomOp::SiftSmart(opts.clone(), true);
             self.ui_apply_roomop(op);
         }
     }
@@ -146,13 +152,15 @@ impl Map {
                     }
                     ui.label("|");
                     if ui.button("Jump2DSel").clicked() {
-                        if let Some([x,y,_]) = self.state.dsel_coord {
+                        if let Some([x,y,z]) = self.state.dsel_coord {
                             self.move_viewpos_centred([x,y]);
+                            self.state.current_level = z;
                         }
                     }
                     if ui.button("Jump2SSel").clicked() {
-                        if let Some([x,y,_]) = self.state.ssel_coord {
+                        if let Some([x,y,z]) = self.state.ssel_coord {
                             self.move_viewpos_centred([x,y]);
+                            self.state.current_level = z;
                         }
                     }
                 });
@@ -465,9 +473,9 @@ impl Map {
 
             let view_pos_1 = self.state.view_pos.add(view_size.into());
 
-            if let Some((_,_,_,_,_,_,e,_,_)) = &self.smartmove_preview {
-                if smart_preview_hovered && *e == self.latest_used_opevo {
-                    preview_smart_move = Some(*e);
+            if let Some(opts) = &self.smartmove_preview {
+                if smart_preview_hovered && opts.op_evo == self.latest_used_opevo {
+                    preview_smart_move = Some(opts.op_evo);
                 }
             }
 
@@ -527,22 +535,26 @@ impl Map {
             );
 
             if self.state.edit_mode == MapEditMode::DrawSel {
-                if let Some([x,y,_]) = self.state.dsel_coord {
-                    let rect = rector(
-                        x as u32 * self.state.rooms_size[0], y as u32 * self.state.rooms_size[1],
-                        (x as u32+1) * self.state.rooms_size[0], (y as u32+1) * self.state.rooms_size[1],
-                    );
-                    shapes.push(egui::Shape::rect_stroke(rect, Rounding::none(), drawsel_stroke));
+                if let Some([x,y,z]) = self.state.dsel_coord {
+                    if z == self.state.current_level {
+                        let rect = rector(
+                            x as u32 * self.state.rooms_size[0], y as u32 * self.state.rooms_size[1],
+                            (x as u32+1) * self.state.rooms_size[0], (y as u32+1) * self.state.rooms_size[1],
+                        );
+                        shapes.push(egui::Shape::rect_stroke(rect, Rounding::none(), drawsel_stroke));
+                    }
                 }
             }
 
             if self.state.edit_mode != MapEditMode::DrawSel {
-                if let Some([x,y,_]) = self.state.ssel_coord {
-                    let rect = rector(
-                        x as u32 * self.state.rooms_size[0] + 8, y as u32 * self.state.rooms_size[1] + 8,
-                        (x as u32+1) * self.state.rooms_size[0] - 8, (y as u32+1) * self.state.rooms_size[1] - 8,
-                    );
-                    shapes.push(egui::Shape::rect_stroke(rect, Rounding::none(), ssel_stroke));
+                if let Some([x,y,z]) = self.state.ssel_coord {
+                    if z == self.state.current_level {
+                        let rect = rector(
+                            x as u32 * self.state.rooms_size[0] + 8, y as u32 * self.state.rooms_size[1] + 8,
+                            (x as u32+1) * self.state.rooms_size[0] - 8, (y as u32+1) * self.state.rooms_size[1] - 8,
+                        );
+                        shapes.push(egui::Shape::rect_stroke(rect, Rounding::none(), ssel_stroke));
+                    }
                 }
             }
 

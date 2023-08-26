@@ -13,7 +13,7 @@ use super::{RoomId, Map, UROrphanId, MapState};
 
 pub enum RoomOp {
     Move(RoomId,[u8;3]),
-    SiftSmart(Arc<[RoomId]>,u64,u8,OpAxis,bool,bool),
+    SiftSmart(ShiftSmartCollected,bool),
     SiftAway([u8;3],u8,OpAxis,bool),
     Collapse([u8;3],u8,OpAxis,bool,bool),
     Del(RoomId),
@@ -24,13 +24,20 @@ pub enum RoomOp {
 impl RoomOp {
     pub fn describe(&self, state: &MapState) -> String {
         match self {
-            &RoomOp::Move(id, dest) => format!("Move room{} to x{}y{}z{}",try_print_roomcoord2(state,id),dest[0],dest[1],dest[2]),
-            RoomOp::SiftSmart(rooms, _, n, ax, dir, un) => format!("SiftSmart n{n} x{} dir {} {}",rooms.len(),describe_direction(*ax,*dir),if *un {"unconnect_new"} else {""}),
-            &RoomOp::SiftAway(_, n, ax, dir) => format!("SiftAway n{n} {}",describe_direction(ax,dir)),
-            &RoomOp::Collapse(_, n, ax, dir, _) => format!("Collapse n{n} {}",describe_direction(ax,dir)),
-            &RoomOp::Del(id) => format!("Delete room {}",try_print_roomcoord(state,id)),
-            RoomOp::Ins(room) => format!("Insert room at x{}y{}z{}",room.coord[0],room.coord[1],room.coord[2]),
-            RoomOp::Multi(n) => format!("Multiple ops n{}",n.len()),
+            &RoomOp::Move(id, dest) =>
+                format!("Move room{} to x{}y{}z{}",try_print_roomcoord2(state,id),dest[0],dest[1],dest[2]),
+            RoomOp::SiftSmart(ShiftSmartCollected { rooms, n_sift, axis,dir, .. }, un) =>
+                format!("SiftSmart n{n_sift} x{} dir {} {}",rooms.len(),describe_direction(*axis,*dir),if *un {"unconnect_new"} else {""}),
+            &RoomOp::SiftAway(_, n, ax, dir) =>
+                format!("SiftAway n{n} {}",describe_direction(ax,dir)),
+            &RoomOp::Collapse(_, n, ax, dir, _) =>
+                format!("Collapse n{n} {}",describe_direction(ax,dir)),
+            &RoomOp::Del(id) =>
+                format!("Delete room {}",try_print_roomcoord(state,id)),
+            RoomOp::Ins(room) =>
+                format!("Insert room at x{}y{}z{}",room.coord[0],room.coord[1],room.coord[2]),
+            RoomOp::Multi(n) =>
+                format!("Multiple ops n{}",n.len()),
         }
     }
 }
@@ -94,10 +101,10 @@ impl Map {
 
                 RoomOp::SiftAway(a, b, c, d)
             },
-            RoomOp::SiftSmart(rooms, op_evo, n_sift, axis, dir, unconnect_new) => {
-                self.shift_smart_apply(&rooms, op_evo, n_sift, axis, dir, unconnect_new);
+            RoomOp::SiftSmart(opts, unconnect_new) => {
+                self.shift_smart_apply(&opts, unconnect_new);
 
-                RoomOp::SiftSmart(rooms.clone(), op_evo, n_sift, axis, !dir, false)
+                RoomOp::SiftSmart(opts.clone().flip_dir(), false)
             },
             RoomOp::Multi(v) => {
                 let v = v.into_iter()
@@ -139,7 +146,7 @@ impl Map {
             RoomOp::Collapse(a, b, c, d, _) => {
                 testo!(self.check_collapse(*a, *b, *c, *d), "check_collapse failure");
             },
-            RoomOp::SiftSmart(_, _, _, _, _, _) => {
+            RoomOp::SiftSmart(_, _) => {
                 // UNCHECKED
             },
             RoomOp::Multi(v) => {
@@ -383,7 +390,7 @@ impl Map {
         Some(my_room)
     }
 
-    pub(super) fn shift_smart_collect(&mut self, base_coord: [u8;3], mut n_sift: u8, axis: OpAxis, dir: bool, away_lock: bool, no_new_connect: bool, allow_siftshrink: bool) -> Option<(Arc<[RoomId]>,u64,u8)> {
+    pub(super) fn shift_smart_collect(&mut self, base_coord: [u8;3], mut n_sift: u8, axis: OpAxis, dir: bool, away_lock: bool, no_new_connect: bool, allow_siftshrink: bool) -> Option<ShiftSmartCollected> {
         let Some(my_room) = self.check_shift_smart1(base_coord, n_sift, axis, dir) else {return None};
         
         let (mut area_min, mut area_max) = ([255,255,255],[0,0,0]);
@@ -423,6 +430,8 @@ impl Map {
         }
 
         drop(flood_spin);
+
+        let n_sift_old = n_sift;
 
         for &id in &all_list {
             let room = unsafe { self.state.rooms.get_unchecked_mut(id) };
@@ -472,18 +481,29 @@ impl Map {
             }
         }
 
-        Some((all_list.into(),op_evo,n_sift))
+        Some(ShiftSmartCollected {
+            base_coord,
+            n_sift_old,
+            n_sift,
+            axis,
+            dir,
+            away_lock,
+            no_new_connect,
+            allow_siftshrink,
+            rooms: all_list.into(),
+            op_evo,
+        })
     }
 
     /// try move room and base_coord and all directly connected into a direction
-    fn shift_smart_apply(&mut self, all_list: &[RoomId], op_evo: u64, n_sift: u8, axis: OpAxis, dir: bool, unconnect_new: bool) {
-        for &id in all_list {
+    fn shift_smart_apply(&mut self, o: &ShiftSmartCollected, unconnect_new: bool) {
+        for &id in &*o.rooms {
             let Some(room) = self.state.rooms.get_mut(id) else {continue};
 
             let removed = self.room_matrix.remove(room.coord, false);
             assert!(removed == Some(id));
 
-            room.coord = apply_sift(room.coord, n_sift, axis, dir);
+            room.coord = apply_sift(room.coord, o.n_sift, o.axis, o.dir);
 
             let dconn = room.dirconn;
 
@@ -493,7 +513,7 @@ impl Map {
                         if let Some(&sid) = self.room_matrix.get(side_coord) {
                             // now we have a new neighbor at that side, if not ours, we shall unconnect
                             if let Some(nroom) = self.state.rooms.get_mut(sid) {
-                                if nroom.op_evo != op_evo && nroom.dirconn[sidetest_a as usize][!sidetest_b as usize] {
+                                if nroom.op_evo != o.op_evo && nroom.dirconn[sidetest_a as usize][!sidetest_b as usize] {
                                     nroom.dirconn[sidetest_a as usize][!sidetest_b as usize] = false;
                                     let room = unsafe { self.state.rooms.get_unchecked_mut(id) };
                                     room.dirconn[sidetest_a as usize][sidetest_b as usize] = false;
@@ -504,7 +524,7 @@ impl Map {
                 });
             }
         }
-        for &id in all_list {
+        for &id in &*o.rooms {
             let Some(room) = self.state.rooms.get_mut(id) else {continue};
 
             self.room_matrix.insert(room.coord, id);
@@ -636,5 +656,26 @@ fn try_side<R>(v: [u8;3], axis: OpAxis, dir: bool, fun: impl FnOnce([u8;3],u8,bo
         (OpAxis::Z, true ) if v[2] != 255 => Some(fun([v[0]  , v[1]  , v[2]+1], 2,true)),
         (OpAxis::Z, false) if v[2] !=   0 => Some(fun([v[0]  , v[1]  , v[2]-1], 2,false)),
         _ => None,
+    }
+}
+
+#[derive(Clone)]
+pub struct ShiftSmartCollected {
+    pub(super) base_coord: [u8;3],
+    pub(super) n_sift_old: u8,
+    pub(super) n_sift: u8,
+    pub(super) axis: OpAxis,
+    pub(super) dir: bool,
+    pub(super) away_lock: bool,
+    pub(super) no_new_connect: bool,
+    pub(super) allow_siftshrink: bool,
+    pub(super) rooms: Arc<[RoomId]>,
+    pub(super) op_evo: u64,
+}
+
+impl ShiftSmartCollected {
+    fn flip_dir(mut self) -> Self {
+        self.dir = !self.dir;
+        self
     }
 }
