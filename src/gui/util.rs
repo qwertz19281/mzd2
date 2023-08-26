@@ -1,10 +1,10 @@
 use std::ops::{Range, RangeInclusive};
 use std::sync::Arc;
 
-use egui::{Shape, Pos2, Rect, Vec2, Sense, PointerButton};
+use egui::{Shape, Pos2, Rect, Vec2, Sense, PointerButton, Align2, FontId, Color32, Rounding};
 
 use super::map::room_ops::OpAxis;
-use super::{StupidInto, line2};
+use super::{StupidInto, line2, rector};
 
 pub fn trans_shape(s: Shape, mul: f32, off: [f32;2]) -> Shape {
     match s {
@@ -413,11 +413,11 @@ impl PainterRel {
 pub fn draw_grid(grid_period: [u32;2], (clip0,clip1): ([f32;2],[f32;2]), stroke: egui::Stroke, picooff: f32, mut dest: impl FnMut(egui::Shape)) {
     draw_grid_axis(
         grid_period, (clip0, clip1),
-        |a,b| dest(egui::Shape::line(line2(a[0]+picooff, a[1]+picooff, b[0]+picooff, b[1]+picooff), stroke))
+        |a,b| dest(egui::Shape::line_segment(line2(a[0]+picooff, a[1]+picooff, b[0]+picooff, b[1]+picooff), stroke))
     );
     draw_grid_axis(
         swapo(grid_period), (swapo(clip0), swapo(clip1)),
-        |a,b| dest(egui::Shape::line(line2(a[1]+picooff, a[0]+picooff, b[1]+picooff, b[0]+picooff), stroke))
+        |a,b| dest(egui::Shape::line_segment(line2(a[1]+picooff, a[0]+picooff, b[1]+picooff, b[0]+picooff), stroke))
     );
 }
 
@@ -449,10 +449,211 @@ pub enum DragOp {
 }
 
 pub fn dpad(
-    desc: impl Into<String>,
+    desc: impl ToString,
+    text_size: f32,
+    base_size: f32,
+    dpi: f32,
     ui: &mut egui::Ui,
-    hovered: impl FnMut(&mut egui::Ui,OpAxis,bool),
-    clicked: impl FnMut(&mut egui::Ui,OpAxis,bool),
+    mut hovered: impl FnMut(&mut egui::Ui,OpAxis,bool),
+    mut clicked: impl FnMut(&mut egui::Ui,OpAxis,bool),
 ) {
-    
+    let pa = alloc_painter_rel(
+        ui,
+        Vec2 { x: base_size * 3., y: text_size + base_size * 2. },
+        Sense::click(),
+        1.,
+    );
+
+    let border = base_size * 0.1;
+
+    let in_left = |x: f32, y: f32| {
+        let xdiff = (x-base_size).abs();
+        let ydiff = (y-(text_size+base_size)).abs();
+        x < base_size-border && y >= text_size && xdiff-border > ydiff
+    };
+    let in_right = |x: f32, y: f32| {
+        let xdiff = (x-base_size).abs();
+        let ydiff = (y-(text_size+base_size)).abs();
+        x >= base_size+border && x < base_size*2. && y >= text_size && xdiff-border > ydiff
+    };
+    let in_up = |x: f32, y: f32| {
+        let xdiff = (x-base_size).abs();
+        let ydiff = (y-(text_size+base_size)).abs();
+        y < text_size+base_size-border && y >= text_size && x < base_size*2. && ydiff-border > xdiff
+    };
+    let in_down = |x: f32, y: f32| {
+        let xdiff = (x-base_size).abs();
+        let ydiff = (y-(text_size+base_size)).abs();
+        y >= text_size+base_size+border && x < base_size*2. && ydiff-border > xdiff
+    };
+    let in_plus = |x: f32, y: f32| {
+        x >= base_size*2.+border && x < base_size*3.-border && y >= text_size+border && y < text_size+base_size-border
+    };
+    let in_minus = |x: f32, y: f32| {
+        x >= base_size*2.+border && x < base_size*3.-border && y >= text_size+base_size+border && y < text_size+base_size*2.-border
+    };
+
+    let akw_stroke = egui::Stroke::new(dpi, Color32::WHITE);
+    let fill_hover = Color32::from_rgba_unmultiplied(255, 255, 255, 64);
+    let fill_down = Color32::from_rgba_unmultiplied(255, 0, 0, 255);
+
+    let mut shapes = Vec::new();
+
+    if let Some(hover) = pa.hover_pos_rel() {
+        let vdown = pa.response.is_pointer_button_down_on();
+        let vclicked = pa.response.clicked_by(PointerButton::Primary);
+
+        let mut handel = |axis,dir,pos2| {
+            let color = if vdown {
+                fill_down
+            } else {
+                fill_hover
+            };
+
+            shapes.push(egui::Shape::Path(egui::epaint::PathShape::convex_polygon(pos2, color, egui::Stroke::new(1., color))));
+
+            if vclicked {
+                clicked(ui,axis,dir);
+            } else {
+                hovered(ui,axis,dir);
+            }
+        };
+
+        if in_left(hover.x,hover.y) {
+            handel(
+                OpAxis::X,
+                false,
+                vec![
+                    Pos2 { x: 0. , y: text_size },
+                    Pos2 { x: base_size, y: text_size+base_size },
+                    Pos2 { x: 0., y: text_size+base_size*2. },
+                ],
+            )
+        }
+        if in_right(hover.x,hover.y) {
+            handel(
+                OpAxis::X,
+                true,
+                vec![
+                    Pos2 { x: base_size, y: text_size+base_size },
+                    Pos2 { x: base_size*2. , y: text_size },
+                    Pos2 { x: base_size*2., y: text_size+base_size*2. },
+                ],
+            )
+        }
+        if in_up(hover.x,hover.y) {
+            handel(
+                OpAxis::Y,
+                false,
+                vec![
+                    Pos2 { x: 0. , y: text_size },
+                    Pos2 { x: base_size*2., y: text_size },
+                    Pos2 { x: base_size, y: text_size+base_size },
+                ],
+            )
+        }
+        if in_down(hover.x,hover.y) {
+            handel(
+                OpAxis::Y,
+                true,
+                vec![
+                    Pos2 { x: base_size, y: text_size+base_size },
+                    Pos2 { x: base_size*2., y: text_size+base_size*2. },
+                    Pos2 { x: 0. , y: text_size+base_size*2. },
+                ],
+            )
+        }
+        if in_plus(hover.x,hover.y) {
+            handel(
+                OpAxis::Z,
+                true,
+                vec![
+                    Pos2 { x: base_size*2., y: text_size },
+                    Pos2 { x: base_size*3., y: text_size },
+                    Pos2 { x: base_size*3., y: text_size+base_size },
+                    Pos2 { x: base_size*2., y: text_size+base_size },
+                ],
+            )
+        }
+        if in_minus(hover.x,hover.y) {
+            handel(
+                OpAxis::Z,
+                false,
+                vec![
+                    Pos2 { x: base_size*2., y: text_size+base_size },
+                    Pos2 { x: base_size*3., y: text_size+base_size },
+                    Pos2 { x: base_size*3., y: text_size+base_size*2. },
+                    Pos2 { x: base_size*2., y: text_size+base_size*2. },
+                ],
+            )
+        }
+    }
+
+    ui.ctx().fonts(|fonts| {
+        shapes.extend([
+            egui::Shape::text(
+                fonts,
+                Pos2 { x: base_size*1.5, y: text_size/2. },
+                Align2::CENTER_CENTER,
+                desc,
+                FontId::proportional(text_size*0.5),
+                Color32::WHITE,
+            ),
+            egui::Shape::text(
+                fonts,
+                Pos2 { x: base_size*0.5, y: text_size+base_size },
+                Align2::CENTER_CENTER,
+                "L",
+                FontId::monospace(base_size*0.5),
+                Color32::WHITE,
+            ),
+            egui::Shape::text(
+                fonts,
+                Pos2 { x: base_size*1.5, y: text_size+base_size },
+                Align2::CENTER_CENTER,
+                "R",
+                FontId::monospace(base_size*0.5),
+                Color32::WHITE,
+            ),
+            egui::Shape::text(
+                fonts,
+                Pos2 { x: base_size, y: text_size+base_size*0.5 },
+                Align2::CENTER_CENTER,
+                "U",
+                FontId::monospace(base_size*0.5),
+                Color32::WHITE,
+            ),
+            egui::Shape::text(
+                fonts,
+                Pos2 { x: base_size, y: text_size+base_size*1.5 },
+                Align2::CENTER_CENTER,
+                "D",
+                FontId::monospace(base_size*0.5),
+                Color32::WHITE,
+            ),
+            egui::Shape::text(
+                fonts,
+                Pos2 { x: base_size*2.5, y: text_size+base_size*0.5 },
+                Align2::CENTER_CENTER,
+                "+",
+                FontId::monospace(base_size*0.5),
+                Color32::WHITE,
+            ),
+            egui::Shape::text(
+                fonts,
+                Pos2 { x: base_size*2.5, y: text_size+base_size*1.5 },
+                Align2::CENTER_CENTER,
+                "-",
+                FontId::monospace(base_size*0.5),
+                Color32::WHITE,
+            ),
+            egui::Shape::line_segment(line2(0, text_size, base_size*2., text_size+base_size*2.), akw_stroke),
+            egui::Shape::line_segment(line2(base_size*2., text_size, 0, text_size+base_size*2.), akw_stroke),
+            egui::Shape::rect_stroke(rector(0, text_size, base_size*2., text_size+base_size*2.), Rounding::none(), akw_stroke),
+            egui::Shape::rect_stroke(rector(base_size*2., text_size, base_size*3., text_size+base_size), Rounding::none(), akw_stroke),
+            egui::Shape::rect_stroke(rector(base_size*2., text_size+base_size, base_size*3., text_size+base_size*2.), Rounding::none(), akw_stroke),
+        ]);
+    });
+
+    pa.extend_rel(shapes);
 }

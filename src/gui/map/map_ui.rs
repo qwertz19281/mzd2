@@ -1,11 +1,12 @@
 use egui::{Sense, Vec2, Color32, Rounding};
 
+use crate::gui::map::room_ops::describe_direction;
 use crate::gui::room::draw_image::DrawImageGroup;
 use crate::gui::{MutQueue, rector};
-use crate::gui::init::SharedApp;
+use crate::gui::init::{SharedApp, SAM};
 use crate::gui::palette::Palette;
 use crate::gui::texture::basic_tex_shape;
-use crate::gui::util::{alloc_painter_rel, alloc_painter_rel_ds, draw_grid, ArrUtl};
+use crate::gui::util::{alloc_painter_rel, alloc_painter_rel_ds, draw_grid, ArrUtl, dpad};
 use crate::util::{MapId, gui_error};
 
 use super::room_ops::render_picomap;
@@ -17,7 +18,7 @@ impl Map {
         warp_setter: &mut Option<(MapId,RoomId,(u32,u32))>,
         palette: &mut Palette,
         ui: &mut egui::Ui,
-        mut_queue: &mut MutQueue,
+        sam: &mut SAM,
     ) {
         if let Some(r) = self.state.dsel_room.and_then(|r| self.state.rooms.get(r) ) {
             self.state.dsel_coord = Some(r.coord);
@@ -32,11 +33,11 @@ impl Map {
                     if ui.button("Save&Close").clicked() {
                         self.save_map();
                         let id = self.id;
-                        mut_queue.push(Box::new(move |state: &mut SharedApp| {state.maps.open_maps.remove(&id);} ))
+                        sam.mut_queue.push(Box::new(move |state: &mut SharedApp| {state.maps.open_maps.remove(&id);} ))
                     }
                     if ui.button("Abort&Close").double_clicked() {
                         let id = self.id;
-                        mut_queue.push(Box::new(move |state: &mut SharedApp| {state.maps.open_maps.remove(&id);} ))
+                        sam.mut_queue.push(Box::new(move |state: &mut SharedApp| {state.maps.open_maps.remove(&id);} ))
                     }
                     ui.text_edit_singleline(&mut self.state.title);
                     ui.label("| Zoom: ");
@@ -172,7 +173,16 @@ impl Map {
                     },
                     _ => {
                         ui.horizontal(|ui| {
-                            
+                            dpad(
+                                "DpadTest",
+                                24. * sam.dpi_scale, 32. * sam.dpi_scale, sam.dpi_scale, ui,
+                                |ui,axis,dir| {
+                                    eprintln!("DPAD HOVER {}",describe_direction(axis,dir));
+                                },
+                                |ui,axis,dir| {
+                                    eprintln!("DPAD CLICK {}",describe_direction(axis,dir));
+                                },
+                            )
                         });
                     }
                 };

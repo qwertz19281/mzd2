@@ -3,6 +3,7 @@ use egui::Vec2;
 use crate::gui::MutQueue;
 use crate::gui::draw_state::DrawMode;
 use crate::gui::dsel_state::DSelMode;
+use crate::gui::init::SAM;
 use crate::gui::palette::Palette;
 use crate::gui::util::{alloc_painter_rel_ds, alloc_painter_rel, ArrUtl};
 use crate::util::MapId;
@@ -15,7 +16,7 @@ impl Map {
         warp_setter: &mut Option<(MapId,RoomId,(u32,u32))>,
         palette: &mut Palette,
         ui: &mut egui::Ui,
-        mut_queue: &mut MutQueue,
+        sam: &mut SAM,
     ) {
         // on close of the map, palette textures should be unchained
         // if let Some(room) {

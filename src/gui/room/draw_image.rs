@@ -417,16 +417,16 @@ impl Room {
         }
         if mode == MapEditMode::ConnDown || mode == MapEditMode::ConnUp || mode == MapEditMode::ConnXY || mode == MapEditMode::RoomSel {
             if !self.dirconn[0][0] {
-                dest(egui::Shape::line(line2(off[0], off[1], off[0], off[1]+rooms_size[1]), unconn_stroke));
+                dest(egui::Shape::line_segment(line2(off[0], off[1], off[0], off[1]+rooms_size[1]), unconn_stroke));
             }
             if !self.dirconn[0][1] {
-                dest(egui::Shape::line(line2(off[0]+rooms_size[0], off[1], off[0]+rooms_size[0], off[1]+rooms_size[1]), unconn_stroke));
+                dest(egui::Shape::line_segment(line2(off[0]+rooms_size[0], off[1], off[0]+rooms_size[0], off[1]+rooms_size[1]), unconn_stroke));
             }
             if !self.dirconn[1][0] {
-                dest(egui::Shape::line(line2(off[0], off[1], off[0]+rooms_size[0], off[1]), unconn_stroke));
+                dest(egui::Shape::line_segment(line2(off[0], off[1], off[0]+rooms_size[0], off[1]), unconn_stroke));
             }
             if !self.dirconn[1][1] {
-                dest(egui::Shape::line(line2(off[0], off[1]+rooms_size[1], off[0]+rooms_size[0], off[1]+rooms_size[1]), unconn_stroke));
+                dest(egui::Shape::line_segment(line2(off[0], off[1]+rooms_size[1], off[0]+rooms_size[0], off[1]+rooms_size[1]), unconn_stroke));
             }
             
             if mode == MapEditMode::ConnXY || mode == MapEditMode::RoomSel {

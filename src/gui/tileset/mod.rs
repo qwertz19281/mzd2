@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::util::{TilesetId, attached_to_path, ResultExt, next_tex_id};
 
 use super::{MutQueue, rector};
-use super::init::SharedApp;
+use super::init::{SharedApp, SAM};
 use super::sel_matrix::{SelMatrix, sel_entry_dims};
 use super::texture::{ensure_texture_from_image, RECT_0_0_1_1};
 use super::util::{alloc_painter_rel, alloc_painter_rel_ds, ArrUtl};
@@ -33,14 +33,14 @@ pub struct TilesetState {
 }
 
 impl Tileset {
-    pub fn ui(&mut self, ui: &mut egui::Ui, mut_queue: &mut MutQueue) {
+    pub fn ui(&mut self, ui: &mut egui::Ui, sam: &mut SAM) {
         ui.horizontal(|ui| {
             if ui.button("Close").clicked() {
                 if self.edit_path.is_some() {
                     self.save_editstate();
                 }
                 let id = self.id;
-                mut_queue.push(Box::new(move |state: &mut SharedApp| {state.tilesets.open_tilesets.remove(&id);} ))
+                sam.mut_queue.push(Box::new(move |state: &mut SharedApp| {state.tilesets.open_tilesets.remove(&id);} ))
             }
             ui.text_edit_singleline(&mut self.state.title);
             ui.label("| Zoom: ");

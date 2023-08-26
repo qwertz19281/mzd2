@@ -30,7 +30,6 @@ pub struct SharedApp {
     pub top_panel: TopPanel,
     pub maps: Maps,
     pub tilesets: Tilesets,
-    pub mut_queue: MutQueue,
     pub warpon: Option<(MapId,RoomId,(u32,u32))>,
     pub palette: Palette,
     pub sam: SAM,
@@ -38,6 +37,7 @@ pub struct SharedApp {
 
 pub struct SAM {
     pub dpi_scale: f32,
+    pub mut_queue: MutQueue,
 }
 
 impl SharedApp {
@@ -46,11 +46,11 @@ impl SharedApp {
             top_panel: TopPanel::new(),
             maps: Maps::new(),
             tilesets: Tilesets::new(),
-            mut_queue: vec![],
             warpon: None,
             palette: Palette::new(),
             sam: SAM {
                 dpi_scale: 0.,
+                mut_queue: vec![],
             },
         }
     }
@@ -66,7 +66,7 @@ impl eframe::App for SharedApp {
         }
 
         
-        for v in std::mem::replace(&mut self.mut_queue, vec![]) {
+        for v in std::mem::replace(&mut self.sam.mut_queue, vec![]) {
             v(self);
         }
 
@@ -86,7 +86,7 @@ impl eframe::App for SharedApp {
         maps_ui(self, ctx, frame);
         tilesets_ui(self, ctx, frame);
 
-        for v in std::mem::replace(&mut self.mut_queue, vec![]) {
+        for v in std::mem::replace(&mut self.sam.mut_queue, vec![]) {
             v(self);
         }
     }

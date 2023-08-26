@@ -30,12 +30,12 @@ pub fn rector_off(x0: impl StupidInto<f32>, y0: impl StupidInto<f32>, x1: impl S
     egui::Rect { min: egui::pos2(x0.stupinto(),y0.stupinto()) + off, max: egui::pos2(x1.stupinto(),y1.stupinto()) + off }
 }
 
-pub fn line2(x0: impl StupidInto<f32>, y0: impl StupidInto<f32>, x1: impl StupidInto<f32>, y1: impl StupidInto<f32>) -> Vec<egui::Pos2> {
-    vec![egui::pos2(x0.stupinto(),y0.stupinto()), egui::pos2(x1.stupinto(),y1.stupinto())]
+pub fn line2(x0: impl StupidInto<f32>, y0: impl StupidInto<f32>, x1: impl StupidInto<f32>, y1: impl StupidInto<f32>) -> [egui::Pos2;2] {
+    [egui::pos2(x0.stupinto(),y0.stupinto()), egui::pos2(x1.stupinto(),y1.stupinto())]
 }
 
-pub fn line2_off(x0: impl StupidInto<f32>, y0: impl StupidInto<f32>, x1: impl StupidInto<f32>, y1: impl StupidInto<f32>, off: Vec2) -> Vec<egui::Pos2> {
-    vec![egui::pos2(x0.stupinto(),y0.stupinto()) + off, egui::pos2(x1.stupinto(),y1.stupinto()) + off]
+pub fn line2_off(x0: impl StupidInto<f32>, y0: impl StupidInto<f32>, x1: impl StupidInto<f32>, y1: impl StupidInto<f32>, off: Vec2) -> [egui::Pos2;2] {
+    [egui::pos2(x0.stupinto(),y0.stupinto()) + off, egui::pos2(x1.stupinto(),y1.stupinto()) + off]
 }
 
 pub trait StupidInto<T>: Copy {

@@ -66,7 +66,7 @@ pub fn palette_ui(state: &mut SharedApp, ui: &mut egui::Ui) {
     {
         let stroke = egui::Stroke::new(2.0, egui::Color32::RED);
         let line_x = PALETTE_SHOW_DIMS + PALETTE_GAP;
-        shapes.push(egui::Shape::line(line2(line_x, 0, line_x, PALETTE_SHOW_DIMS), stroke));
+        shapes.push(egui::Shape::line_segment(line2(line_x, 0, line_x, PALETTE_SHOW_DIMS), stroke));
     }
 
     let selected = &mut state.palette.paletted[state.palette.selected as usize];

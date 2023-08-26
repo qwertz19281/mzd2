@@ -6,7 +6,7 @@ use std::sync::atomic::{AtomicU64, AtomicI64};
 use egui::epaint::ahash::HashMap;
 
 //use crate::util::declare_id_type;
-use crate::gui::init::SharedApp;
+use crate::gui::init::{SharedApp, SAM};
 use crate::gui::map::Map;
 use crate::util::MapId;
 
@@ -30,7 +30,7 @@ pub fn maps_ui(state: &mut SharedApp, ctx: &egui::Context, frame: &mut eframe::F
                 &mut state.warpon,
                 &mut state.palette,
                 ui,
-                &mut state.mut_queue,
+                &mut state.sam,
             ) );
         egui::Window::new(format!("Draw - {}", &t.state.title))
             .id(t_id.egui_id_draw())
@@ -39,7 +39,7 @@ pub fn maps_ui(state: &mut SharedApp, ctx: &egui::Context, frame: &mut eframe::F
                 &mut state.warpon,
                 &mut state.palette,
                 ui,
-                &mut state.mut_queue,
+                &mut state.sam,
             ) );
     }
 }
