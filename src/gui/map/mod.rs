@@ -1,6 +1,7 @@
 use std::collections::VecDeque;
 use std::io::ErrorKind;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use egui::{TextureHandle, TextureOptions};
 use egui::epaint::ahash::HashSet;
@@ -33,7 +34,7 @@ pub struct Map {
     pub room_matrix: CoordStore<RoomId>,
     pub picomap_tex: TextureCell,
     pub editsel: DrawImageGroup,
-    pub smartmove_preview: Option<(OpAxis,bool,Vec<RoomId>,u64)>,
+    pub smartmove_preview: Option<([u8;3],u8,OpAxis,bool,Arc<[RoomId]>,u64,bool,bool)>,
     pub latest_used_opevo: u64,
     pub undo_buf: VecDeque<RoomOp>,
     pub redo_buf: VecDeque<RoomOp>,
@@ -54,6 +55,8 @@ pub struct MapState {
     pub ssel_room: Option<RoomId>,
     #[serde(default)]
     pub dsel_coord: Option<[u8;3]>,
+    #[serde(default)]
+    pub ssel_coord: Option<[u8;3]>,
     pub file_counter: u64,
     pub view_pos: [f32;2],
     pub rooms_size: [u32;2],
@@ -62,6 +65,9 @@ pub struct MapState {
     pub draw_mode: DrawOp,
     pub draw_draw_mode: DrawMode,
     pub draw_sel: DSelMode,
+    pub sift_size: u8,
+    #[serde(default)]
+    pub smart_awaylock_mode: bool,
 }
 
 slotmap::new_key_type! {
@@ -196,6 +202,7 @@ impl Map {
                 dsel_room: None,
                 ssel_room: None,
                 dsel_coord: None,
+                ssel_coord: None,
                 file_counter: 0,
                 view_pos: [(rooms_size[0]*128) as f32,(rooms_size[1]*128) as f32],
                 rooms_size,
@@ -204,6 +211,8 @@ impl Map {
                 draw_mode: DrawOp::Draw,
                 draw_draw_mode: DrawMode::Direct,
                 draw_sel: DSelMode::Direct,
+                sift_size: 1,
+                smart_awaylock_mode: false,
             },
             path,
             dirty_rooms: Default::default(),

@@ -453,9 +453,10 @@ pub fn dpad(
     text_size: f32,
     base_size: f32,
     dpi: f32,
+    inv_icons: bool,
+    visible: bool,
     ui: &mut egui::Ui,
-    mut hovered: impl FnMut(&mut egui::Ui,OpAxis,bool),
-    mut clicked: impl FnMut(&mut egui::Ui,OpAxis,bool),
+    mut fun: impl FnMut(&mut egui::Ui,bool,OpAxis,bool),
 ) {
     let pa = alloc_painter_rel(
         ui,
@@ -463,6 +464,8 @@ pub fn dpad(
         Sense::click(),
         1.,
     );
+
+    if !visible {return;}
 
     let border = base_size * 0.1;
 
@@ -512,11 +515,7 @@ pub fn dpad(
 
             shapes.push(egui::Shape::Path(egui::epaint::PathShape::convex_polygon(pos2, color, egui::Stroke::new(1., color))));
 
-            if vclicked {
-                clicked(ui,axis,dir);
-            } else {
-                hovered(ui,axis,dir);
-            }
+            fun(ui,vclicked,axis,dir);
         };
 
         if in_left(hover.x,hover.y) {
@@ -589,6 +588,14 @@ pub fn dpad(
         }
     }
 
+    let icons = if inv_icons {
+        ["→","←","↓","↑","-","+"]
+    } else {
+        ["←","→","↑","↓","+","-"]
+    };
+
+    let border2 = border;
+
     ui.ctx().fonts(|fonts| {
         shapes.extend([
             egui::Shape::text(
@@ -601,33 +608,33 @@ pub fn dpad(
             ),
             egui::Shape::text(
                 fonts,
-                Pos2 { x: base_size*0.5, y: text_size+base_size },
+                Pos2 { x: base_size*0.5-border2, y: text_size+base_size },
                 Align2::CENTER_CENTER,
-                "L",
+                icons[0],
                 FontId::monospace(base_size*0.5),
                 Color32::WHITE,
             ),
             egui::Shape::text(
                 fonts,
-                Pos2 { x: base_size*1.5, y: text_size+base_size },
+                Pos2 { x: base_size*1.5+border2, y: text_size+base_size },
                 Align2::CENTER_CENTER,
-                "R",
+                icons[1],
                 FontId::monospace(base_size*0.5),
                 Color32::WHITE,
             ),
             egui::Shape::text(
                 fonts,
-                Pos2 { x: base_size, y: text_size+base_size*0.5 },
+                Pos2 { x: base_size, y: text_size+base_size*0.5-border2 },
                 Align2::CENTER_CENTER,
-                "U",
+                icons[2],
                 FontId::monospace(base_size*0.5),
                 Color32::WHITE,
             ),
             egui::Shape::text(
                 fonts,
-                Pos2 { x: base_size, y: text_size+base_size*1.5 },
+                Pos2 { x: base_size, y: text_size+base_size*1.5+border2 },
                 Align2::CENTER_CENTER,
-                "D",
+                icons[3],
                 FontId::monospace(base_size*0.5),
                 Color32::WHITE,
             ),
@@ -635,7 +642,7 @@ pub fn dpad(
                 fonts,
                 Pos2 { x: base_size*2.5, y: text_size+base_size*0.5 },
                 Align2::CENTER_CENTER,
-                "+",
+                icons[4],
                 FontId::monospace(base_size*0.5),
                 Color32::WHITE,
             ),
@@ -643,7 +650,7 @@ pub fn dpad(
                 fonts,
                 Pos2 { x: base_size*2.5, y: text_size+base_size*1.5 },
                 Align2::CENTER_CENTER,
-                "-",
+                icons[5],
                 FontId::monospace(base_size*0.5),
                 Color32::WHITE,
             ),

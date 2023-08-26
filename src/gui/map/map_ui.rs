@@ -9,10 +9,65 @@ use crate::gui::texture::basic_tex_shape;
 use crate::gui::util::{alloc_painter_rel, alloc_painter_rel_ds, draw_grid, ArrUtl, dpad};
 use crate::util::{MapId, gui_error};
 
-use super::room_ops::render_picomap;
+use super::room_ops::{render_picomap, RoomOp, OpAxis};
 use super::{RoomId, MapEditMode, Map, zoomf};
 
 impl Map {
+    fn ui_create_room(&mut self, coord: [u8;3]) -> Option<RoomId> {
+        if let Some(roomcreate_op) = self.create_create_room(coord) {
+            let ur = self.apply_room_op(roomcreate_op);
+            let room_id = match &ur {
+                &super::room_ops::RoomOp::Del(id) => id,
+                _ => panic!(),
+            };
+            self.undo_buf.push_back(ur);
+            self.after_room_op_apply_invalidation(false);
+
+            Some(room_id)
+        } else {
+            None
+        }
+    }
+
+    fn ui_delete_room(&mut self, room: RoomId) {
+        if let Some(r) = self.create_delete_room(room) {
+            self.ui_apply_roomop(r);
+        }
+    }
+
+    fn ui_apply_roomop(&mut self, op: RoomOp) {
+        let ur = self.apply_room_op(op);
+        self.undo_buf.push_back(ur);
+        self.after_room_op_apply_invalidation(false);
+    }
+
+    fn ui_do_smart(&mut self, clicked: bool, axis: OpAxis, dir: bool) {
+        if clicked {
+            eprintln!("DPAD CLICK {}",describe_direction(axis,dir));
+        }
+        let coord = self.state.rooms.get(self.state.ssel_room.unwrap()).unwrap().coord;
+        let mut regen = true;
+        if let &Some((a,b,c,d,_,e,f,g)) = &self.smartmove_preview {
+            if (a,b,c,d,e,f,g) == (coord,self.state.sift_size,axis,dir,self.latest_used_opevo,false,false) {
+                regen = false;
+            }
+        }
+        if regen {
+            self.smartmove_preview = None;
+        }
+        let ok = self.check_shift_smart1(coord, self.state.sift_size, axis, dir, false, false).is_some();
+        if regen && ok {
+            if let Some((c,d)) = self.shift_smart_collect(coord, self.state.sift_size, axis, dir, false, false) {
+                self.smartmove_preview = Some((coord,self.state.sift_size,axis,dir,c,d,false,false));
+            }
+        }
+        if clicked && ok {
+            let (_,_,_,_,collected,op_evo,_,_) = self.smartmove_preview.as_ref().unwrap();
+            let op = RoomOp::SiftSmart(collected.clone(), *op_evo, self.state.sift_size, axis, dir, true);
+            self.ui_apply_roomop(op);
+        }
+    }
+
     pub fn ui_map(
         &mut self,
         warp_setter: &mut Option<(MapId,RoomId,(u32,u32))>,
@@ -23,6 +78,12 @@ impl Map {
         if let Some(r) = self.state.dsel_room.and_then(|r| self.state.rooms.get(r) ) {
             self.state.dsel_coord = Some(r.coord);
         }
+        if let Some(r) = self.state.ssel_room.and_then(|r| self.state.rooms.get(r) ) {
+            self.state.ssel_coord = Some(r.coord);
+        }
+
+        let mut smart_preview_hovered = false;
+
         // on close of the map, palette textures should be unchained
         ui.horizontal(|ui| {
             ui.vertical(|ui| {
@@ -70,7 +131,7 @@ impl Map {
                         self.state.view_pos[0] = x * self.state.rooms_size[0] as f32;
                     }
                     if y != oldy {
-                        eprintln!("MODX");
+                        eprintln!("MODY");
                         self.state.view_pos[1] = y * self.state.rooms_size[1] as f32;
                     }
                 });
@@ -115,54 +176,48 @@ impl Map {
 
                     match self.state.edit_mode {
                         MapEditMode::DrawSel => {
-                            ui.horizontal(|ui| {
-                                if let Some(v) = self.state.dsel_room.filter(|&v| self.state.rooms.contains_key(v) ) {
-                                    if ui.button("Delete Room").double_clicked() {
-                                        self.state.dsel_coord = None;
-                                        self.state.dsel_room = None;
-                                        self.editsel = DrawImageGroup::unsel(self.state.rooms_size);
-                                        if let Some(r) = self.create_delete_room(v) {
-                                            let ur = self.apply_room_op(r);
-                                            self.undo_buf.push_back(ur);
-                                            self.after_room_op_apply_invalidation(false);
-                                        }
-                                        
-                                    }
-                                } else if let Some(v) = self.state.dsel_coord {
-                                    if ui.button("Create Room").clicked() {
-                                        if let Some(roomcreate_op) = self.create_create_room(v) {
-                                            let ur = self.apply_room_op(roomcreate_op);
-                                            let room_id = match &ur {
-                                                &super::room_ops::RoomOp::Del(id) => id,
-                                                _ => panic!(),
-                                            };
-                                            self.undo_buf.push_back(ur);
-                                            self.after_room_op_apply_invalidation(false);
-            
-                                            self.state.dsel_room = Some(room_id);
-                                            self.editsel = DrawImageGroup::single(room_id, v, self.state.rooms_size);
-                                        }
+                            if let Some(v) = self.state.dsel_room.filter(|&v| self.state.rooms.contains_key(v) ) {
+                                if ui.button("Delete Room").double_clicked() {
+                                    self.state.dsel_coord = None;
+                                    self.state.dsel_room = None;
+                                    self.editsel = DrawImageGroup::unsel(self.state.rooms_size);
+                                    self.ui_delete_room(v);
+                                }
+                            } else if let Some(v) = self.state.dsel_coord {
+                                if ui.button("Create Room").clicked() {
+                                    if let Some(new_id) = self.ui_create_room(v) {
+                                        self.state.dsel_room = Some(new_id);
+                                        self.state.dsel_coord = Some(v);
+                                        self.editsel = DrawImageGroup::single(new_id, v, self.state.rooms_size);
                                     }
                                 }
-                            });
+                            }
                         },
                         _ => {
                             if let Some(v) = self.state.ssel_room.filter(|&v| self.state.rooms.contains_key(v) ) {
                                 if ui.button("Delete Room").double_clicked() {
+                                    self.state.ssel_coord = None;
                                     self.state.ssel_room = None;
-                                    if let Some(r) = self.create_delete_room(v) {
-                                        let ur = self.apply_room_op(r);
-                                        self.undo_buf.push_back(ur);
-                                        self.after_room_op_apply_invalidation(false);
+                                    self.ui_delete_room(v);
+                                }
+                            } else if let Some(v) = self.state.ssel_coord {
+                                if ui.button("Create Room").clicked() {
+                                    if let Some(new_id) = self.ui_create_room(v) {
+                                        self.state.ssel_room = Some(new_id);
+                                        self.state.dsel_coord = Some(v);
                                     }
                                 }
                             }
+
+                            ui.label("| ShiftAway/Collapse Size: ");
+                            ui.add(egui::DragValue::new(&mut self.state.sift_size).speed(0.015625).clamp_range(0..=16));
+
+                            ui.checkbox(&mut self.state.smart_awaylock_mode, "SmartMove AwayLock");
                         },
                     }
                 });
                 match self.state.edit_mode {
                     MapEditMode::DrawSel => {
-                        
                         if let Some(v) = self.state.dsel_room.filter(|&v| self.state.rooms.contains_key(v) ) {
                             let room = self.state.rooms.get_mut(v).unwrap();
                             ui.add(
@@ -173,16 +228,65 @@ impl Map {
                     },
                     _ => {
                         ui.horizontal(|ui| {
+                            // dpad(
+                            //     "DpadTest",
+                            //     20. * sam.dpi_scale, 32. * sam.dpi_scale, sam.dpi_scale, false, true, ui,
+                            //     |ui,axis,dir| {
+                            //         eprintln!("DPAD HOVER {}",describe_direction(axis,dir));
+                            //     },
+                            //     |ui,axis,dir| {
+                            //         eprintln!("DPAD CLICK {}",describe_direction(axis,dir));
+                            //     },
+                            // )
                             dpad(
-                                "DpadTest",
-                                24. * sam.dpi_scale, 32. * sam.dpi_scale, sam.dpi_scale, ui,
-                                |ui,axis,dir| {
-                                    eprintln!("DPAD HOVER {}",describe_direction(axis,dir));
-                                },
-                                |ui,axis,dir| {
+                                "Single Move",
+                                20. * sam.dpi_scale, 32. * sam.dpi_scale, sam.dpi_scale, false,
+                                self.state.ssel_room.is_some_and(|id| self.state.rooms.contains_key(id) ),
+                                ui,
+                                |_,clicked,axis,dir| {
+                                    if !clicked {return;}
                                     eprintln!("DPAD CLICK {}",describe_direction(axis,dir));
+                                    if let Some(op) = self.create_single_move(self.state.ssel_room.unwrap(), axis, dir) {
+                                        self.ui_apply_roomop(op);
+                                    }
                                 },
-                            )
+                            );
+                            dpad(
+                                "Shift Away",
+                                20. * sam.dpi_scale, 32. * sam.dpi_scale, sam.dpi_scale, false,
+                                self.state.ssel_coord.is_some(),
+                                ui,
+                                |_,clicked,axis,dir| {
+                                    if !clicked {return;}
+                                    eprintln!("DPAD CLICK {}",describe_direction(axis,dir));
+                                    if let Some(op) = self.create_shift_away(self.state.ssel_coord.unwrap(), self.state.sift_size, axis, dir) {
+                                        self.ui_apply_roomop(op);
+                                    }
+                                },
+                            );
+                            dpad(
+                                "Collapse",
+                                20. * sam.dpi_scale, 32. * sam.dpi_scale, sam.dpi_scale, true,
+                                self.state.ssel_coord.is_some(),
+                                ui,
+                                |_,clicked,axis,dir| {
+                                    if !clicked {return;}
+                                    eprintln!("DPAD CLICK {}",describe_direction(axis,dir));
+                                    if let Some(op) = self.create_collapse(self.state.ssel_coord.unwrap(), self.state.sift_size, axis, dir, true) {
+                                        self.ui_apply_roomop(op);
+                                    }
+                                },
+                            );
+                            dpad(
+                                "Smart Move",
+                                20. * sam.dpi_scale, 32. * sam.dpi_scale, sam.dpi_scale, false,
+                                self.state.ssel_room.is_some_and(|id| self.state.rooms.contains_key(id) ),
+                                ui,
+                                |_,clicked,axis,dir| {
+                                    smart_preview_hovered = true;
+                                    self.ui_do_smart(clicked, axis, dir);
+                                },
+                            );
                         });
                     }
                 };
@@ -265,7 +369,10 @@ impl Map {
                         }
                     },
                     MapEditMode::RoomSel => {
-                        //TODO
+                        if super_map.response.clicked_by(egui::PointerButton::Primary) {
+                            self.state.ssel_coord = Some(click_coord);
+                            self.state.ssel_room = self.room_matrix.get(click_coord).cloned();
+                        }
                     },
                     MapEditMode::Tags => {
                         //TODO
@@ -313,8 +420,10 @@ impl Map {
 
             let view_pos_1 = self.state.view_pos.add(view_size.into());
 
-            if Some(self.latest_used_opevo) != preview_smart_move {
-                preview_smart_move = None;
+            if let Some((_,_,_,_,_,e,_,_)) = &self.smartmove_preview {
+                if smart_preview_hovered && *e == self.latest_used_opevo {
+                    preview_smart_move = Some(*e);
+                }
             }
 
             let mut shapes = vec![];
@@ -382,9 +491,8 @@ impl Map {
                 }
             }
 
-            if self.state.edit_mode == MapEditMode::RoomSel {
-                if let Some(room) = self.state.ssel_room.and_then(|v| self.state.rooms.get(v) ) {
-                    let [x,y,_] = room.coord;
+            if self.state.edit_mode != MapEditMode::DrawSel {
+                if let Some([x,y,_]) = self.state.ssel_coord {
                     let rect = rector(
                         x as u32 * self.state.rooms_size[0] + 8, y as u32 * self.state.rooms_size[1] + 8,
                         (x as u32+1) * self.state.rooms_size[0] - 8, (y as u32+1) * self.state.rooms_size[1] - 8,
