@@ -21,6 +21,7 @@ pub struct Tileset {
     pub texture: Option<egui::TextureHandle>,
     pub edit_path: Option<PathBuf>,
     pub edit_mode: bool,
+    pub quant: u8,
 }
 
 #[derive(Deserialize,Serialize)]
@@ -45,11 +46,16 @@ impl Tileset {
             ui.text_edit_singleline(&mut self.state.title);
             ui.label("| Zoom: ");
             //ui.add(egui::DragValue::new(&mut self.state.zoom).speed(1).clamp_range(1..=4));
-            ui.add(egui::Slider::new(&mut self.state.zoom, 1..=2).drag_value_speed(0.0625));
+            ui.add(egui::Slider::new(&mut self.state.zoom, 1..=2).drag_value_speed(0.03125));
             if self.edit_path.is_none() {
                 if ui.button("Make editable").double_clicked() {
+                    if self.quant != 1 {
+                        self.state.sel_matrix.intervalize([self.quant,self.quant]);
+                    }
                     self.save_editstate();
                 }
+                ui.label("Quant: ");
+                ui.add(egui::Slider::new(&mut self.quant, 1..=2).drag_value_speed(0.03125));
             }
         });
 
@@ -147,6 +153,7 @@ impl Tileset {
             texture: None,
             edit_path,
             edit_mode: false,
+            quant: 1,
         };
 
         Ok(ts)

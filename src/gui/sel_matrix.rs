@@ -75,6 +75,21 @@ impl SelMatrix {
             }
         }
     }
+
+    pub fn intervalize(&mut self, interval: [u8;2]) {
+        for y in 0 .. self.dims[1] {
+            for x in 0 .. self.dims[0] {
+                if let Some(se) = self.get_mut([x,y]) {
+                    if se.start == [0,0] && se.size == [1,1] {
+                        let [qx,qy] = [x,y].quant(interval.as_u32());
+
+                        se.start = [(x as i32 - qx as i32) as i8, ( y as i32 - qy as i32) as i8];
+                        se.size = [interval[0] as u8, interval[1] as u8];
+                    }
+                }
+            }
+        }
+    }
 }
 
 impl SelEntry {

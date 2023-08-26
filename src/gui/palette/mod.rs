@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use egui::{TextureHandle, Pos2, TextureOptions};
+use egui::{TextureHandle, Pos2, TextureOptions, Rounding};
 use image::{RgbaImage, ImageBuffer};
 
 use super::init::SharedApp;
@@ -81,15 +81,28 @@ pub fn palette_ui(state: &mut SharedApp, ui: &mut egui::Ui) {
 
     /*if let Some(paltex) = &state.palette.paletted[state.palette.selected as usize].texture*/ {
         let uv = selected.uv;
-        shapes.push(egui::Shape::image(
-            paltex.id(),
-            texdraw_rect(0),
-            uv,
-            egui::Color32::WHITE
-        ));
+        shapes.extend([
+            egui::Shape::rect_filled(
+                texdraw_rect(0),
+                Rounding::none(),
+                egui::Color32::BLACK,
+            ),
+            egui::Shape::image(
+                paltex.id(),
+                texdraw_rect(0),
+                uv,
+                egui::Color32::WHITE
+            )
+        ]);
     }
 
     for (pal,(_,pos)) in state.palette.paletted.iter_mut().zip(xbounds_iter(plen)) {
+        shapes.push(egui::Shape::rect_filled(
+            texdraw_rect(pos),
+            Rounding::none(),
+            egui::Color32::BLACK,
+        ));
+
         if let Some(paltex) = &pal.texture {
             shapes.push(egui::Shape::image(
                 paltex.id(),

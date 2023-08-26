@@ -82,6 +82,9 @@ impl eframe::App for SharedApp {
             .show(ctx, |ui| top_panel_ui(self, ui) );
         egui::Window::new("Palette")
             .resizable(false)
+            .default_pos(egui::Pos2 { x: 0., y: 65536. })
+            //.anchor(egui::Align2::LEFT_BOTTOM, egui::Vec2::default())
+            //.movable(true)
             .show(ctx, |ui| palette_ui(self, ui));
         maps_ui(self, ctx, frame);
         tilesets_ui(self, ctx, frame);

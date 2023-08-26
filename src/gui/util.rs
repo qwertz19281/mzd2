@@ -217,13 +217,16 @@ impl MulDivonRectI for [u32;2] {
     }
 }
 
-pub trait ArrUtl {
+pub trait ArrUtl: Clone {
     type Unit: Clone + Copy;
 
     fn add(self, v: Self) -> Self;
     fn sub(self, v: Self) -> Self;
     fn mul(self, v: Self) -> Self;
     fn div(self, v: Self) -> Self;
+    fn quant(self, v: Self) -> Self {
+        self.div(v.clone()).mul(v)
+    }
 
     fn add_x(self, v: Self::Unit) -> Self;
     fn add_y(self, v: Self::Unit) -> Self;
