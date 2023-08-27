@@ -1,11 +1,14 @@
-use egui::Vec2;
+use std::sync::Arc;
+
+use egui::{Vec2, PointerButton};
 
 use crate::gui::MutQueue;
 use crate::gui::draw_state::DrawMode;
 use crate::gui::dsel_state::DSelMode;
 use crate::gui::init::SAM;
-use crate::gui::palette::Palette;
-use crate::gui::util::{alloc_painter_rel_ds, alloc_painter_rel, ArrUtl};
+use crate::gui::palette::{Palette, PaletteItem};
+use crate::gui::texture::RECT_0_0_1_1;
+use crate::gui::util::{alloc_painter_rel_ds, alloc_painter_rel, ArrUtl, DragOp};
 use crate::util::MapId;
 
 use super::{RoomId, Map, DrawOp};
@@ -45,6 +48,8 @@ impl Map {
                 },
             }
         });
+
+        let mods = ui.input(|i| i.modifiers );
         
         if self.editsel.region_size[0] != 0 && self.editsel.region_size[1] != 0 && !self.editsel.rooms.is_empty() {
             let size_v = self.editsel.region_size.as_f32().into();
@@ -56,6 +61,73 @@ impl Map {
                 self.state.draw_zoom as f32,
             );
 
+            match self.state.draw_mode {
+                DrawOp::Draw => {
+                    let palet = &palette.paletted[palette.selected as usize];
+                    match reg.drag_decode(PointerButton::Primary, ui) {
+                        DragOp::Start(p) => {
+                            self.draw_state.draw_cancel();
+                            self.draw_state.draw_mouse_down(p.into(), palet, self.state.draw_draw_mode);
+                        },
+                        DragOp::Tick(Some(p)) => self.draw_state.draw_mouse_down(p.into(), palet, self.state.draw_draw_mode),
+                        DragOp::End(p) => {
+                            let mut mm = self.editsel.selmatrix_mut(
+                                0 /*TODO*/,
+                                &mut self.state.rooms,
+                                self.state.rooms_size,
+                                &mut self.dirty_rooms,
+                            );
+                            self.draw_state.draw_mouse_up(&mut mm);
+                        },
+                        DragOp::Abort => self.draw_state.draw_cancel(),
+                        _ => {},
+                    }
+                },
+                DrawOp::Sel => {
+                    let palet = &mut palette.paletted[palette.selected as usize];
+                    let mut mm = self.editsel.selmatrix(
+                        0 /*TODO*/,
+                        &self.state.rooms,
+                        self.state.rooms_size,
+                    );
+                    match reg.drag_decode(PointerButton::Primary, ui) {
+                        DragOp::Start(p) => {
+                            self.dsel_state.dsel_cancel();
+                            self.dsel_state.dsel_mouse_down(
+                                p.into(),
+                                &mm,
+                                self.state.draw_sel,
+                                !mods.shift,
+                                mods.ctrl,
+                                true,
+                                true, //TODO
+                            )
+                        },
+                        DragOp::Tick(Some(p)) => {
+                            self.dsel_state.dsel_mouse_down(
+                                p.into(),
+                                &mm,
+                                self.state.draw_sel,
+                                !mods.shift,
+                                mods.ctrl,
+                                false,
+                                true, //TODO
+                            )
+                        },
+                        DragOp::End(p) => {
+                            let ss = self.dsel_state.dsel_mouse_up(p.into(), &mm);
+                            *palet = PaletteItem {
+                                texture: None, //TODO
+                                src: Arc::new(ss),
+                                uv: RECT_0_0_1_1,
+                            }
+                        },
+                        DragOp::Abort => self.dsel_state.dsel_cancel(),
+                        _ => {},
+                    }
+                },
+            }
+
             let mut shapes = vec![];
 
             self.editsel.render(
@@ -65,6 +137,13 @@ impl Map {
                 &self.path,
                 ui.ctx(),
             );
+
+            if let Some(h) = reg.hover_pos_rel() {
+                match self.state.draw_mode {
+                    DrawOp::Draw => self.draw_state.draw_hover_at_pos(h.into(), &palette.paletted[palette.selected as usize], |v| shapes.push(v) ),
+                    DrawOp::Sel => self.dsel_state.dsel_render(h.into(), |v| shapes.push(v) ),
+                }
+            }
 
             reg.extend_rel_fixtex(shapes);
         }

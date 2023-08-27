@@ -24,14 +24,27 @@ pub struct DrawState {
 }
 
 impl DrawState {
-    pub fn draw_mouse_down(&mut self, pos: [f32;2], src: &PaletteItem, mode: DrawMode) {
-        let q = self.quantin(pos);
-        if self.draw_start.is_none() && !src.is_empty() {
-            self.draw_start = Some(q);
+    pub fn new() -> Self {
+        Self {
+            draw_start: None,
+            current_dest: Default::default(),
+            current_dest2: Vec::with_capacity(64),
+            prev_tik: None,
+            src: None,
+            mode: DrawMode::Direct,
         }
+    }
+
+    pub fn draw_mouse_down(&mut self, pos: [f32;2], src: &PaletteItem, mode: DrawMode) {
         if self.src.is_none() {
             self.src = Some(src.clone());
         }
+        let q = self.quantin(pos);
+        if self.draw_start.is_none() && !src.is_empty() {
+            self.draw_start = Some(q);
+            self.mode = mode;
+        }
+        if self.src.as_ref().unwrap().is_empty() {return;}
         self.recalc(q);
     }
 
@@ -58,7 +71,7 @@ impl DrawState {
         } else {
             if src.is_empty() {return;}
 
-            let q = self.quantin(pos).as_u32().mul8();
+            let q = self.quantin2(pos, src).as_u32().mul8();
             // render quant rect at pos
             let size = src.src.img.dimensions();
 
@@ -155,8 +168,18 @@ impl DrawState {
     }
 
     fn quantin(&self, i: [f32;2]) -> [u16;2] {
-        let (sw,sh) = self.src.as_ref().unwrap().src.img.dimensions();
+        self.quantin2(i, self.src.as_ref().unwrap())
+    }
+
+    fn quantin2(&self, i: [f32;2], src: &PaletteItem) -> [u16;2] {
+        let (sw,sh) = src.src.img.dimensions();
         quantize_mouse_tilepos(i, [sw/8,sh/8]).as_u16()
+    }
+}
+
+impl Default for DrawState {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

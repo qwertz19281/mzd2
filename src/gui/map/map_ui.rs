@@ -82,6 +82,11 @@ impl Map {
         ]);
     }
 
+    fn post_drawroom_switch(&mut self) {
+        self.draw_state.draw_cancel();
+        self.dsel_state.clear_selection();
+    }
+
     pub fn ui_map(
         &mut self,
         warp_setter: &mut Option<(MapId,RoomId,(u32,u32))>,
@@ -210,6 +215,7 @@ impl Map {
                                     self.state.dsel_coord = None;
                                     self.state.dsel_room = None;
                                     self.editsel = DrawImageGroup::unsel(self.state.rooms_size);
+                                    self.post_drawroom_switch();
                                     self.ui_delete_room(v);
                                 }
                             } else if let Some(v) = self.state.dsel_coord {
@@ -218,6 +224,7 @@ impl Map {
                                         self.state.dsel_room = Some(new_id);
                                         self.state.dsel_coord = Some(v);
                                         self.editsel = DrawImageGroup::single(new_id, v, self.state.rooms_size);
+                                        self.post_drawroom_switch();
                                     }
                                 }
                             }
@@ -233,7 +240,7 @@ impl Map {
                                 if ui.button("Create Room").clicked() {
                                     if let Some(new_id) = self.ui_create_room(v) {
                                         self.state.ssel_room = Some(new_id);
-                                        self.state.dsel_coord = Some(v);
+                                        self.state.ssel_coord = Some(v);
                                     }
                                 }
                             }
@@ -414,9 +421,12 @@ impl Map {
                                 } else {
                                     self.editsel = DrawImageGroup::unsel(self.state.rooms_size);
                                 }
+                                self.post_drawroom_switch();
                             } else {
                                 if let Some(room) = self.room_matrix.get(click_coord) {
-                                    self.editsel.try_attach(*room, self.state.rooms_size, &self.state.rooms);
+                                    if self.editsel.try_attach(*room, self.state.rooms_size, &self.state.rooms) {
+                                        self.post_drawroom_switch();
+                                    }
                                 }
                             }
                         }

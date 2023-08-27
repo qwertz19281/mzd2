@@ -14,8 +14,8 @@ use crate::util::*;
 
 use self::room_ops::{OpAxis, RoomOp, ShiftSmartCollected};
 
-use super::draw_state::DrawMode;
-use super::dsel_state::DSelMode;
+use super::draw_state::{DrawMode, DrawState};
+use super::dsel_state::{DSelMode, DSelState};
 use super::room::Room;
 use super::room::draw_image::DrawImageGroup;
 use super::texture::TextureCell;
@@ -40,6 +40,8 @@ pub struct Map {
     pub undo_buf: VecDeque<RoomOp>,
     pub redo_buf: VecDeque<RoomOp>,
     pub windowsize_estim: egui::Vec2,
+    pub draw_state: DrawState,
+    pub dsel_state: DSelState,
 }
 
 pub type RoomMap = HopSlotMap<RoomId,Room>;
@@ -135,6 +137,8 @@ impl Map {
             latest_used_opevo: 0,
             windowsize_estim: state.rooms_size.as_f32().into(),
             state,
+            draw_state: DrawState::new(),
+            dsel_state: DSelState::new(),
         };
 
         map.set_view_pos(map.state.view_pos);
@@ -229,6 +233,8 @@ impl Map {
             redo_buf: VecDeque::with_capacity(64),
             latest_used_opevo: 0,
             windowsize_estim: rooms_size.as_f32().into(),
+            draw_state: DrawState::new(),
+            dsel_state: DSelState::new(),
         }
     }
 

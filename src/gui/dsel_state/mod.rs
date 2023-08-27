@@ -29,6 +29,18 @@ pub struct DSelState {
 }
 
 impl DSelState {
+    pub fn new() -> Self {
+        Self {
+            active: None,
+            selected: Default::default(),
+            staging_mode: true,
+            selected_staging: Default::default(),
+            prev_tik: None,
+            dsel_mode: DSelMode::Direct,
+            sel_area: ([65535,65535],[0,0]),
+            whole_selentry: true,
+        }
+    }
     ///
     /// add: true = add to sel, false = remove from sel
     pub fn dsel_mouse_down(&mut self, pos: [f32;2], src: &impl SelEntryRead, mode: DSelMode, add: bool, stage: bool, new: bool, whole_selentry: bool) {
@@ -80,7 +92,7 @@ impl DSelState {
         self.sel_area = ([65535,65535],[0,0]);
     }
 
-    pub fn dsel_mouse_up(&mut self, pos: [f32;2], img: &impl ImgRead, layer: usize) -> SelImg {
+    pub fn dsel_mouse_up(&mut self, pos: [f32;2], img: &impl ImgRead) -> SelImg {
         // apply staging
         for (a,b) in self.selected_staging.drain() {
             if self.staging_mode {
@@ -100,7 +112,7 @@ impl DSelState {
 
         let siz = max.sub(min).as_u32().add([1,1]);
 
-        let mut dest_img = RgbaImage::new(siz[0],siz[1]);
+        let mut dest_img = RgbaImage::new(siz[0] * 8,siz[1] * 8);
         let mut sels = Vec::with_capacity(self.selected.len());
 
         for (&a,b) in &self.selected {
@@ -140,7 +152,7 @@ impl DSelState {
         self.prev_tik = Some(dest);
 
         let mut add_sel_entry = |q: [u16;2]| {
-            if let Some(e) = src.get(q.as_u32()) {
+            if let Some(e) = src.get(q.as_u32()).filter(|e| !e.is_empty() ) {
                 let ept = e.to_sel_pt(q.as_u32());
                 if self.whole_selentry {
                     for y in ept.start[1] .. ept.start[1] + ept.size[1] as u16 {

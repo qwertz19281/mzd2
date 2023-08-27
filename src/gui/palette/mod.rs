@@ -11,8 +11,8 @@ use super::{rector, rector_off, line2_off, line2};
 use super::texture::{RECT_0_0_1_1, ensure_texture_from_image};
 
 pub struct Palette {
-    paletted: Vec<PaletteItem>,
-    selected: u32,
+    pub paletted: Vec<PaletteItem>,
+    pub selected: u32,
 }
 
 impl Palette {
