@@ -138,16 +138,16 @@ impl DrawState {
 
                 fn range_se(a: u16, b: u16) -> Range<u16> {
                     if b > a {
-                        a .. b+8
+                        a .. b+1
                     } else {
-                        b .. a+8
+                        b .. a+1
                     }
                 }
 
                 self.current_dest2.clear();
 
-                for y in range_se(draw_start[1], dest[1]).step_by(sh as usize / 8) {
-                    for x in range_se(draw_start[0], dest[0]).step_by(sw as usize / 8) {
+                for y in range_se(draw_start[1], dest[1]).step_by(sh as usize) {
+                    for x in range_se(draw_start[0], dest[0]).step_by(sw as usize) {
                         self.current_dest2.push([x,y]);
                     }
                 }

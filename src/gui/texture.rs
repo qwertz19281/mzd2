@@ -2,6 +2,28 @@ use egui::epaint::ImageDelta;
 use egui::{TextureHandle, Context, ColorImage, Color32, TextureOptions, ImageData, Rect};
 use image::RgbaImage;
 
+use super::util::ArrUtl;
+
+fn effective_bounds2((aoff,aoff2): ([u32;2],[u32;2]), (boff,boff2): ([u32;2],[u32;2])) -> Option<([u32;2],[u32;2])> {
+    fn axis_op(aoff: u32, aoff2: u32, boff: u32, boff2: u32) -> (u32,u32) {
+        let s0 = aoff.max(boff);
+        let s1 = aoff2.min(boff2);
+        (s0, s1.max(s0))
+    }
+
+    let (x0,x1) = axis_op(aoff[0], aoff2[0], boff[0], boff2[0]);
+    let (y0,y1) = axis_op(aoff[1], aoff2[1], boff[1], boff2[1]);
+
+    if x1 > x0 && y1 > y0 {
+        Some((
+            [x0,y0],
+            [x1,y1],
+        ))
+    } else {
+        None
+    }
+}
+
 pub fn ensure_texture_from_image<'a> (
     tex: &'a mut Option<TextureHandle>,
     name: impl Into<String>,
@@ -20,14 +42,16 @@ pub fn ensure_texture_from_image<'a> (
 
     if tex.is_some() && !force && force_region.is_some() {
         let region = force_region.unwrap();
-        let image_part = color_image_of_image_area(&image, region.0, region.1);
-        let tex_manager = ctx.tex_manager();
-        let mut tex_manager = tex_manager.write();
-        tex_manager.set(tex.as_ref().unwrap().id(), ImageDelta {
-            image: ImageData::Color(image_part),
-            options: opts,
-            pos: Some([region.0[0] as usize, region.0[1] as usize]),
-        });
+        if let Some(region) = effective_bounds2((region.0,region.0.add(region.1)), ([0,0],image.dimensions().into())) {
+            let image_part = color_image_of_image_area(&image, region.0, region.1.sub(region.0));
+            let tex_manager = ctx.tex_manager();
+            let mut tex_manager = tex_manager.write();
+            tex_manager.set(tex.as_ref().unwrap().id(), ImageDelta {
+                image: ImageData::Color(image_part),
+                options: opts,
+                pos: Some([region.0[0] as usize, region.0[1] as usize]),
+            });
+        }
     } else if force && tex.is_some() {
         let max_side = ctx.input(|i| i.max_texture_side);
         assert!(image.width() as usize <= max_side && image.height() as usize <= max_side);

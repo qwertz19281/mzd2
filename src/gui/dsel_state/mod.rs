@@ -58,10 +58,34 @@ impl DSelState {
         //     self.clear_selection();
         // }
         // self.src_id = srcid;
-        self.addcalc(pos, src);
+        if self.active.is_some() {
+            self.addcalc(pos, src);
+        }
     }
 
-    pub fn dsel_render(&self, current_pos: [f32;2], mut dest: impl FnMut(Shape)) { // TODO the dest fn should scale and translate the shape
+    pub fn dsel_render(&self, current_pos: [f32;2], src: &impl SelEntryRead, whole_selentry: bool, mut dest: impl FnMut(Shape)) { // TODO the dest fn should scale and translate the shape
+        if self.active.is_none() {
+            let pos = quantize1(current_pos);
+            let rect;
+            if let Some(e) = src.get(pos).filter(|e| !e.is_empty() ) {
+                let ept = e.to_sel_pt(pos);
+                if self.whole_selentry {
+                    rect = rector(
+                        ept.start[0] as u32 * 8,
+                        ept.start[1] as u32 * 8,
+                        (ept.start[0] as u32 + ept.size[0] as u32 ) * 8,
+                        (ept.start[1] as u32 + ept.size[1] as u32 ) * 8,
+                    );
+                } else {
+                    rect = rector(pos[0] * 8, pos[1] * 8, (pos[0]+1) * 8, (pos[1]+1) * 8);
+                }
+
+                let stroke = egui::Stroke::new(1.5, Color32::BLUE);
+                dest(egui::Shape::rect_stroke(rect, Rounding::none(), stroke));
+            }
+            return;
+        }
+        
         let mut render_rect = |[x,y]: [u16;2]| {
             let rect = rector(x as u32 * 8, y as u32 * 8, (x+1) as u32 * 8, (y+1) as u32 * 8);
             dest(egui::Shape::rect_filled(rect, Rounding::none(), Color32::from_rgba_unmultiplied(255,0,0,64)));
@@ -73,7 +97,7 @@ impl DSelState {
         }
         if self.staging_mode {
             for (&a,b) in &self.selected_staging {
-                if self.selected_staging.contains_key(&a) {continue;}
+                if self.selected.contains_key(&a) {continue;}
                 render_rect(a);
             }
         }

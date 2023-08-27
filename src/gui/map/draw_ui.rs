@@ -141,7 +141,15 @@ impl Map {
             if let Some(h) = reg.hover_pos_rel() {
                 match self.state.draw_mode {
                     DrawOp::Draw => self.draw_state.draw_hover_at_pos(h.into(), &palette.paletted[palette.selected as usize], |v| shapes.push(v) ),
-                    DrawOp::Sel => self.dsel_state.dsel_render(h.into(), |v| shapes.push(v) ),
+                    DrawOp::Sel => self.dsel_state.dsel_render(
+                        h.into(),
+                        &self.editsel.selmatrix(
+                            0 /*TODO*/,
+                            &self.state.rooms,
+                            self.state.rooms_size,
+                        ),
+                        true, //TODO
+                        |v| shapes.push(v) ),
                 }
             }
 
