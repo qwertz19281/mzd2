@@ -106,6 +106,12 @@ pub fn basic_tex_shape(tex_id: egui::TextureId, dest: egui::Rect) -> egui::epain
     mesh
 }
 
+pub fn basic_tex_shape_c(tex_id: egui::TextureId, dest: egui::Rect, color: egui::Color32) -> egui::epaint::Mesh {
+    let mut mesh = egui::Mesh::with_texture(tex_id);
+    mesh.add_rect_with_uv(dest, RECT_0_0_1_1, color);
+    mesh
+}
+
 pub const RECT_0_0_1_1: Rect = Rect {
     min: egui::Pos2 { x: 0., y: 0. },
     max: egui::Pos2 { x: 1., y: 1. },

@@ -9,8 +9,9 @@ use serde::{Serialize, Deserialize};
 use crate::gui::rector;
 
 use super::palette::PaletteItem;
-use super::room::draw_image::DrawImageGroup;
-use super::texture::{basic_tex_shape, RECT_0_0_1_1};
+use super::room::draw_image::{DrawImageGroup, ImgWrite};
+use super::sel_matrix::SelEntryWrite;
+use super::texture::{basic_tex_shape, RECT_0_0_1_1, basic_tex_shape_c};
 use super::util::ArrUtl;
 
 pub struct DrawState {
@@ -32,11 +33,12 @@ impl DrawState {
             self.src = Some(src.clone());
         }
         self.recalc(q);
-        todo!()
     }
 
     // draw_mouse_down should be called before
     pub fn draw_hover_at_pos(&self, pos: [f32;2], src: &PaletteItem, mut dest: impl FnMut(Shape)) { // TODO the dest fn should scale and translate the shape
+        let blend = egui::Color32::from_rgba_unmultiplied(255, 255, 255, 64);
+        
         if self.active() {
             // render current_dest
             let src = self.src.as_ref().unwrap();
@@ -48,7 +50,7 @@ impl DrawState {
                 for &q in self.current_dest.iter().chain(self.current_dest2.iter()) {
                     let q = q.as_u32().mul8();
                     let rect = rector(q[0], q[1], q[0] + size.0, q[1] + size.1);
-                    mesh.add_rect_with_uv(rect, src.uv, egui::Color32::from_rgba_unmultiplied(255, 255, 255, 64));
+                    mesh.add_rect_with_uv(rect, src.uv, blend);
                 }
 
                 dest(egui::Shape::Mesh(mesh));
@@ -67,7 +69,7 @@ impl DrawState {
             dest(egui::Shape::rect_stroke(rect, Rounding::none(), stroke));
 
             if let Some(tex) = &src.texture {
-
+                dest(egui::Shape::Mesh(basic_tex_shape_c(tex.id(), rect, blend)));
             }
         }
     }
@@ -80,8 +82,25 @@ impl DrawState {
         self.src = None;
     }
 
-    pub fn draw_mouse_up(&mut self, dest: &mut DrawImageGroup, img_size: [u32;2], iyo: u32) {
-        todo!()
+    pub fn draw_mouse_up(&mut self, dest: &mut (impl ImgWrite + SelEntryWrite)) {
+        let Some(src) = &self.src else {return};
+
+        for &doff in self.current_dest.iter().chain(self.current_dest2.iter()) {
+            for (a,b) in &src.src.sels {
+                dest.set_and_fix(
+                    a.add(doff).as_u32(),
+                    b.clone()
+                );
+            }
+
+            dest.img_write(
+                doff.as_u32().mul8(),
+                src.src.img.dimensions().into(),
+                &src.src.img,
+                [0,0],
+                false
+            );
+        }
     }
 
     pub fn active(&self) -> bool {

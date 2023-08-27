@@ -157,7 +157,6 @@ fn xbounds_iter(len: u32) -> impl Iterator<Item = (u32,u32)> {
 #[derive(Clone)]
 pub struct SelImg {
     pub img: RgbaImage,
-    pub selpts: Vec<SelPt>,
     pub sels: Vec<([u16;2],SelEntry)>,
 }
 
@@ -165,7 +164,6 @@ impl SelImg {
     pub fn empty() -> Self {
         Self {
             img: RgbaImage::new(0,0),
-            selpts: vec![],
             sels: vec![],
         }
     }

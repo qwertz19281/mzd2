@@ -25,19 +25,21 @@ pub struct DSelState {
     prev_tik: Option<[u16;2]>,
     dsel_mode: DSelMode,
     sel_area: ([u16;2],[u16;2]),
+    whole_selentry: bool,
 }
 
 impl DSelState {
     ///
     /// add: true = add to sel, false = remove from sel
-    pub fn dsel_mouse_down(&mut self, pos: [f32;2], src: &impl SelEntryRead, mode: DSelMode, add: bool, stage: bool, new: bool) {
+    pub fn dsel_mouse_down(&mut self, pos: [f32;2], src: &impl SelEntryRead, mode: DSelMode, add: bool, stage: bool, new: bool, whole_selentry: bool) {
         if new {
-            self.active = Some(quantize1(pos).as_u16());
-            self.dsel_mode = mode;
             self.dsel_cancel();
             if !stage {
                 self.clear_selection();
             }
+            self.active = Some(quantize1(pos).as_u16());
+            self.dsel_mode = mode;
+            self.whole_selentry = whole_selentry;
             self.staging_mode = add;
         }
         // if srcid != self.src_id {
@@ -90,13 +92,44 @@ impl DSelState {
         
         self.calc_sel_area();
 
-        //TODO extract all the selected eights pixels and selentries into the selimg
+        let (min,max) = self.sel_area;
 
-        todo!()
+        if self.selected.is_empty() {
+            return SelImg::empty();
+        }
+
+        let siz = max.sub(min).as_u32().add([1,1]);
+
+        let mut dest_img = RgbaImage::new(siz[0],siz[1]);
+        let mut sels = Vec::with_capacity(self.selected.len());
+
+        for (&a,b) in &self.selected {
+            let draw_src_off = a.as_u32().mul8();
+            let draw_dest_off = a.sub(min).as_u32().mul8();
+            let draw_size = siz.mul8();
+
+            sels.push((
+                a.sub(min),
+                b.clone(),
+            ));
+
+            img.img_read(
+                draw_src_off,
+                draw_size,
+                &mut dest_img,
+                draw_dest_off,
+                true
+            );
+        }
+
+        SelImg {
+            img: dest_img,
+            sels,
+        }
     }
 
     pub fn active(&self) -> bool {
-        todo!()
+        self.active.is_some()
     }
 
     fn addcalc(&mut self, pos: [f32;2], src: &impl SelEntryRead) {
@@ -106,16 +139,24 @@ impl DSelState {
         if self.prev_tik == Some(dest) {return;}
         self.prev_tik = Some(dest);
 
-        match self.dsel_mode {
-            DSelMode::Direct => {
-                if let Some(e) = src.get(q) {
-                    let ept = e.to_sel_pt(q);
+        let mut add_sel_entry = |q: [u16;2]| {
+            if let Some(e) = src.get(q.as_u32()) {
+                let ept = e.to_sel_pt(q.as_u32());
+                if self.whole_selentry {
                     for y in ept.start[1] .. ept.start[1] + ept.size[1] as u16 {
                         for x in ept.start[0] .. ept.start[0] + ept.size[0] as u16 {
                             self.selected_staging.insert([x,y], e.clone());
                         }
                     }
+                } else {
+                    self.selected_staging.insert(q, e.clone());
                 }
+            }
+        };
+
+        match self.dsel_mode {
+            DSelMode::Direct => {
+                add_sel_entry(dest);
             },
             DSelMode::Rect => {
                 fn range_se(a: u16, b: u16) -> Range<u16> {
@@ -130,14 +171,7 @@ impl DSelState {
                 
                 for y1 in range_se(start[1], dest[1]) {
                     for x1 in range_se(start[0], dest[0]) {
-                        if let Some(e) = src.get([x1 as u32, y1 as u32]) {
-                            let ept = e.to_sel_pt(q);
-                            for y in ept.start[1] .. ept.start[1] + ept.size[1] as u16 {
-                                for x in ept.start[0] .. ept.start[0] + ept.size[0] as u16 {
-                                    self.selected_staging.insert([x,y], e.clone());
-                                }
-                            }
-                        }
+                        add_sel_entry([x1,y1]);
                     }
                 }
             },
