@@ -7,18 +7,18 @@ use serde::{Deserialize, Serialize};
 
 use crate::util::{TilesetId, attached_to_path, ResultExt, next_tex_id};
 
+use super::room::draw_image::DrawImage;
 use super::{MutQueue, rector};
 use super::init::{SharedApp, SAM};
 use super::sel_matrix::{SelMatrix, sel_entry_dims};
-use super::texture::{ensure_texture_from_image, RECT_0_0_1_1};
+use super::texture::{ensure_texture_from_image, RECT_0_0_1_1, TextureCell};
 use super::util::{alloc_painter_rel, alloc_painter_rel_ds, ArrUtl};
 
 pub struct Tileset {
     pub id: TilesetId,
     pub state: TilesetState,
     pub path: PathBuf,
-    pub loaded_image: RgbaImage,
-    pub texture: Option<egui::TextureHandle>,
+    pub loaded_image: DrawImage,
     pub edit_path: Option<PathBuf>,
     pub edit_mode: bool,
     pub quant: u8,
@@ -93,13 +93,12 @@ impl Tileset {
 
         let mut shapes = vec![];
 
-        let ts_tex = ensure_texture_from_image(
-            &mut self.texture,
-            format!("tileset_{}",self.state.title),
-            TS_TEX_OPTS,
-            &self.loaded_image,
-            false,
-            None,
+        let ts_tex = self.loaded_image.tex.get_or_insert_with(||
+            TextureCell::new(format!("tileset_{}",self.state.title),TS_TEX_OPTS)
+        );
+
+        let ts_tex = ts_tex.ensure_image(
+            &self.loaded_image.img,
             ui.ctx()
         );
 
@@ -158,8 +157,11 @@ impl Tileset {
             id: TilesetId::new(),
             state,
             path,
-            loaded_image: image,
-            texture: None,
+            loaded_image: DrawImage {
+                img: image,
+                tex: None,
+                layers: 1,
+            },
             edit_path,
             edit_mode: false,
             quant: 1,

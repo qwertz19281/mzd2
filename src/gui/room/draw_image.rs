@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use crate::gui::map::{RoomId, RoomMap, DirtyRooms, MapEditMode, Map};
 use crate::gui::util::ArrUtl;
 use crate::gui::{rector, line2};
-use crate::gui::sel_matrix::{SelPt, SelEntry};
+use crate::gui::sel_matrix::{SelPt, SelEntry, DIGMatrixAccess, DIGMatrixAccessMut};
 use crate::gui::texture::TextureCell;
 
 use super::Room;
@@ -92,37 +92,6 @@ impl DrawImage {
             min: egui::Pos2 { x: 0., y: y0 },
             max: egui::Pos2 { x: 1., y: y1 },
         }
-    }
-
-    pub fn pt_hash(&self, pt: SelPt, layer: usize, rooms_size: [u32;2]) -> u64 {
-        assert!(layer < self.layers);
-
-        if pt.size[0] == 0 || pt.size[1] == 0 {return 0;}
-
-        let x0 = pt.start[0] as u32 * 8 + (layer as u32 * rooms_size[1]);
-        let y0 = pt.start[1] as u32 * 8;
-        let x1 = x0 + pt.size[0] as u32 * 8;
-        let y1 = y0 + pt.size[1] as u32 * 8;
-
-        assert!(x0 < self.img.width() && y0 < self.img.height() && x1 <= self.img.width() && y1 <= self.img.height());
-
-        let mut hasher = AHasher::default();
-
-        pt.size.hash(&mut hasher);
-
-        for y in y0 .. y1 {
-            for x in x0 .. x1 {
-                let mut pix = unsafe { self.img.get_pixel_checked(x, y).unwrap_unchecked().clone() };
-                if pix.0[3] < 16 {
-                    pix.0[0] = 0; pix.0[1] = 0; pix.0[2] = 0;
-                }
-                pix.hash(&mut hasher);
-            }
-        }
-
-        pt.size.hash(&mut hasher);
-        
-        hasher.finish().saturating_add(1)
     }
 }
 
@@ -223,7 +192,7 @@ impl DrawImageGroup {
     }
 
     // full-scale bounds unit
-    pub fn draw(&self, rooms: &mut RoomMap, src: &RgbaImage, off: [u32;2], size: [u32;2], dest_layer: usize, rooms_size: [u32;2], dirty_map: &mut DirtyRooms) {
+    fn draw(&self, rooms: &mut RoomMap, src: &RgbaImage, off: [u32;2], size: [u32;2], layer: usize, src_off: [u32;2], rooms_size: [u32;2], dirty_map: &mut DirtyRooms, replace: bool) {
         assert!(rooms_size[0] % 8 == 0 && rooms_size[1] % 8 == 0);
         //TODO Room::ensure_loaded
         for &(room_id,_,roff) in &self.rooms {
@@ -233,16 +202,17 @@ impl DrawImageGroup {
             
             assert!(room.image.img.width() == rooms_size[0]);
             assert!(room.image.img.height() % rooms_size[1] == 0);
-            assert!((dest_layer * rooms_size[0] as usize) < room.image.img.height() as usize, "Layer overflow");
+            assert!((layer * rooms_size[0] as usize) < room.image.img.height() as usize, "Layer overflow");
 
             assert!(roff[0] % 8 == 0 && roff[1] % 8 == 0 && room.image.img.width() % 8 == 0 && room.image.img.height() % 8 == 0);
             assert!(op_0[0] % 8 == 0 && op_0[1] % 8 == 0 && op_1[0] % 8 == 0 && op_1[1] % 8 == 0);
 
-            image::imageops::overlay(
+            imgcopy(
                 &mut room.image.img,
-                &*src.view(op_0[0]-roff[0], op_0[1]-roff[1], op_1[0]-op_0[0], op_1[1]-op_0[1]),
+                &*src.view(src_off[0], src_off[1], op_1[0]-op_0[0], op_1[1]-op_0[1]),
                 op_0[0] as i64,
-                op_0[1] as i64 + (dest_layer as i64 * rooms_size[1] as i64),
+                op_0[1] as i64 + (layer as i64 * rooms_size[1] as i64),
+                replace,
             );
 
             room.dirty_file = true;
@@ -252,17 +222,17 @@ impl DrawImageGroup {
                 tc.dirty_region((
                     [
                         op_0[0],
-                        op_0[1] + (dest_layer as u32 * rooms_size[1] as u32),
+                        op_0[1],
                     ],[
                         op_1[0],
-                        op_1[1] + (dest_layer as u32 * rooms_size[1] as u32),
+                        op_1[1],
                     ]
                 ));
             }
         }
     }
 
-    pub fn erase(&self, rooms: &mut RoomMap, src: &RgbaImage, off: [u32;2], size: [u32;2], dest_layer: usize, rooms_size: [u32;2], dirty_map: &mut DirtyRooms) {
+    fn erase(&self, rooms: &mut RoomMap, off: [u32;2], size: [u32;2], layer: usize, rooms_size: [u32;2], dirty_map: &mut DirtyRooms) {
         assert!(rooms_size[0] % 8 == 0 && rooms_size[1] % 8 == 0);
         //TODO Room::ensure_loaded
         for &(room_id,_,roff) in &self.rooms {
@@ -272,14 +242,14 @@ impl DrawImageGroup {
             
             assert!(room.image.img.width() == rooms_size[0]);
             assert!(room.image.img.height() % rooms_size[1] == 0);
-            assert!((dest_layer * rooms_size[0] as usize) < room.image.img.height() as usize, "Layer overflow");
+            assert!((layer * rooms_size[0] as usize) < room.image.img.height() as usize, "Layer overflow");
 
             assert!(roff[0] % 8 == 0 && roff[1] % 8 == 0 && room.image.img.width() % 8 == 0 && room.image.img.height() % 8 == 0);
             assert!(op_0[0] % 8 == 0 && op_0[1] % 8 == 0 && op_1[0] % 8 == 0 && op_1[1] % 8 == 0);
 
             for y in op_0[1] .. op_1[1] {
                 for x in op_0[0] .. op_1[0] {
-                    let y = y + (dest_layer as u32 * rooms_size[1] as u32);
+                    let y = y + (layer as u32 * rooms_size[1] as u32);
                     unsafe { room.image.img.unsafe_put_pixel(x, y, image::Rgba([0,0,0,0])); }
                 }
             }
@@ -291,13 +261,43 @@ impl DrawImageGroup {
                 tc.dirty_region((
                     [
                         op_0[0],
-                        op_0[1] + (dest_layer as u32 * rooms_size[1] as u32),
+                        op_0[1] + (layer as u32 * rooms_size[1] as u32),
                     ],[
                         op_1[0],
-                        op_1[1] + (dest_layer as u32 * rooms_size[1] as u32),
+                        op_1[1] + (layer as u32 * rooms_size[1] as u32),
                     ]
                 ));
             }
+        }
+    }
+
+    fn read(&self, rooms: &RoomMap, dest: &mut RgbaImage, off: [u32;2], layer: usize, size: [u32;2], dest_off: [u32;2], rooms_size: [u32;2], replace: bool) {
+        assert!(rooms_size[0] % 8 == 0 && rooms_size[1] % 8 == 0);
+        //TODO Room::ensure_loaded
+        for &(room_id,_,roff) in &self.rooms {
+            let Some(room) = rooms.get(room_id) else {continue};
+            let off1 = [off[0]+roff[0],off[1]+roff[1]];
+            let Some((op_0,op_1)) = effective_bounds((off1,size),(roff,rooms_size)) else {continue};
+            
+            assert!(room.image.img.width() == rooms_size[0]);
+            assert!(room.image.img.height() % rooms_size[1] == 0);
+            // assert!((dest_layer * rooms_size[0] as usize) < room.image.img.height() as usize, "Layer overflow");
+
+            assert!(roff[0] % 8 == 0 && roff[1] % 8 == 0 && room.image.img.width() % 8 == 0 && room.image.img.height() % 8 == 0);
+            assert!(op_0[0] % 8 == 0 && op_0[1] % 8 == 0 && op_1[0] % 8 == 0 && op_1[1] % 8 == 0);
+
+            imgcopy(
+                dest,
+                &*room.image.img.view(
+                    op_0[0],
+                    op_0[1] + (layer as u32 * rooms_size[1]),
+                    op_1[0]-op_0[0],
+                    op_1[1]-op_0[1]
+                ),
+                dest_off[0] as i64,
+                dest_off[1] as i64,
+                replace,
+            );
         }
     }
 
@@ -318,78 +318,6 @@ impl DrawImageGroup {
                 map_path,
                 ctx,
             );
-        }
-    }
-
-    pub fn render_conns(&self, rooms: &mut RoomMap, mode: MapEditMode, rooms_size: [u32;2], mut dest: impl FnMut(egui::Shape), ctx: &egui::Context) {
-        for &(room_id,_,roff) in &self.rooms {
-            let Some(room) = rooms.get_mut(room_id) else {continue};
-
-            room.render_conns(
-                mode,
-                roff,
-                rooms_size,
-                |v| dest(v),
-                ctx,
-            );
-        }
-    }
-
-    pub fn se_get<'a>(&self, [x,y]: [u32;2], layer: usize, rooms: &'a RoomMap, rooms_size: [u32;2]) -> Option<&'a SelEntry> {
-        let rooms_size = rooms_size.div8();
-        for &(room_id,_,roff) in &self.rooms {
-            let roff = roff.div8();
-            
-            if x >= roff[0] && x < roff[0]+rooms_size[0] && y >= roff[1] && y < roff[1]+rooms_size[1] {
-                let Some(room) = rooms.get(room_id) else {continue};
-
-                return room.sel_matrix.layers[layer].get([x-roff[0],y-roff[1]]);
-            }
-        }
-        None
-    }
-
-    pub fn se_get_mut<'a>(&mut self, [x,y]: [u32;2], layer: usize, rooms: &'a mut RoomMap, rooms_size: [u32;2]) -> Option<&'a mut SelEntry> {
-        let rooms_size = rooms_size.div8();
-        for &(room_id,_,roff) in &self.rooms {
-            let roff = roff.div8();
-            
-            if x >= roff[0] && x < roff[0]+rooms_size[0] && y >= roff[1] && y < roff[1]+rooms_size[1] {
-                if !rooms.contains_key(room_id) {continue};
-
-                return rooms.get_mut(room_id).unwrap().sel_matrix.layers[layer].get_mut([x-roff[0],y-roff[1]]);
-            }
-        }
-        None
-    }
-
-    pub fn se_set_and_fix<R>(&mut self, pos: [u32;2], layer: usize, v: SelEntry, rooms: &mut RoomMap, rooms_size: [u32;2]) {
-        let rooms_size = rooms_size.div8();
-        for &(room_id,_,roff) in &self.rooms {
-            let roff = roff.div8();
-            
-            if pos[0] >= roff[0] && pos[0] < roff[0]+rooms_size[0] && pos[1] >= roff[1] && pos[1] < roff[1]+rooms_size[1] {
-                let vspt = v.to_sel_pt_fixedi(pos.sub(roff).as_i32(), ([0,0],rooms_size.as_i32()));
-                let vspt = vspt.to_sel_entry(pos.sub(roff));
-
-                let Some(room) = rooms.get_mut(room_id) else {break};
-
-                *room.sel_matrix.layers[layer].get_mut(pos.sub(roff)).unwrap() = vspt;
-
-                break;
-            }
-        }
-    }
-
-    pub fn fill(&mut self, [x0,y0]: [u32;2], [x1,y1]: [u32;2], layer: usize, rooms: &mut RoomMap, rooms_size: [u32;2]) {
-        let rooms_size = rooms_size.div8();
-        for &(room_id,_,roff) in &self.rooms {
-            let roff = roff.div8();
-            let Some((o1,o2)) = effective_bounds2((roff,roff.add(rooms_size)), ([x0,y0],[x1,y1])) else {continue};
-
-            let Some(room) = rooms.get_mut(room_id) else {continue};
-
-            room.sel_matrix.layers[layer].fill(o1, o2);
         }
     }
 
@@ -433,6 +361,25 @@ impl DrawImageGroup {
         }
 
         attached
+    }
+
+    pub fn selmatrix<'a,'b>(&'a self, layer: usize, rooms: &'b RoomMap, rooms_size: [u32;2]) -> DIGMatrixAccess<'a,'b> {
+        DIGMatrixAccess {
+            dig: self,
+            layer,
+            rooms,
+            rooms_size,
+        }
+    }
+
+    pub fn selmatrix_mut<'a,'b>(&'a self, layer: usize, rooms: &'b mut RoomMap, rooms_size: [u32;2], dirty_map: &'b mut DirtyRooms) -> DIGMatrixAccessMut<'a,'b> {
+        DIGMatrixAccessMut {
+            dig: self,
+            layer,
+            rooms,
+            rooms_size,
+            dirty_map,
+        }
     }
 }
 
@@ -533,22 +480,179 @@ fn effective_bounds((aoff,asize): ([u32;2],[u32;2]), (boff,bsize): ([u32;2],[u32
     }
 }
 
-fn effective_bounds2((aoff,aoff2): ([u32;2],[u32;2]), (boff,boff2): ([u32;2],[u32;2])) -> Option<([u32;2],[u32;2])> {
-    fn axis_op(aoff: u32, aoff2: u32, boff: u32, boff2: u32) -> (u32,u32) {
-        let s0 = aoff.max(boff);
-        let s1 = aoff2.min(boff2);
-        (s0, s1.max(s0))
+pub trait ImgRead {
+    fn img_read(&self, off: [u32;2], size: [u32;2], dest: &mut RgbaImage, dest_off: [u32;2], replace: bool);
+
+    fn pt_hash(&self, pt: SelPt, layer: usize, rooms_size: [u32;2]) -> u64;
+}
+
+pub trait ImgWrite {
+    fn img_write(&mut self, off: [u32;2], size: [u32;2], src: &RgbaImage, src_off: [u32;2], replace: bool);
+
+    fn img_erase(&mut self, off: [u32;2], size: [u32;2]);
+}
+
+impl ImgRead for DrawImage {
+    fn img_read(&self, off: [u32;2], size: [u32;2], dest: &mut RgbaImage, dest_off: [u32;2], replace: bool) {
+        // assert!(rooms_size[0] == self.width());
+        // assert!(rooms_size[1] * layer as u32 <= self.height());
+        // assert!()
+
+        imgcopy(
+            dest,
+            &*self.img.view(
+                off[0],
+                off[1],
+                size[0],
+                size[1],
+            ),
+            dest_off[0] as i64,
+            dest_off[1] as i64,
+            replace,
+        );
     }
 
-    let (x0,x1) = axis_op(aoff[0], aoff2[0], boff[0], boff2[0]);
-    let (y0,y1) = axis_op(aoff[1], aoff2[1], boff[1], boff2[1]);
+    fn pt_hash(&self, pt: SelPt, layer: usize, rooms_size: [u32;2]) -> u64 {
+        assert!(layer < self.layers);
 
-    if x1 > x0 && y1 > y0 {
-        Some((
-            [x0,y0],
-            [x1,y1],
-        ))
+        if pt.size[0] == 0 || pt.size[1] == 0 {return 0;}
+
+        let x0 = pt.start[0] as u32 * 8 + (layer as u32 * rooms_size[1]);
+        let y0 = pt.start[1] as u32 * 8;
+        let x1 = x0 + pt.size[0] as u32 * 8;
+        let y1 = y0 + pt.size[1] as u32 * 8;
+
+        assert!(x0 < self.img.width() && y0 < self.img.height() && x1 <= self.img.width() && y1 <= self.img.height());
+
+        let mut hasher = AHasher::default();
+
+        pt.size.hash(&mut hasher);
+
+        for y in y0 .. y1 {
+            for x in x0 .. x1 {
+                let mut pix = unsafe { self.img.get_pixel_checked(x, y).unwrap_unchecked().clone() };
+                if pix.0[3] < 16 {
+                    pix.0[0] = 0; pix.0[1] = 0; pix.0[2] = 0;
+                }
+                pix.hash(&mut hasher);
+            }
+        }
+
+        pt.size.hash(&mut hasher);
+        
+        hasher.finish().saturating_add(1)
+    }
+}
+
+impl ImgWrite for DrawImage {
+    fn img_write(&mut self, off: [u32;2], size: [u32;2], src: &RgbaImage, src_off: [u32;2], replace: bool) {
+        imgcopy(
+            &mut self.img,
+            &*src.view(
+                src_off[0],
+                src_off[1],
+                size[0],
+                size[1],
+            ),
+            off[0] as i64,
+            off[1] as i64,
+            replace,
+        );
+
+        if let Some(tex) = &mut self.tex {
+            tex.dirty_region((off,off.add(size)))
+        }
+    }
+
+    fn img_erase(&mut self, off: [u32;2], size: [u32;2]) {
+        assert!(off[0] + size[0] <= self.img.width());
+        assert!(off[1] + size[1] <= self.img.height());
+
+        for y in off[1] .. off[1] + size[1] {
+            for x in off[0] .. off[0] + size[0] {
+                unsafe { self.img.unsafe_put_pixel(x, y, image::Rgba([0,0,0,0])); }
+            }
+        }
+
+        if let Some(tex) = &mut self.tex {
+            tex.dirty_region((off,off.add(size)))
+        }
+    }
+}
+
+impl ImgRead for DIGMatrixAccess<'_,'_> {
+    fn img_read(&self, off: [u32;2], size: [u32;2], dest: &mut RgbaImage, dest_off: [u32;2], replace: bool) {
+        self.dig.read(
+            self.rooms,
+            dest,
+            off,
+            self.layer,
+            size,
+            dest_off,
+            self.rooms_size,
+            replace,
+        )
+    }
+
+    fn pt_hash(&self, pt: SelPt, layer: usize, rooms_size: [u32;2]) -> u64 {
+        todo!()
+    }
+}
+
+impl ImgRead for DIGMatrixAccessMut<'_,'_> {
+    fn img_read(&self, off: [u32;2], size: [u32;2], dest: &mut RgbaImage, dest_off: [u32;2], replace: bool) {
+        self.dig.read(
+            self.rooms,
+            dest,
+            off,
+            self.layer,
+            size,
+            dest_off,
+            self.rooms_size,
+            replace,
+        )
+    }
+
+    fn pt_hash(&self, pt: SelPt, layer: usize, rooms_size: [u32;2]) -> u64 {
+        todo!()
+    }
+}
+
+impl ImgWrite for DIGMatrixAccessMut<'_,'_> {
+    fn img_write(&mut self, off: [u32;2], size: [u32;2], src: &RgbaImage, src_off: [u32;2], replace: bool) {
+        self.dig.draw(
+            self.rooms,
+            src,
+            off,
+            size,
+            self.layer,
+            src_off,
+            self.rooms_size,
+            self.dirty_map,
+            replace
+        )
+    }
+
+    fn img_erase(&mut self, off: [u32;2], size: [u32;2]) {
+        self.dig.erase(
+            self.rooms,
+            off,
+            size,
+            self.layer,
+            self.rooms_size,
+            self.dirty_map,
+        )
+    }
+}
+
+pub fn imgcopy<I, J>(bottom: &mut I, top: &J, x: i64, y: i64, replace: bool)
+where
+    I: image::GenericImage,
+    J: image::GenericImageView<Pixel = I::Pixel>,
+{
+    if replace {
+        image::imageops::replace(bottom, top, x, y)
     } else {
-        None
+        image::imageops::overlay(bottom, top, x, y)
     }
 }

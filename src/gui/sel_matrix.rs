@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use super::map::{RoomMap, DirtyRooms};
+use super::room::draw_image::DrawImageGroup;
 use super::util::ArrUtl;
 
 #[derive(Deserialize,Serialize)]
@@ -279,6 +281,30 @@ pub trait SelEntryWrite: SelEntryRead {
     fn set_and_fix(&mut self, pos: [u32;2], v: SelEntry);
 }
 
+impl<T> SelEntryRead for &'_ T where T: SelEntryRead {
+    fn get(&self, pos: [u32;2]) -> Option<&SelEntry> {
+        (**self).get(pos)
+    }
+}
+impl<T> SelEntryRead for &'_ mut T where T: SelEntryRead {
+    fn get(&self, pos: [u32;2]) -> Option<&SelEntry> {
+        (**self).get(pos)
+    }
+}
+impl<T> SelEntryWrite for &'_ mut T where T: SelEntryWrite {
+    fn get_mut(&mut self, pos: [u32;2]) -> Option<&mut SelEntry> {
+        (**self).get_mut(pos)
+    }
+
+    fn fill(&mut self, p0: [u32;2], p1: [u32;2]) {
+        (**self).fill(p0, p1)
+    }
+
+    fn set_and_fix(&mut self, pos: [u32;2], v: SelEntry) {
+        (**self).set_and_fix(pos, v)
+    }
+}
+
 impl SelEntryRead for SelMatrix {
     fn get(&self, [x,y]: [u32;2]) -> Option<&SelEntry> {
         let [w,h] = self.dims;
@@ -309,11 +335,123 @@ impl SelEntryWrite for SelMatrix {
     }
 
     fn set_and_fix(&mut self, pos: [u32;2], v: SelEntry) {
+        let dims = self.dims.as_i32();
+
         if let Some(e) = self.get_mut(pos) {
-            let vspt = v.to_sel_pt_fixedi(pos.as_i32(), ([0,0],self.dims.as_i32()));
+            let vspt = v.to_sel_pt_fixedi(pos.as_i32(), ([0,0],dims));
             let vspt = vspt.to_sel_entry(pos);
 
             *e = vspt;
         }
+    }
+}
+
+pub struct DIGMatrixAccess<'a,'b> {
+    pub(crate) dig: &'a DrawImageGroup,
+    pub(crate) layer: usize,
+    pub(crate) rooms: &'b RoomMap,
+    pub(crate) rooms_size: [u32;2],
+}
+
+pub struct DIGMatrixAccessMut<'a,'b> {
+    pub(crate) dig: &'a DrawImageGroup,
+    pub(crate) layer: usize,
+    pub(crate) rooms: &'b mut RoomMap,
+    pub(crate) rooms_size: [u32;2],
+    pub(crate) dirty_map: &'b mut DirtyRooms,
+}
+
+impl SelEntryRead for DIGMatrixAccess<'_,'_> {
+    fn get(&self, [x,y]: [u32;2]) -> Option<&SelEntry> {
+        let rooms_size = self.rooms_size.div8();
+        for &(room_id,_,roff) in &self.dig.rooms {
+            let roff = roff.div8();
+            
+            if x >= roff[0] && x < roff[0]+rooms_size[0] && y >= roff[1] && y < roff[1]+rooms_size[1] {
+                let Some(room) = self.rooms.get(room_id) else {continue};
+
+                return room.sel_matrix.layers[self.layer].get([x-roff[0],y-roff[1]]);
+            }
+        }
+        None
+    }
+}
+
+impl SelEntryRead for DIGMatrixAccessMut<'_,'_> {
+    fn get(&self, [x,y]: [u32;2]) -> Option<&SelEntry> {
+        let rooms_size = self.rooms_size.div8();
+        for &(room_id,_,roff) in &self.dig.rooms {
+            let roff = roff.div8();
+            
+            if x >= roff[0] && x < roff[0]+rooms_size[0] && y >= roff[1] && y < roff[1]+rooms_size[1] {
+                let Some(room) = self.rooms.get(room_id) else {continue};
+
+                return room.sel_matrix.layers[self.layer].get([x-roff[0],y-roff[1]]);
+            }
+        }
+        None
+    }
+}
+
+impl SelEntryWrite for DIGMatrixAccessMut<'_,'_> {
+    fn get_mut(&mut self, [x,y]: [u32;2]) -> Option<&mut SelEntry> {
+        let rooms_size = self.rooms_size.div8();
+        for &(room_id,_,roff) in &self.dig.rooms {
+            let roff = roff.div8();
+            
+            if x >= roff[0] && x < roff[0]+rooms_size[0] && y >= roff[1] && y < roff[1]+rooms_size[1] {
+                if !self.rooms.contains_key(room_id) {continue};
+
+                return self.rooms.get_mut(room_id).unwrap().sel_matrix.layers[self.layer].get_mut([x-roff[0],y-roff[1]]);
+            }
+        }
+        None
+    }
+
+    fn fill(&mut self, [x0,y0]: [u32;2], [x1,y1]: [u32;2]) {
+        let rooms_size = self.rooms_size.div8();
+        for &(room_id,_,roff) in &self.dig.rooms {
+            let roff = roff.div8();
+            let Some((o1,o2)) = effective_bounds2((roff,roff.add(rooms_size)), ([x0,y0],[x1,y1])) else {continue};
+
+            let Some(room) = self.rooms.get_mut(room_id) else {continue};
+
+            room.sel_matrix.layers[self.layer].fill(o1, o2);
+        }
+    }
+
+    fn set_and_fix(&mut self, pos: [u32;2], v: SelEntry) {
+        let rooms_size = self.rooms_size.div8();
+        for &(room_id,_,roff) in &self.dig.rooms {
+            let roff = roff.div8();
+            
+            if pos[0] >= roff[0] && pos[0] < roff[0]+rooms_size[0] && pos[1] >= roff[1] && pos[1] < roff[1]+rooms_size[1] {
+                let Some(room) = self.rooms.get_mut(room_id) else {break};
+
+                room.sel_matrix.layers[self.layer].set_and_fix(pos.sub(roff), v);
+
+                break;
+            }
+        }
+    }
+}
+
+fn effective_bounds2((aoff,aoff2): ([u32;2],[u32;2]), (boff,boff2): ([u32;2],[u32;2])) -> Option<([u32;2],[u32;2])> {
+    fn axis_op(aoff: u32, aoff2: u32, boff: u32, boff2: u32) -> (u32,u32) {
+        let s0 = aoff.max(boff);
+        let s1 = aoff2.min(boff2);
+        (s0, s1.max(s0))
+    }
+
+    let (x0,x1) = axis_op(aoff[0], aoff2[0], boff[0], boff2[0]);
+    let (y0,y1) = axis_op(aoff[1], aoff2[1], boff[1], boff2[1]);
+
+    if x1 > x0 && y1 > y0 {
+        Some((
+            [x0,y0],
+            [x1,y1],
+        ))
+    } else {
+        None
     }
 }
