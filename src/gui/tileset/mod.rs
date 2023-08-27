@@ -1,18 +1,24 @@
 use std::collections::VecDeque;
 use std::path::PathBuf;
+use std::sync::Arc;
 
-use egui::{Vec2, TextureOptions};
+use egui::{Vec2, TextureOptions, Color32, PointerButton};
 use image::RgbaImage;
 use serde::{Deserialize, Serialize};
 
 use crate::util::{TilesetId, attached_to_path, ResultExt, next_tex_id};
 
+use super::draw_state::{DrawMode, DrawState};
+use super::dsel_state::cse::CSEState;
+use super::dsel_state::{DSelMode, DSelState};
+use super::map::{DrawOp, DrawOp2};
+use super::palette::{Palette, PaletteItem};
 use super::room::draw_image::DrawImage;
 use super::{MutQueue, rector};
 use super::init::{SharedApp, SAM};
 use super::sel_matrix::{SelMatrix, sel_entry_dims};
 use super::texture::{ensure_texture_from_image, RECT_0_0_1_1, TextureCell};
-use super::util::{alloc_painter_rel, alloc_painter_rel_ds, ArrUtl};
+use super::util::{alloc_painter_rel, alloc_painter_rel_ds, ArrUtl, draw_grid, DragOp};
 
 pub struct Tileset {
     pub id: TilesetId,
@@ -22,6 +28,9 @@ pub struct Tileset {
     pub edit_path: Option<PathBuf>,
     pub edit_mode: bool,
     pub quant: u8,
+    pub draw_state: DrawState,
+    pub dsel_state: DSelState,
+    pub cse_state: CSEState,
 }
 
 #[derive(Deserialize,Serialize)]
@@ -31,10 +40,15 @@ pub struct TilesetState {
     pub voff: [f32;2],
     pub validate_size: [u32;2],
     pub sel_matrix: SelMatrix,
+    pub draw_mode: DrawOp2,
+    pub draw_draw_mode: DrawMode,
+    pub draw_sel: DSelMode,
+    pub ds_replace: bool,
+    pub dsel_whole: bool,
 }
 
 impl Tileset {
-    pub fn ui(&mut self, ui: &mut egui::Ui, sam: &mut SAM) {
+    pub fn ui(&mut self, palette: &mut Palette, ui: &mut egui::Ui, sam: &mut SAM) {
         ui.horizontal(|ui| {
             if ui.button("Save").clicked() {
                 if self.edit_path.is_some() {
@@ -53,7 +67,8 @@ impl Tileset {
                 sam.mut_queue.push(Box::new(move |state: &mut SharedApp| {state.tilesets.open_tilesets.remove(&id);} ))
             }
             ui.text_edit_singleline(&mut self.state.title);
-            ui.label("| Zoom: ");
+        });
+        ui.horizontal(|ui| {
             //ui.add(egui::DragValue::new(&mut self.state.zoom).speed(1).clamp_range(1..=4));
             ui.add(egui::Slider::new(&mut self.state.zoom, 1..=2).drag_value_speed(0.03125));
             if self.edit_path.is_none() {
@@ -66,6 +81,27 @@ impl Tileset {
                 ui.label("Quant: ");
                 ui.add(egui::Slider::new(&mut self.quant, 1..=2).drag_value_speed(0.03125));
             }
+        });
+        ui.horizontal(|ui| {
+            ui.radio_value(&mut self.state.draw_mode, DrawOp2::Draw, "Draw");
+            ui.radio_value(&mut self.state.draw_mode, DrawOp2::Sel, "Sel");
+            ui.radio_value(&mut self.state.draw_mode, DrawOp2::CSE, "CSE");
+            ui.label("|");
+            match self.state.draw_mode {
+                DrawOp2::Draw => {
+                    ui.radio_value(&mut self.state.draw_draw_mode, DrawMode::Direct, "Direct");
+                    ui.radio_value(&mut self.state.draw_draw_mode, DrawMode::Line, "Line");
+                    ui.radio_value(&mut self.state.draw_draw_mode, DrawMode::Rect, "Rect");
+                    ui.radio_value(&mut self.state.draw_draw_mode, DrawMode::TileEraseRect, "TileEraseRect");
+                },
+                DrawOp2::Sel | DrawOp2::CSE => {
+                    ui.radio_value(&mut self.state.draw_sel, DSelMode::Direct, "Direct");
+                    ui.radio_value(&mut self.state.draw_sel, DSelMode::Rect, "Rect");
+                },
+            }
+            ui.label("|");
+            ui.checkbox(&mut self.state.ds_replace, "DrawReplace");
+            ui.checkbox(&mut self.state.dsel_whole, "DSelWhole");
         });
 
         let size_v = self.state.validate_size.as_f32().into();
@@ -91,7 +127,80 @@ impl Tileset {
 
         reg.voff -= Vec2::from(self.state.voff) * self.state.zoom as f32;
 
+        eprintln!("VOFF {:?}", self.state.voff);
+
+        let mods = ui.input(|i| i.modifiers );
+
+        match self.state.draw_mode {
+            DrawOp2::Draw => {
+                let palet = &palette.paletted[palette.selected as usize];
+                match reg.drag_decode(PointerButton::Primary, ui) {
+                    DragOp::Start(p) =>
+                        self.draw_state.draw_mouse_down(p.into(), palet, self.state.draw_draw_mode, true, self.state.ds_replace),
+                    DragOp::Tick(Some(p)) =>
+                        self.draw_state.draw_mouse_down(p.into(), palet, self.state.draw_draw_mode, false, self.state.ds_replace),
+                    DragOp::End(p) => self.draw_state.draw_mouse_up(&mut (&mut self.loaded_image, &mut self.state.sel_matrix)),
+                    DragOp::Abort => self.draw_state.draw_cancel(),
+                    _ => {},
+                }
+            },
+            DrawOp2::Sel => {
+                let palet = &mut palette.paletted[palette.selected as usize];
+                match reg.drag_decode(PointerButton::Primary, ui) {
+                    DragOp::Start(p) => {
+                        self.dsel_state.dsel_mouse_down(
+                            p.into(),
+                            &self.state.sel_matrix,
+                            self.state.draw_sel,
+                            !mods.shift,
+                            mods.ctrl,
+                            true,
+                            self.state.dsel_whole,
+                        )
+                    },
+                    DragOp::Tick(Some(p)) => {
+                        self.dsel_state.dsel_mouse_down(
+                            p.into(),
+                            &self.state.sel_matrix,
+                            self.state.draw_sel,
+                            !mods.shift,
+                            mods.ctrl,
+                            false,
+                            self.state.dsel_whole,
+                        )
+                    },
+                    DragOp::End(p) => {
+                        let ss = self.dsel_state.dsel_mouse_up(p.into(), &self.loaded_image);
+                        *palet = PaletteItem {
+                            texture: None, //TODO
+                            src: Arc::new(ss),
+                            uv: RECT_0_0_1_1,
+                        }
+                    },
+                    DragOp::Abort => self.dsel_state.dsel_cancel(),
+                    _ => {},
+                }
+            },
+            DrawOp2::CSE => {
+                match reg.drag_decode(PointerButton::Primary, ui) {
+                    DragOp::Start(p) => self.cse_state.cse_mouse_down(p.into(), true),
+                    DragOp::Tick(Some(p)) => self.cse_state.cse_mouse_down(p.into(), false),
+                    DragOp::End(p) => self.cse_state.cse_mouse_up(p.into(), &mut self.state.sel_matrix),
+                    DragOp::Abort => self.dsel_state.dsel_cancel(),
+                    _ => {},
+                }
+            },
+        }
+
         let mut shapes = vec![];
+
+        let grid_area = (self.state.voff, self.state.voff.add(reg.area_size().into()));
+
+        let grid_stroke = egui::Stroke::new(1., Color32::BLACK);
+        draw_grid([8,8], grid_area, grid_stroke, 0., |s| shapes.push(s) );
+
+        let grid_stroke = egui::Stroke::new(1., Color32::WHITE);
+        draw_grid([16,16], grid_area, grid_stroke, 0., |s| shapes.push(s) );
 
         let ts_tex = self.loaded_image.tex.get_or_insert_with(||
             TextureCell::new(format!("tileset_{}",self.state.title),TS_TEX_OPTS)
@@ -108,6 +217,18 @@ impl Tileset {
             RECT_0_0_1_1,
             egui::Color32::WHITE
         ));
+
+        if let Some(h) = reg.hover_pos_rel() {
+            match self.state.draw_mode {
+                DrawOp2::Draw => self.draw_state.draw_hover_at_pos(h.into(), &palette.paletted[palette.selected as usize], |v| shapes.push(v) ),
+                DrawOp2::Sel => self.dsel_state.dsel_render(
+                    h.into(),
+                    &self.state.sel_matrix,
+                    self.state.dsel_whole,
+                    |v| shapes.push(v) ),
+                DrawOp2::CSE => self.cse_state.cse_render(h.into(), |v| shapes.push(v) ),
+            }
+        }
 
         reg.extend_rel_fixtex(shapes);
 
@@ -138,7 +259,7 @@ impl Tileset {
         if epath.is_file() {
             let data = std::fs::read(&epath)?;
             state = serde_json::from_slice::<TilesetState>(&data)?;
-            state.zoom = state.zoom.min(1).max(4);
+            state.zoom = state.zoom.max(1).min(4);
             if state.validate_size != img_size {
                 state.sel_matrix = SelMatrix::new_emptyfilled(sel_entry_dims(img_size));
             }
@@ -150,6 +271,11 @@ impl Tileset {
                 validate_size: img_size,
                 sel_matrix: SelMatrix::new_emptyfilled(sel_entry_dims(img_size)),
                 voff: [0.;2],
+                draw_mode: DrawOp2::Sel,
+                draw_draw_mode: DrawMode::Rect,
+                draw_sel: DSelMode::Rect,
+                ds_replace: false,
+                dsel_whole: true,
             }
         }
 
@@ -165,6 +291,9 @@ impl Tileset {
             edit_path,
             edit_mode: false,
             quant: 1,
+            draw_state: DrawState::new(),
+            dsel_state: DSelState::new(),
+            cse_state: CSEState::new(),
         };
 
         Ok(ts)

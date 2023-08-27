@@ -15,6 +15,8 @@ use super::room::draw_image::ImgRead;
 use super::sel_matrix::{SelMatrix, SelPt, SelEntry, SelEntryRead};
 use super::util::ArrUtl;
 
+pub mod cse;
+
 pub struct DSelState {
     active: Option<[u16;2]>,
     selected: HashMap<[u16;2],SelEntry>,
@@ -66,9 +68,12 @@ impl DSelState {
     pub fn dsel_render(&self, current_pos: [f32;2], src: &impl SelEntryRead, whole_selentry: bool, mut dest: impl FnMut(Shape)) { // TODO the dest fn should scale and translate the shape
         if self.active.is_none() {
             let pos = quantize1(current_pos);
+            eprintln!("QUANT {:?} => {:?}",current_pos,pos);
             let rect;
             if let Some(e) = src.get(pos).filter(|e| !e.is_empty() ) {
+                eprintln!("SELE {:?} {:?}",e.start,e.size);
                 let ept = e.to_sel_pt(pos);
+                eprintln!("SELPT {:?} {:?}",ept.start,ept.size);
                 if self.whole_selentry {
                     rect = rector(
                         ept.start[0] as u32 * 8,
@@ -225,10 +230,8 @@ impl DSelState {
         self.sel_area = ([65535,65535],[0,0]);
 
         for (&k,_) in &self.selected {
-            self.sel_area.0[0] = self.sel_area.0[0].min(k[0]);
-            self.sel_area.0[1] = self.sel_area.0[1].min(k[1]);
-            self.sel_area.1[0] = self.sel_area.1[0].max(k[0]);
-            self.sel_area.1[1] = self.sel_area.1[1].max(k[1]);
+            self.sel_area.0 = self.sel_area.0.vmin(k);
+            self.sel_area.1 = self.sel_area.1.vmax(k);
         }
     }
 }

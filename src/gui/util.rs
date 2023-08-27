@@ -235,6 +235,9 @@ pub trait ArrUtl: Clone {
     fn add_y(self, v: Self::Unit) -> Self;
     fn sub_x(self, v: Self::Unit) -> Self;
     fn sub_y(self, v: Self::Unit) -> Self;
+
+    fn vmin(self, v: Self) -> Self;
+    fn vmax(self, v: Self) -> Self;
     
     fn as_u8(self) -> [u8;2];
     fn as_u8_clamped(self) -> [u8;2];
@@ -294,6 +297,12 @@ macro_rules! marco_arrutl {
                     self[1] -= v; self
                 }
 
+                fn vmin(self, v: Self) -> Self {
+                    [self[0].min(v[0]), self[1].min(v[1])]
+                }
+                fn vmax(self, v: Self) -> Self {
+                    [self[0].max(v[0]), self[1].max(v[1])]
+                }
                 
                 fn as_u8_clamped(self) -> [u8;2] {
                     [

@@ -479,7 +479,7 @@ impl Map {
             //     egui::Shape::rect_filled(rector(0., 0., 3200., 2400.), Rounding::default(), Color32::RED)
             // ]);
 
-            let view_size = super_map.response.rect.size() / zoomf(self.state.map_zoom);
+            let view_size = super_map.area_size();
 
             let view_pos_1 = self.state.view_pos.add(view_size.into());
 

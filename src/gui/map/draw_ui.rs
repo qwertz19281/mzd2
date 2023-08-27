@@ -48,8 +48,8 @@ impl Map {
                 },
             }
             ui.label("|");
-            ui.checkbox(&mut self.ds_replace, "DrawReplace");
-            ui.checkbox(&mut self.dsel_whole, "DSelWhole");
+            ui.checkbox(&mut self.state.ds_replace, "DrawReplace");
+            ui.checkbox(&mut self.state.dsel_whole, "DSelWhole");
         });
 
         let mods = ui.input(|i| i.modifiers );
@@ -68,11 +68,10 @@ impl Map {
                 DrawOp::Draw => {
                     let palet = &palette.paletted[palette.selected as usize];
                     match reg.drag_decode(PointerButton::Primary, ui) {
-                        DragOp::Start(p) => {
-                            self.draw_state.draw_cancel();
-                            self.draw_state.draw_mouse_down(p.into(), palet, self.state.draw_draw_mode, true, self.ds_replace);
-                        },
-                        DragOp::Tick(Some(p)) => self.draw_state.draw_mouse_down(p.into(), palet, self.state.draw_draw_mode, false, self.ds_replace),
+                        DragOp::Start(p) => 
+                            self.draw_state.draw_mouse_down(p.into(), palet, self.state.draw_draw_mode, true, self.state.ds_replace),
+                        DragOp::Tick(Some(p)) =>
+                            self.draw_state.draw_mouse_down(p.into(), palet, self.state.draw_draw_mode, false, self.state.ds_replace),
                         DragOp::End(p) => {
                             let mut mm = self.editsel.selmatrix_mut(
                                 0 /*TODO*/,
@@ -95,7 +94,6 @@ impl Map {
                     );
                     match reg.drag_decode(PointerButton::Primary, ui) {
                         DragOp::Start(p) => {
-                            self.dsel_state.dsel_cancel();
                             self.dsel_state.dsel_mouse_down(
                                 p.into(),
                                 &mm,
@@ -103,7 +101,7 @@ impl Map {
                                 !mods.shift,
                                 mods.ctrl,
                                 true,
-                                self.dsel_whole,
+                                self.state.dsel_whole,
                             )
                         },
                         DragOp::Tick(Some(p)) => {
@@ -114,7 +112,7 @@ impl Map {
                                 !mods.shift,
                                 mods.ctrl,
                                 false,
-                                self.dsel_whole,
+                                self.state.dsel_whole,
                             )
                         },
                         DragOp::End(p) => {
@@ -157,7 +155,7 @@ impl Map {
                             &self.state.rooms,
                             self.state.rooms_size,
                         ),
-                        true, //TODO
+                        self.state.dsel_whole,
                         |v| shapes.push(v) ),
                 }
             }

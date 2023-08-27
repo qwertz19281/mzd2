@@ -38,6 +38,9 @@ impl DrawState {
     }
 
     pub fn draw_mouse_down(&mut self, pos: [f32;2], src: &PaletteItem, mode: DrawMode, start: bool, draw_replace: bool) {
+        if start {
+            self.draw_cancel();
+        }
         if self.src.is_none() {
             if start {
                 self.src = Some(src.clone());

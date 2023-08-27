@@ -42,8 +42,6 @@ pub struct Map {
     pub windowsize_estim: egui::Vec2,
     pub draw_state: DrawState,
     pub dsel_state: DSelState,
-    pub ds_replace: bool,
-    pub dsel_whole: bool,
 }
 
 pub type RoomMap = HopSlotMap<RoomId,Room>;
@@ -72,8 +70,9 @@ pub struct MapState {
     pub draw_draw_mode: DrawMode,
     pub draw_sel: DSelMode,
     pub sift_size: u8,
-    #[serde(default)]
     pub smart_awaylock_mode: bool,
+    pub ds_replace: bool,
+    pub dsel_whole: bool,
 }
 
 slotmap::new_key_type! {
@@ -140,8 +139,6 @@ impl Map {
             windowsize_estim: state.rooms_size.as_f32().into(),
             draw_state: DrawState::new(),
             dsel_state: DSelState::new(),
-            ds_replace: false,
-            dsel_whole: true,
             state,
         };
 
@@ -222,10 +219,12 @@ impl Map {
                 current_level: 128,
                 edit_mode: MapEditMode::DrawSel,
                 draw_mode: DrawOp::Draw,
-                draw_draw_mode: DrawMode::Direct,
-                draw_sel: DSelMode::Direct,
+                draw_draw_mode: DrawMode::Rect,
+                draw_sel: DSelMode::Rect,
                 sift_size: 1,
                 smart_awaylock_mode: false,
+                ds_replace: false,
+                dsel_whole: true,
             },
             path,
             dirty_rooms: Default::default(),
@@ -239,8 +238,6 @@ impl Map {
             windowsize_estim: rooms_size.as_f32().into(),
             draw_state: DrawState::new(),
             dsel_state: DSelState::new(),
-            ds_replace: false,
-            dsel_whole: true,
         }
     }
 
@@ -266,6 +263,14 @@ pub enum MapEditMode {
 pub enum DrawOp {
     Draw,
     Sel,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Serialize, Deserialize)]
+pub enum DrawOp2 {
+    Draw,
+    Sel,
+    CSE,
 }
 
 fn create_picomap_texcell() -> TextureCell {

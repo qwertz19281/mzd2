@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use crate::gui::map::{RoomId, RoomMap, DirtyRooms, MapEditMode, Map};
 use crate::gui::util::ArrUtl;
 use crate::gui::{rector, line2};
-use crate::gui::sel_matrix::{SelPt, SelEntry, DIGMatrixAccess, DIGMatrixAccessMut};
+use crate::gui::sel_matrix::{SelPt, SelEntry, DIGMatrixAccess, DIGMatrixAccessMut, SelMatrix};
 use crate::gui::texture::TextureCell;
 
 use super::Room;
@@ -650,6 +650,26 @@ impl ImgWrite for DIGMatrixAccessMut<'_,'_> {
             self.rooms_size,
             self.dirty_map,
         )
+    }
+}
+
+impl ImgRead for (&mut DrawImage,&mut SelMatrix) {
+    fn img_read(&self, off: [u32;2], size: [u32;2], dest: &mut RgbaImage, dest_off: [u32;2], replace: bool) {
+        self.0.img_read(off, size, dest, dest_off, replace)
+    }
+
+    fn pt_hash(&self, pt: SelPt, layer: usize, rooms_size: [u32;2]) -> u64 {
+        self.0.pt_hash(pt, layer, rooms_size)
+    }
+}
+
+impl ImgWrite for (&mut DrawImage,&mut SelMatrix) {
+    fn img_write(&mut self, off: [u32;2], size: [u32;2], src: &RgbaImage, src_off: [u32;2], replace: bool) {
+        self.0.img_write(off, size, src, src_off, replace)
+    }
+
+    fn img_erase(&mut self, off: [u32;2], size: [u32;2]) {
+        self.0.img_erase(off, size)
     }
 }
 

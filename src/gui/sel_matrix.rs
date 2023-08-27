@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::map::{RoomMap, DirtyRooms};
-use super::room::draw_image::DrawImageGroup;
+use super::room::draw_image::{DrawImageGroup, DrawImage};
 use super::util::ArrUtl;
 
 #[derive(Deserialize,Serialize)]
@@ -59,7 +59,7 @@ impl SelMatrix {
                     if se.start == [0,0] && se.size == [1,1] {
                         let [qx,qy] = [x,y].quant(interval.as_u32());
 
-                        se.start = [(x as i32 - qx as i32) as i8, ( y as i32 - qy as i32) as i8];
+                        se.start = [(qx as i32 - x as i32) as i8, ( qy as i32 - y as i32) as i8];
                         se.size = [interval[0] as u8, interval[1] as u8];
                     }
                 }
@@ -453,5 +453,25 @@ fn effective_bounds2((aoff,aoff2): ([u32;2],[u32;2]), (boff,boff2): ([u32;2],[u3
         ))
     } else {
         None
+    }
+}
+
+impl SelEntryRead for (&mut DrawImage,&mut SelMatrix) {
+    fn get(&self, pos: [u32;2]) -> Option<&SelEntry> {
+        self.1.get(pos)
+    }
+}
+
+impl SelEntryWrite for (&mut DrawImage,&mut SelMatrix) {
+    fn get_mut(&mut self, pos: [u32;2]) -> Option<&mut SelEntry> {
+        self.1.get_mut(pos)
+    }
+
+    fn fill(&mut self, p0: [u32;2], p1: [u32;2]) {
+        self.1.fill(p0, p1)
+    }
+
+    fn set_and_fix(&mut self, pos: [u32;2], v: SelEntry) {
+        self.1.set_and_fix(pos, v)
     }
 }
