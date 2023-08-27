@@ -7,8 +7,9 @@ use image::{RgbaImage, GenericImage, GenericImageView, ImageBuffer};
 use serde::{Deserialize, Serialize};
 
 use crate::gui::map::{RoomId, RoomMap, DirtyRooms, MapEditMode, Map};
+use crate::gui::util::ArrUtl;
 use crate::gui::{rector, line2};
-use crate::gui::sel_matrix::SelPt;
+use crate::gui::sel_matrix::{SelPt, SelEntry};
 use crate::gui::texture::TextureCell;
 
 use super::Room;
@@ -334,6 +335,64 @@ impl DrawImageGroup {
         }
     }
 
+    pub fn se_get<'a>(&self, [x,y]: [u32;2], layer: usize, rooms: &'a RoomMap, rooms_size: [u32;2]) -> Option<&'a SelEntry> {
+        let rooms_size = rooms_size.div8();
+        for &(room_id,_,roff) in &self.rooms {
+            let roff = roff.div8();
+            
+            if x >= roff[0] && x < roff[0]+rooms_size[0] && y >= roff[1] && y < roff[1]+rooms_size[1] {
+                let Some(room) = rooms.get(room_id) else {continue};
+
+                return room.sel_matrix.layers[layer].get([x-roff[0],y-roff[1]]);
+            }
+        }
+        None
+    }
+
+    pub fn se_get_mut<'a>(&mut self, [x,y]: [u32;2], layer: usize, rooms: &'a mut RoomMap, rooms_size: [u32;2]) -> Option<&'a mut SelEntry> {
+        let rooms_size = rooms_size.div8();
+        for &(room_id,_,roff) in &self.rooms {
+            let roff = roff.div8();
+            
+            if x >= roff[0] && x < roff[0]+rooms_size[0] && y >= roff[1] && y < roff[1]+rooms_size[1] {
+                if !rooms.contains_key(room_id) {continue};
+
+                return rooms.get_mut(room_id).unwrap().sel_matrix.layers[layer].get_mut([x-roff[0],y-roff[1]]);
+            }
+        }
+        None
+    }
+
+    pub fn se_set_and_fix<R>(&mut self, pos: [u32;2], layer: usize, v: SelEntry, rooms: &mut RoomMap, rooms_size: [u32;2]) {
+        let rooms_size = rooms_size.div8();
+        for &(room_id,_,roff) in &self.rooms {
+            let roff = roff.div8();
+            
+            if pos[0] >= roff[0] && pos[0] < roff[0]+rooms_size[0] && pos[1] >= roff[1] && pos[1] < roff[1]+rooms_size[1] {
+                let vspt = v.to_sel_pt_fixedi(pos.sub(roff).as_i32(), ([0,0],rooms_size.as_i32()));
+                let vspt = vspt.to_sel_entry(pos.sub(roff));
+
+                let Some(room) = rooms.get_mut(room_id) else {break};
+
+                *room.sel_matrix.layers[layer].get_mut(pos.sub(roff)).unwrap() = vspt;
+
+                break;
+            }
+        }
+    }
+
+    pub fn fill(&mut self, [x0,y0]: [u32;2], [x1,y1]: [u32;2], layer: usize, rooms: &mut RoomMap, rooms_size: [u32;2]) {
+        let rooms_size = rooms_size.div8();
+        for &(room_id,_,roff) in &self.rooms {
+            let roff = roff.div8();
+            let Some((o1,o2)) = effective_bounds2((roff,roff.add(rooms_size)), ([x0,y0],[x1,y1])) else {continue};
+
+            let Some(room) = rooms.get_mut(room_id) else {continue};
+
+            room.sel_matrix.layers[layer].fill(o1, o2);
+        }
+    }
+
     pub fn try_attach(&mut self, room_id: RoomId, rooms_size: [u32;2], rooms: &RoomMap) -> bool {
         let Some(room) = rooms.get(room_id) else {return false};  
         let coord = room.coord;
@@ -463,6 +522,26 @@ fn effective_bounds((aoff,asize): ([u32;2],[u32;2]), (boff,bsize): ([u32;2],[u32
 
     let (x0,x1) = axis_op(aoff[0], asize[0], boff[0], bsize[0]);
     let (y0,y1) = axis_op(aoff[1], asize[1], boff[1], bsize[1]);
+
+    if x1 > x0 && y1 > y0 {
+        Some((
+            [x0,y0],
+            [x1,y1],
+        ))
+    } else {
+        None
+    }
+}
+
+fn effective_bounds2((aoff,aoff2): ([u32;2],[u32;2]), (boff,boff2): ([u32;2],[u32;2])) -> Option<([u32;2],[u32;2])> {
+    fn axis_op(aoff: u32, aoff2: u32, boff: u32, boff2: u32) -> (u32,u32) {
+        let s0 = aoff.max(boff);
+        let s1 = aoff2.min(boff2);
+        (s0, s1.max(s0))
+    }
+
+    let (x0,x1) = axis_op(aoff[0], aoff2[0], boff[0], boff2[0]);
+    let (y0,y1) = axis_op(aoff[1], aoff2[1], boff[1], boff2[1]);
 
     if x1 > x0 && y1 > y0 {
         Some((

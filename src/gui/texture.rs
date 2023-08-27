@@ -96,7 +96,7 @@ pub fn color_image_of_image_area(img: &RgbaImage, pos: [u32;2], size: [u32;2]) -
 pub fn color_image_of_image(img: &RgbaImage) -> ColorImage {
     ColorImage {
         size: [img.width() as usize, img.height() as usize],
-        pixels: img.pixels().map(|p| Color32::from_rgba_premultiplied(p[0], p[1], p[2], p[3])).collect(),
+        pixels: img.pixels().map(|p| Color32::from_rgba_unmultiplied(p[0], p[1], p[2], p[3])).collect(),
     }
 }
 

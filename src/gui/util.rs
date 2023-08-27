@@ -228,6 +228,9 @@ pub trait ArrUtl: Clone {
         self.div(v.clone()).mul(v)
     }
 
+    fn mul8(self) -> Self;
+    fn div8(self) -> Self;
+
     fn add_x(self, v: Self::Unit) -> Self;
     fn add_y(self, v: Self::Unit) -> Self;
     fn sub_x(self, v: Self::Unit) -> Self;
@@ -267,6 +270,17 @@ macro_rules! marco_arrutl {
                     [self[0]/v[0], self[1]/v[1]]
                 }
 
+                fn mul8(self) -> Self {
+                    self.mul([8u8 as _,8u8 as _])
+                }
+                fn div8(self) -> Self {
+                    debug_assert!(
+                        self[0] as u64 % 8 == 0 &&
+                        self[1] as u64 % 8 == 0
+                    );
+                    self.div([8u8 as _,8u8 as _])
+                }
+
                 fn add_x(mut self, v: Self::Unit) -> Self {
                     self[0] += v; self
                 }
@@ -283,8 +297,8 @@ macro_rules! marco_arrutl {
                 
                 fn as_u8_clamped(self) -> [u8;2] {
                     [
-                        (self[0] as u64).clamp(0,255) as u8,
-                        (self[1] as u64).clamp(0,255) as u8,
+                        (self[0] as i64).clamp(0,255) as u8,
+                        (self[1] as i64).clamp(0,255) as u8,
                     ]
                 }
 

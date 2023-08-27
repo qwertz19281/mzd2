@@ -5,7 +5,7 @@ use egui::{TextureHandle, Pos2, TextureOptions, Rounding};
 use image::{RgbaImage, ImageBuffer};
 
 use super::init::SharedApp;
-use super::sel_matrix::SelPt;
+use super::sel_matrix::{SelPt, SelEntry};
 use super::util::alloc_painter_rel;
 use super::{rector, rector_off, line2_off, line2};
 use super::texture::{RECT_0_0_1_1, ensure_texture_from_image};
@@ -29,6 +29,17 @@ pub struct PaletteItem {
     pub texture: Option<TextureHandle>,
     pub src: Arc<SelImg>,
     pub uv: egui::Rect,
+}
+
+impl PaletteItem {
+    // divided by 8
+    pub fn quantis8(&self) -> [u32;2] {
+        let (w,h) = self.src.img.dimensions();
+        [w/8,h/8]
+    }
+    pub fn is_empty(&self) -> bool {
+        self.src.img.is_empty()
+    }
 }
 
 const PALETTE_SHOW_DIMS: u32 = 64;
@@ -147,7 +158,7 @@ fn xbounds_iter(len: u32) -> impl Iterator<Item = (u32,u32)> {
 pub struct SelImg {
     pub img: RgbaImage,
     pub selpts: Vec<SelPt>,
-    pub deoverlapped: Vec<[u16;2]>,
+    pub sels: Vec<([u16;2],SelEntry)>,
 }
 
 impl SelImg {
@@ -155,7 +166,7 @@ impl SelImg {
         Self {
             img: RgbaImage::new(0,0),
             selpts: vec![],
-            deoverlapped: vec![],
+            sels: vec![],
         }
     }
 

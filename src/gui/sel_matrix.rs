@@ -11,7 +11,7 @@ pub struct SelMatrix {
 }
 
 /// SelEntry is relative to that one SelEntry, while SelPt is "absolute" (relative to whole img)
-#[derive(Deserialize,Serialize)]
+#[derive(Clone, Deserialize,Serialize)]
 pub struct SelEntry {
     pub start: [i8;2],
     pub size: [u8;2],
@@ -49,32 +49,6 @@ impl SelMatrix {
             entries,
         }
     }
-    
-    pub fn get(&self, [x,y]: [u32;2]) -> Option<&SelEntry> {
-        let [w,h] = self.dims;
-        //let (x,y) = (x / 8, y / 8);
-        if x >= w || y >= h {return None;}
-        self.entries.get(y as usize * w as usize + x as usize)
-    }
-
-    pub fn get_mut(&mut self, [x,y]: [u32;2]) -> Option<&mut SelEntry> {
-        let [w,h] = self.dims;
-        //let (x,y) = (x / 8, y / 8);
-        if x >= w || y >= h {return None;}
-        self.entries.get_mut(y as usize * w as usize + x as usize)
-    }
-
-    pub fn fill(&mut self, [x0,y0]: [u32;2], [x1,y1]: [u32;2]) {
-        assert!(x1 >= x0 && y1 >= y0);
-        for y in y0 .. y1 {
-            for x in x0 .. x1 {
-                if let Some(se) = self.get_mut([x,y]) {
-                    se.start = [(x as i32 - x0 as i32) as i8, ( y as i32 - y0 as i32) as i8]; //TODO handle tile sizes >256 (fail or panic)
-                    se.size = [(x1 - x0) as u8, (y1 - y0) as u8];
-                }
-            }
-        }
-    }
 
     pub fn intervalize(&mut self, interval: [u8;2]) {
         for y in 0 .. self.dims[1] {
@@ -99,6 +73,18 @@ impl SelEntry {
         SelPt {
             start: self.start.as_i32().add(oo).as_u16(),
             size: self.size,
+        }
+    }
+
+    pub fn to_sel_pt_fixedi(&self, at_off: [i32;2], bound_limits: ([i32;2],[i32;2])) -> SelPt {
+        let p0 = self.start.as_i32().add(at_off);
+        let p1 = p0.add(self.size.as_i32());
+
+        let (p0,p1) = effective_bounds2i((p0,p1), bound_limits);
+
+        SelPt {
+            start: p0.as_u16(),
+            size: p1.sub(p0).as_u8_clamped(),
         }
     }
 
@@ -263,4 +249,71 @@ where
     }
 
     Ok(entries)
+}
+
+fn effective_bounds2i((aoff,aoff2): ([i32;2],[i32;2]), (boff,boff2): ([i32;2],[i32;2])) -> ([i32;2],[i32;2]) {
+    fn axis_op(aoff: i32, aoff2: i32, boff: i32, boff2: i32) -> (i32,i32) {
+        let s0 = aoff.max(boff);
+        let s1 = aoff2.min(boff2);
+        (s0, s1.max(s0))
+    }
+
+    let (x0,x1) = axis_op(aoff[0], aoff2[0], boff[0], boff2[0]);
+    let (y0,y1) = axis_op(aoff[1], aoff2[1], boff[1], boff2[1]);
+
+    (
+        [x0,y0],
+        [x1,y1],
+    )
+}
+
+pub trait SelEntryRead {
+    fn get(&self, pos: [u32;2]) -> Option<&SelEntry>;
+}
+
+pub trait SelEntryWrite: SelEntryRead {
+    fn get_mut(&mut self, pos: [u32;2]) -> Option<&mut SelEntry>;
+
+    fn fill(&mut self, p0: [u32;2], p1: [u32;2]);
+
+    fn set_and_fix(&mut self, pos: [u32;2], v: SelEntry);
+}
+
+impl SelEntryRead for SelMatrix {
+    fn get(&self, [x,y]: [u32;2]) -> Option<&SelEntry> {
+        let [w,h] = self.dims;
+        //let (x,y) = (x / 8, y / 8);
+        if x >= w || y >= h {return None;}
+        self.entries.get(y as usize * w as usize + x as usize)
+    }
+}
+
+impl SelEntryWrite for SelMatrix {
+    fn get_mut(&mut self, [x,y]: [u32;2]) -> Option<&mut SelEntry> {
+        let [w,h] = self.dims;
+        //let (x,y) = (x / 8, y / 8);
+        if x >= w || y >= h {return None;}
+        self.entries.get_mut(y as usize * w as usize + x as usize)
+    }
+
+    fn fill(&mut self, [x0,y0]: [u32;2], [x1,y1]: [u32;2]) {
+        assert!(x1 >= x0 && y1 >= y0);
+        for y in y0 .. y1 {
+            for x in x0 .. x1 {
+                if let Some(se) = self.get_mut([x,y]) {
+                    se.start = [(x as i32 - x0 as i32) as i8, ( y as i32 - y0 as i32) as i8]; //TODO handle tile sizes >256 (fail or panic)
+                    se.size = [(x1 - x0) as u8, (y1 - y0) as u8];
+                }
+            }
+        }
+    }
+
+    fn set_and_fix(&mut self, pos: [u32;2], v: SelEntry) {
+        if let Some(e) = self.get_mut(pos) {
+            let vspt = v.to_sel_pt_fixedi(pos.as_i32(), ([0,0],self.dims.as_i32()));
+            let vspt = vspt.to_sel_entry(pos);
+
+            *e = vspt;
+        }
+    }
 }
