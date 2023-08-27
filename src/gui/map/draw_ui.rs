@@ -47,6 +47,9 @@ impl Map {
                     ui.radio_value(&mut self.state.draw_sel, DSelMode::Rect, "Rect");
                 },
             }
+            ui.label("|");
+            ui.checkbox(&mut self.ds_replace, "DrawReplace");
+            ui.checkbox(&mut self.dsel_whole, "DSelWhole");
         });
 
         let mods = ui.input(|i| i.modifiers );
@@ -67,9 +70,9 @@ impl Map {
                     match reg.drag_decode(PointerButton::Primary, ui) {
                         DragOp::Start(p) => {
                             self.draw_state.draw_cancel();
-                            self.draw_state.draw_mouse_down(p.into(), palet, self.state.draw_draw_mode, true);
+                            self.draw_state.draw_mouse_down(p.into(), palet, self.state.draw_draw_mode, true, self.ds_replace);
                         },
-                        DragOp::Tick(Some(p)) => self.draw_state.draw_mouse_down(p.into(), palet, self.state.draw_draw_mode, false),
+                        DragOp::Tick(Some(p)) => self.draw_state.draw_mouse_down(p.into(), palet, self.state.draw_draw_mode, false, self.ds_replace),
                         DragOp::End(p) => {
                             let mut mm = self.editsel.selmatrix_mut(
                                 0 /*TODO*/,
@@ -100,7 +103,7 @@ impl Map {
                                 !mods.shift,
                                 mods.ctrl,
                                 true,
-                                true, //TODO
+                                self.dsel_whole,
                             )
                         },
                         DragOp::Tick(Some(p)) => {
@@ -111,7 +114,7 @@ impl Map {
                                 !mods.shift,
                                 mods.ctrl,
                                 false,
-                                true, //TODO
+                                self.dsel_whole,
                             )
                         },
                         DragOp::End(p) => {

@@ -42,6 +42,8 @@ pub struct Map {
     pub windowsize_estim: egui::Vec2,
     pub draw_state: DrawState,
     pub dsel_state: DSelState,
+    pub ds_replace: bool,
+    pub dsel_whole: bool,
 }
 
 pub type RoomMap = HopSlotMap<RoomId,Room>;
@@ -136,9 +138,11 @@ impl Map {
             redo_buf: VecDeque::with_capacity(64),
             latest_used_opevo: 0,
             windowsize_estim: state.rooms_size.as_f32().into(),
-            state,
             draw_state: DrawState::new(),
             dsel_state: DSelState::new(),
+            ds_replace: false,
+            dsel_whole: true,
+            state,
         };
 
         map.set_view_pos(map.state.view_pos);
@@ -235,6 +239,8 @@ impl Map {
             windowsize_estim: rooms_size.as_f32().into(),
             draw_state: DrawState::new(),
             dsel_state: DSelState::new(),
+            ds_replace: false,
+            dsel_whole: true,
         }
     }
 
