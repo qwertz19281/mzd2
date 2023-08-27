@@ -35,9 +35,13 @@ impl DrawState {
         }
     }
 
-    pub fn draw_mouse_down(&mut self, pos: [f32;2], src: &PaletteItem, mode: DrawMode) {
+    pub fn draw_mouse_down(&mut self, pos: [f32;2], src: &PaletteItem, mode: DrawMode, start: bool) {
         if self.src.is_none() {
-            self.src = Some(src.clone());
+            if start {
+                self.src = Some(src.clone());
+            } else {
+                return;
+            }
         }
         let q = self.quantin(pos);
         if self.draw_start.is_none() && !src.is_empty() {
@@ -114,6 +118,8 @@ impl DrawState {
                 false
             );
         }
+
+        self.draw_cancel();
     }
 
     pub fn active(&self) -> bool {
@@ -127,10 +133,11 @@ impl DrawState {
         self.prev_tik = Some(dest);
 
         // only if dest hast the same "phase" as the start we're doing something
-        if self.quantoff(draw_start) != self.quantoff(dest) {return;}
+        
 
         match self.mode {
             DrawMode::Direct => {
+                if self.quantoff(draw_start) != self.quantoff(dest) {return;}
                 self.current_dest.insert(dest);
             },
             _ => {
@@ -146,9 +153,11 @@ impl DrawState {
 
                 self.current_dest2.clear();
 
-                for y in range_se(draw_start[1], dest[1]).step_by(sh as usize) {
-                    for x in range_se(draw_start[0], dest[0]).step_by(sw as usize) {
-                        self.current_dest2.push([x,y]);
+                for y in range_se(draw_start[1], dest[1]) { //TODO bring back step
+                    for x in range_se(draw_start[0], dest[0]) {
+                        if self.quantoff(draw_start) == self.quantoff([x,y]) {
+                            self.current_dest2.push([x,y]);
+                        }
                     }
                 }
             }
@@ -164,7 +173,11 @@ impl DrawState {
     }
 
     fn quantoff(&self, v: [u16;2]) -> [u8;2] {
-        v.sub(self.quanted(v)).as_u8()
+        let [sw,sh] = self.src.as_ref().unwrap().quantis8();
+        [
+            (v[0] as u32 % sw) as u8,
+            (v[1] as u32 % sh) as u8,
+        ]
     }
 
     fn quantin(&self, i: [f32;2]) -> [u16;2] {

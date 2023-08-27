@@ -197,8 +197,7 @@ impl DrawImageGroup {
         //TODO Room::ensure_loaded
         for &(room_id,_,roff) in &self.rooms {
             let Some(room) = rooms.get_mut(room_id) else {continue};
-            let off1 = [off[0]+roff[0],off[1]+roff[1]];
-            let Some((op_0,op_1)) = effective_bounds((off1,size),(roff,rooms_size)) else {continue};
+            let Some((op_0,op_1)) = effective_bounds((off,size),(roff,rooms_size)) else {continue};
             
             assert!(room.image.img.width() == rooms_size[0]);
             assert!(room.image.img.height() % rooms_size[1] == 0);
@@ -207,11 +206,18 @@ impl DrawImageGroup {
             assert!(roff[0] % 8 == 0 && roff[1] % 8 == 0 && room.image.img.width() % 8 == 0 && room.image.img.height() % 8 == 0);
             assert!(op_0[0] % 8 == 0 && op_0[1] % 8 == 0 && op_1[0] % 8 == 0 && op_1[1] % 8 == 0);
 
+            let (opi_0,opi_1) = (op_0.sub(roff),op_1.sub(roff));
+
             imgcopy(
                 &mut room.image.img,
-                &*src.view(src_off[0], src_off[1], op_1[0]-op_0[0], op_1[1]-op_0[1]),
-                op_0[0] as i64,
-                op_0[1] as i64 + (layer as i64 * rooms_size[1] as i64),
+                &*src.view(
+                    op_0[0]-off[0]+src_off[0],
+                    op_0[1]-off[1]+src_off[1],
+                    op_1[0]-op_0[0],
+                    op_1[1]-op_0[1],
+                ),
+                opi_0[0] as i64,
+                opi_0[1] as i64 + (layer as i64 * rooms_size[1] as i64),
                 replace,
             );
 
@@ -222,10 +228,10 @@ impl DrawImageGroup {
                 tc.dirty_region((
                     [
                         op_0[0],
-                        op_0[1],
+                        op_0[1] + (layer as u32 * rooms_size[1] as u32),
                     ],[
                         op_1[0],
-                        op_1[1],
+                        op_1[1] + (layer as u32 * rooms_size[1] as u32),
                     ]
                 ));
             }
@@ -237,8 +243,7 @@ impl DrawImageGroup {
         //TODO Room::ensure_loaded
         for &(room_id,_,roff) in &self.rooms {
             let Some(room) = rooms.get_mut(room_id) else {continue};
-            let off1 = [off[0]+roff[0],off[1]+roff[1]];
-            let Some((op_0,op_1)) = effective_bounds((off1,size),(roff,rooms_size)) else {continue};
+            let Some((op_0,op_1)) = effective_bounds((off,size),(roff,rooms_size)) else {continue};
             
             assert!(room.image.img.width() == rooms_size[0]);
             assert!(room.image.img.height() % rooms_size[1] == 0);
@@ -247,8 +252,10 @@ impl DrawImageGroup {
             assert!(roff[0] % 8 == 0 && roff[1] % 8 == 0 && room.image.img.width() % 8 == 0 && room.image.img.height() % 8 == 0);
             assert!(op_0[0] % 8 == 0 && op_0[1] % 8 == 0 && op_1[0] % 8 == 0 && op_1[1] % 8 == 0);
 
-            for y in op_0[1] .. op_1[1] {
-                for x in op_0[0] .. op_1[0] {
+            let (opi_0,opi_1) = (op_0.sub(roff),op_1.sub(roff));
+
+            for y in opi_0[1] .. opi_1[1] {
+                for x in opi_0[0] .. opi_1[0] {
                     let y = y + (layer as u32 * rooms_size[1] as u32);
                     unsafe { room.image.img.unsafe_put_pixel(x, y, image::Rgba([0,0,0,0])); }
                 }
@@ -276,26 +283,27 @@ impl DrawImageGroup {
         //TODO Room::ensure_loaded
         for &(room_id,_,roff) in &self.rooms {
             let Some(room) = rooms.get(room_id) else {continue};
-            let off1 = [off[0]+roff[0],off[1]+roff[1]];
-            let Some((op_0,op_1)) = effective_bounds((off1,size),(roff,rooms_size)) else {continue};
+            let Some((op_0,op_1)) = effective_bounds((off,size),(roff,rooms_size)) else {continue};
             
             assert!(room.image.img.width() == rooms_size[0]);
             assert!(room.image.img.height() % rooms_size[1] == 0);
-            // assert!((dest_layer * rooms_size[0] as usize) < room.image.img.height() as usize, "Layer overflow");
+            assert!((layer * rooms_size[0] as usize) < room.image.img.height() as usize, "Layer overflow");
 
             assert!(roff[0] % 8 == 0 && roff[1] % 8 == 0 && room.image.img.width() % 8 == 0 && room.image.img.height() % 8 == 0);
             assert!(op_0[0] % 8 == 0 && op_0[1] % 8 == 0 && op_1[0] % 8 == 0 && op_1[1] % 8 == 0);
 
+            let (opi_0,opi_1) = (op_0.sub(roff),op_1.sub(roff));
+
             imgcopy(
                 dest,
                 &*room.image.img.view(
-                    op_0[0],
-                    op_0[1] + (layer as u32 * rooms_size[1]),
+                    opi_0[0],
+                    opi_0[1] + (layer as u32 * rooms_size[1]),
                     op_1[0]-op_0[0],
                     op_1[1]-op_0[1]
                 ),
-                dest_off[0] as i64,
-                dest_off[1] as i64,
+                (op_0[0]-off[0]+dest_off[0]) as i64,
+                (op_0[1]-off[1]+dest_off[1]) as i64,
                 replace,
             );
         }

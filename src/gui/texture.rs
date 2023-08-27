@@ -42,7 +42,7 @@ pub fn ensure_texture_from_image<'a> (
 
     if tex.is_some() && !force && force_region.is_some() {
         let region = force_region.unwrap();
-        if let Some(region) = effective_bounds2((region.0,region.0.add(region.1)), ([0,0],image.dimensions().into())) {
+        if let Some(region) = effective_bounds2(region, ([0,0],image.dimensions().into())) {
             let image_part = color_image_of_image_area(&image, region.0, region.1.sub(region.0));
             let tex_manager = ctx.tex_manager();
             let mut tex_manager = tex_manager.write();
@@ -202,6 +202,7 @@ impl TextureCell {
     }
 
     pub fn dirty_region(&mut self, region: ([u32;2],[u32;2])) {
+        self.dirty(); return; //TODO fix dirty_region
         self.dirty_region = Some(match self.dirty_region {
             Some(([a,b],[c,d])) => {
                 let ([e,f],[g,h]) = region;

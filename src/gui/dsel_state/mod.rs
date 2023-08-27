@@ -131,6 +131,7 @@ impl DSelState {
         let (min,max) = self.sel_area;
 
         if self.selected.is_empty() {
+            self.dsel_cancel();
             return SelImg::empty();
         }
 
@@ -158,6 +159,8 @@ impl DSelState {
             );
         }
 
+        self.dsel_cancel();
+
         SelImg {
             img: dest_img,
             sels,
@@ -174,6 +177,10 @@ impl DSelState {
 
         if self.prev_tik == Some(dest) {return;}
         self.prev_tik = Some(dest);
+
+        if matches!(self.dsel_mode,DSelMode::Rect) {
+            self.selected_staging.clear();
+        }
 
         let mut add_sel_entry = |q: [u16;2]| {
             if let Some(e) = src.get(q.as_u32()).filter(|e| !e.is_empty() ) {
