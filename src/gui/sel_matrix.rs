@@ -327,7 +327,7 @@ impl SelEntryWrite for SelMatrix {
         for y in y0 .. y1 {
             for x in x0 .. x1 {
                 if let Some(se) = self.get_mut([x,y]) {
-                    se.start = [(x as i32 - x0 as i32) as i8, ( y as i32 - y0 as i32) as i8]; //TODO handle tile sizes >256 (fail or panic)
+                    se.start = [(x0 as i32 - x as i32) as i8, ( y0 as i32 - y as i32) as i8]; //TODO handle tile sizes >256 (fail or panic)
                     se.size = [(x1 - x0) as u8, (y1 - y0) as u8];
                 }
             }

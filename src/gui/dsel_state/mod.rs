@@ -157,7 +157,7 @@ impl DSelState {
 
             img.img_read(
                 draw_src_off,
-                draw_size,
+                [8,8],
                 &mut dest_img,
                 draw_dest_off,
                 true
