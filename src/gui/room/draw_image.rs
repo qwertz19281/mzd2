@@ -93,6 +93,31 @@ impl DrawImage {
             max: egui::Pos2 { x: 1., y: y1 },
         }
     }
+
+    pub fn rgb_avg(&self, layer: usize, rooms_size: [u32;2]) -> ([u64;3],u64) {
+        assert!(layer < self.layers);
+
+        let y0 = layer as u32 * rooms_size[1];
+
+        assert!((y0+rooms_size[1]) <= self.img.height());
+
+        let mut avgc = [0u64;3];
+        let mut ac = 0;
+        
+        assert!(rooms_size[0] % 8 == 0 && self.img.width() % 8 == 0 && rooms_size[1] % 8 == 0);
+
+        for y in y0 .. y0 + rooms_size[1] {
+            for x in 0 .. self.img.width() {
+                let pix = unsafe { self.img.get_pixel_checked(x, y).unwrap_unchecked().clone() };
+                if pix.0[3] > 16 {
+                    avgc[0] += pix.0[0] as u64; avgc[1] += pix.0[1] as u64; avgc[2] += pix.0[2] as u64;
+                    ac += 1;
+                }
+            }
+        }
+
+        (avgc,ac)
+    }
 }
 
 pub fn create_gap_inside_vec<T>(v: &mut Vec<T>, off: usize, len: usize) where T: Default {
