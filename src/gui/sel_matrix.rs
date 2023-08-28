@@ -4,7 +4,7 @@ use super::map::{RoomMap, DirtyRooms};
 use super::room::draw_image::{DrawImageGroup, DrawImage};
 use super::util::ArrUtl;
 
-#[derive(Deserialize,Serialize)]
+#[derive(Clone, Deserialize,Serialize)]
 pub struct SelMatrix {
     pub dims: [u32;2],
     #[serde(serialize_with = "ser_selentry")]
@@ -145,7 +145,7 @@ pub fn sel_entry_dims(full: [u32;2]) -> [u32;2] {
     [full[0] / 16 * 2, full[1] / 16 * 2]
 }
 
-#[derive(Deserialize,Serialize)]
+#[derive(Clone, Deserialize,Serialize)]
 pub struct SelMatrixLayered {
     pub dims: [u32;2],
     pub layers: Vec<SelMatrix>,

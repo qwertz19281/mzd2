@@ -4,7 +4,7 @@ pub struct Tags {
 
 }
 
-#[derive(Deserialize,Serialize)]
+#[derive(Clone, Deserialize,Serialize)]
 pub struct TagState {
     pos: [u32;2],
     title: String,

@@ -167,6 +167,18 @@ impl Room {
     pub fn swap_layer(&mut self, off: usize) {
         todo!()
     }
+
+    pub fn clone_from(&mut self, src: &Room) {
+        if src.locked.is_some() {return;}
+        self.dirty_file = true;
+        self.image.tex = None;
+        self.image.layers = src.image.layers;
+        self.image.img = src.image.img.clone();
+        self.sel_matrix = src.sel_matrix.clone();
+        self.selected_layer = src.selected_layer;
+        self.tags = src.tags.clone();
+        self.visible_layers = src.visible_layers.clone();
+    }
 }
 
 const ROOM_TEX_OPTS: TextureOptions = TextureOptions {
