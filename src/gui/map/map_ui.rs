@@ -212,7 +212,6 @@ impl Map {
                         MapEditMode::DrawSel => {
                             if let Some(v) = self.state.dsel_room.filter(|&v| self.state.rooms.contains_key(v) ) {
                                 if ui.button("Delete Room").double_clicked() {
-                                    self.state.dsel_coord = None;
                                     self.state.dsel_room = None;
                                     self.editsel = DrawImageGroup::unsel(self.state.rooms_size);
                                     self.post_drawroom_switch();
@@ -249,7 +248,6 @@ impl Map {
                         _ => {
                             if let Some(v) = self.state.ssel_room.filter(|&v| self.state.rooms.contains_key(v) ) {
                                 if ui.button("Delete Room").double_clicked() {
-                                    self.state.ssel_coord = None;
                                     self.state.ssel_room = None;
                                     self.ui_delete_room(v);
                                 }
