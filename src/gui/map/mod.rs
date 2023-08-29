@@ -73,6 +73,8 @@ pub struct MapState {
     pub smart_awaylock_mode: bool,
     pub ds_replace: bool,
     pub dsel_whole: bool,
+    #[serde(default)]
+    pub template_room: Option<RoomId>,
 }
 
 slotmap::new_key_type! {
@@ -225,6 +227,7 @@ impl Map {
                 smart_awaylock_mode: false,
                 ds_replace: false,
                 dsel_whole: true,
+                template_room: None,
             },
             path,
             dirty_rooms: Default::default(),

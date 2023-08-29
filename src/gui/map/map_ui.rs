@@ -218,9 +218,26 @@ impl Map {
                                     self.post_drawroom_switch();
                                     self.ui_delete_room(v);
                                 }
+                                if ui.button("As Template").clicked() {
+                                    self.state.template_room = Some(v);
+                                }
                             } else if let Some(v) = self.state.dsel_coord {
                                 if ui.button("Create Room").clicked() {
                                     if let Some(new_id) = self.ui_create_room(v) {
+                                        self.state.dsel_room = Some(new_id);
+                                        self.state.dsel_coord = Some(v);
+                                        self.editsel = DrawImageGroup::single(new_id, v, self.state.rooms_size);
+                                        self.post_drawroom_switch();
+                                    }
+                                }
+                                let resp = ui.add_enabled(
+                                    self.state.template_room.is_some_and(|t| self.state.rooms.contains_key(t) ),
+                                    egui::Button::new("From Template")
+                                );
+                                if resp.clicked() {
+                                    if let Some(new_id) = self.ui_create_room(v) {
+                                        let [a,b] = self.state.rooms.get_disjoint_mut([new_id,self.state.template_room.unwrap()]).unwrap();
+                                        a.clone_from(b);
                                         self.state.dsel_room = Some(new_id);
                                         self.state.dsel_coord = Some(v);
                                         self.editsel = DrawImageGroup::single(new_id, v, self.state.rooms_size);
@@ -236,11 +253,28 @@ impl Map {
                                     self.state.ssel_room = None;
                                     self.ui_delete_room(v);
                                 }
+                                if ui.button("As Template").clicked() {
+                                    self.state.template_room = Some(v);
+                                }
                             } else if let Some(v) = self.state.ssel_coord {
                                 if ui.button("Create Room").clicked() {
                                     if let Some(new_id) = self.ui_create_room(v) {
                                         self.state.ssel_room = Some(new_id);
                                         self.state.ssel_coord = Some(v);
+                                    }
+                                }
+                                let resp = ui.add_enabled(
+                                    self.state.template_room.is_some_and(|t| self.state.rooms.contains_key(t) ),
+                                    egui::Button::new("From Template")
+                                );
+                                if resp.clicked() {
+                                    if let Some(new_id) = self.ui_create_room(v) {
+                                        let [a,b] = self.state.rooms.get_disjoint_mut([new_id,self.state.template_room.unwrap()]).unwrap();
+                                        a.clone_from(b);
+                                        self.state.ssel_room = Some(new_id);
+                                        self.state.ssel_coord = Some(v);
+                                        self.editsel = DrawImageGroup::single(new_id, v, self.state.rooms_size);
+                                        self.post_drawroom_switch();
                                     }
                                 }
                             }
