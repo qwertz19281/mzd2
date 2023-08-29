@@ -1,11 +1,13 @@
 use std::collections::VecDeque;
+use std::hash::BuildHasherDefault;
 use std::io::ErrorKind;
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use egui::{TextureHandle, TextureOptions};
-use egui::epaint::ahash::HashSet;
+use egui::epaint::ahash::{HashSet, AHasher};
 use image::RgbaImage;
+use lru::LruCache;
 use serde::{Serialize, Deserialize};
 use slotmap::{HopSlotMap, SlotMap};
 
@@ -42,6 +44,9 @@ pub struct Map {
     pub windowsize_estim: egui::Vec2,
     pub draw_state: DrawState,
     pub dsel_state: DSelState,
+    pub texlru: lru::LruCache<RoomId,u64,BuildHasherDefault<AHasher>>,
+    pub texlru_gen: u64,
+    pub texlru_limit: usize,
 }
 
 pub type RoomMap = HopSlotMap<RoomId,Room>;
@@ -142,6 +147,9 @@ impl Map {
             draw_state: DrawState::new(),
             dsel_state: DSelState::new(),
             state,
+            texlru: LruCache::unbounded(),
+            texlru_gen: 0,
+            texlru_limit: 64,
         };
 
         map.set_view_pos(map.state.view_pos);
@@ -241,12 +249,42 @@ impl Map {
             windowsize_estim: rooms_size.as_f32().into(),
             draw_state: DrawState::new(),
             dsel_state: DSelState::new(),
+            texlru: LruCache::unbounded(),
+            texlru_gen: 0,
+            texlru_limit: 64,
         }
     }
 
     fn update_level(&mut self, new_z: u8) {
         self.picomap_tex.dirty();
         self.state.current_level = new_z;
+    }
+
+    fn lru_tick(&mut self) {
+        fn unload_room(s: &mut Map, room: RoomId) {
+            if let Some(v) = s.state.rooms.get_mut(room).and_then(|r| r.image.tex.as_mut() ) {
+                v.tex_handle = None;
+            }
+        }
+        let pre_gen = self.texlru_gen;
+        let next_gen = pre_gen.wrapping_add(1);
+        self.texlru_gen = next_gen;
+        if next_gen == 0 {
+            while let Some((r,_)) = self.texlru.pop_lru() {
+                unload_room(self, r);
+            }
+            return;
+        }
+        while self.texlru.len() > self.texlru_limit {
+            if let Some((k,v)) = self.texlru.peek_lru().map(|(&k,&v)| (k,v) ) {
+                if v < pre_gen {
+                    unload_room(self, k);
+                    self.texlru.pop_lru();
+                } else {
+                    return;
+                }
+            }
+        }
     }
 }
 

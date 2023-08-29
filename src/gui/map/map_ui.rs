@@ -101,6 +101,8 @@ impl Map {
             self.state.ssel_coord = Some(r.coord);
         }
 
+        self.lru_tick();
+
         let mut smart_preview_hovered = false;
 
         let mods = ui.input(|i| i.modifiers );
@@ -533,7 +535,11 @@ impl Map {
                 self.state.rooms_size,
                 |[cx,cy]| {
                     if cx < 256 && cy < 256 {
-                        if let Some(room) = self.room_matrix.get([cx as u8,cy as u8,self.state.current_level]).and_then(|&rid| self.state.rooms.get_mut(rid) ) {
+                        if let Some(&room_id) = self.room_matrix.get([cx as u8,cy as u8,self.state.current_level]) {
+                            *self.texlru.get_or_insert_mut(room_id, || self.texlru_gen) = self.texlru_gen;
+
+                            let Some(room) = self.state.rooms.get_mut(room_id) else {return};
+
                             let vl = room.visible_layers.clone(); //TODO lifetime wranglery
                             room.render(
                                 [cx,cy].mul(self.state.rooms_size),
@@ -601,6 +607,10 @@ impl Map {
             }
 
             super_map.extend_rel_fixtex(shapes);
+        }
+
+        for (room_id,_,_) in &self.editsel.rooms {
+            *self.texlru.get_or_insert_mut(*room_id, || self.texlru_gen) = self.texlru_gen;
         }
     }
 
