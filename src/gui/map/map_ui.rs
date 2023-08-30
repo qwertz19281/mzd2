@@ -1,4 +1,4 @@
-use egui::{Sense, Vec2, Color32, Rounding};
+use egui::{Sense, Vec2, Color32, Rounding, PointerButton};
 
 use crate::gui::map::room_ops::describe_direction;
 use crate::gui::room::draw_image::DrawImageGroup;
@@ -6,7 +6,7 @@ use crate::gui::{MutQueue, rector};
 use crate::gui::init::{SharedApp, SAM};
 use crate::gui::palette::Palette;
 use crate::gui::texture::basic_tex_shape;
-use crate::gui::util::{alloc_painter_rel, alloc_painter_rel_ds, draw_grid, ArrUtl, dpad};
+use crate::gui::util::{alloc_painter_rel, alloc_painter_rel_ds, draw_grid, ArrUtl, dpad, DragOp};
 use crate::util::{MapId, gui_error};
 
 use super::room_ops::{render_picomap, RoomOp, OpAxis};
@@ -474,14 +474,47 @@ impl Map {
                     MapEditMode::Tags => {
                         //TODO
                     },
-                    MapEditMode::ConnXY => {
-                        //TODO
-                    },
-                    MapEditMode::ConnDown => {
-                        //TODO
-                    },
-                    MapEditMode::ConnUp => {
-                        //TODO
+                    MapEditMode::ConnXY | MapEditMode::ConnDown | MapEditMode::ConnUp => {
+                        match super_map.drag_decode(PointerButton::Primary, ui) {
+                            DragOp::Start(p) => 
+                                self.cd_state.cds_down(
+                                    p.into(),
+                                    self.state.edit_mode,
+                                    true, true,
+                                    &self.room_matrix, &mut self.state.rooms,
+                                    self.state.rooms_size, self.state.current_level
+                                ),
+                            DragOp::Tick(Some(p)) =>
+                                self.cd_state.cds_down(
+                                    p.into(),
+                                    self.state.edit_mode,
+                                    false, true,
+                                    &self.room_matrix, &mut self.state.rooms,
+                                    self.state.rooms_size, self.state.current_level
+                                ),
+                            DragOp::Abort => self.cd_state.cds_cancel(),
+                            _ => {},
+                        }
+                        match super_map.drag_decode(PointerButton::Secondary, ui) {
+                            DragOp::Start(p) => 
+                                self.cd_state.cds_down(
+                                    p.into(),
+                                    self.state.edit_mode,
+                                    true, false,
+                                    &self.room_matrix, &mut self.state.rooms,
+                                    self.state.rooms_size, self.state.current_level
+                                ),
+                            DragOp::Tick(Some(p)) =>
+                                self.cd_state.cds_down(
+                                    p.into(),
+                                    self.state.edit_mode,
+                                    false, false,
+                                    &self.room_matrix, &mut self.state.rooms,
+                                    self.state.rooms_size, self.state.current_level
+                                ),
+                            DragOp::Abort => self.cd_state.cds_cancel(),
+                            _ => {},
+                        }
                     },
                 }
 

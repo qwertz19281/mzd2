@@ -15,6 +15,7 @@ use crate::util::*;
 
 use self::room_ops::{OpAxis, RoomOp, ShiftSmartCollected};
 
+use super::conndraw_state::ConnDrawState;
 use super::draw_state::{DrawMode, DrawState};
 use super::dsel_state::{DSelMode, DSelState};
 use super::room::Room;
@@ -44,6 +45,7 @@ pub struct Map {
     pub windowsize_estim: egui::Vec2,
     pub draw_state: DrawState,
     pub dsel_state: DSelState,
+    pub cd_state: ConnDrawState,
     pub texlru: LruCache,
     pub imglru: LruCache,
     pub texlru_gen: u64,
@@ -154,6 +156,7 @@ impl Map {
             texlru_gen: 0,
             texlru_limit: 64,
             imglru_limit: 128,
+            cd_state: ConnDrawState::new(),
         };
 
         map.set_view_pos(map.state.view_pos);
@@ -258,6 +261,7 @@ impl Map {
             texlru_gen: 0,
             texlru_limit: 64,
             imglru_limit: 128,
+            cd_state: ConnDrawState::new(),
         }
     }
 

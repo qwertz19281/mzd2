@@ -647,7 +647,7 @@ fn try_6_sides(v: [u8;3], mut fun: impl FnMut([u8;3],u8,bool)) {
     }
 }
 
-fn try_side<R>(v: [u8;3], axis: OpAxis, dir: bool, fun: impl FnOnce([u8;3],u8,bool) -> R) -> Option<R> {
+pub(crate) fn try_side<R>(v: [u8;3], axis: OpAxis, dir: bool, fun: impl FnOnce([u8;3],u8,bool) -> R) -> Option<R> {
     match (axis,dir) {
         (OpAxis::X, true ) if v[0] != 255 => Some(fun([v[0]+1, v[1]  , v[2]  ], 0,true)),
         (OpAxis::X, false) if v[0] !=   0 => Some(fun([v[0]-1, v[1]  , v[2]  ], 0,false)),

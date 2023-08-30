@@ -224,6 +224,7 @@ pub trait ArrUtl: Clone {
     fn sub(self, v: Self) -> Self;
     fn mul(self, v: Self) -> Self;
     fn div(self, v: Self) -> Self;
+    fn rem(self, v: Self) -> Self;
     fn quant(self, v: Self) -> Self {
         self.div(v.clone()).mul(v)
     }
@@ -271,6 +272,9 @@ macro_rules! marco_arrutl {
                 }
                 fn div(self, v: Self) -> Self {
                     [self[0]/v[0], self[1]/v[1]]
+                }
+                fn rem(self, v: Self) -> Self {
+                    [self[0]%v[0], self[1]%v[1]]
                 }
 
                 fn mul8(self) -> Self {
