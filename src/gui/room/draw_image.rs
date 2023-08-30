@@ -6,7 +6,7 @@ use egui::epaint::ahash::AHasher;
 use image::{RgbaImage, GenericImage, GenericImageView, ImageBuffer};
 use serde::{Deserialize, Serialize};
 
-use crate::gui::map::{RoomId, RoomMap, DirtyRooms, MapEditMode, Map};
+use crate::gui::map::{RoomId, RoomMap, DirtyRooms, MapEditMode, Map, LruCache};
 use crate::gui::util::ArrUtl;
 use crate::gui::{rector, line2};
 use crate::gui::sel_matrix::{SelPt, SelEntry, DIGMatrixAccess, DIGMatrixAccessMut, SelMatrix};
@@ -217,11 +217,12 @@ impl DrawImageGroup {
     }
 
     // full-scale bounds unit
-    fn draw(&self, rooms: &mut RoomMap, src: &RgbaImage, off: [u32;2], size: [u32;2], layer: usize, src_off: [u32;2], rooms_size: [u32;2], dirty_map: &mut DirtyRooms, replace: bool) {
+    fn draw(&self, rooms: &mut RoomMap, src: &RgbaImage, off: [u32;2], size: [u32;2], layer: usize, src_off: [u32;2], rooms_size: [u32;2], dirty_map: (&mut DirtyRooms,&mut LruCache), replace: bool) {
         assert!(rooms_size[0] % 8 == 0 && rooms_size[1] % 8 == 0);
         //TODO Room::ensure_loaded
         for &(room_id,_,roff) in &self.rooms {
             let Some(room) = rooms.get_mut(room_id) else {continue};
+            if room.image.img.is_empty() {continue;}
             let Some((op_0,op_1)) = effective_bounds((off,size),(roff,rooms_size)) else {continue};
             
             assert!(room.image.img.width() == rooms_size[0]);
@@ -247,7 +248,8 @@ impl DrawImageGroup {
             );
 
             room.dirty_file = true;
-            dirty_map.insert(room_id);
+            dirty_map.0.insert(room_id);
+            dirty_map.1.pop(&room_id);
 
             if let Some(tc) = &mut room.image.tex {
                 tc.dirty_region((
@@ -263,11 +265,12 @@ impl DrawImageGroup {
         }
     }
 
-    fn erase(&self, rooms: &mut RoomMap, off: [u32;2], size: [u32;2], layer: usize, rooms_size: [u32;2], dirty_map: &mut DirtyRooms) {
+    fn erase(&self, rooms: &mut RoomMap, off: [u32;2], size: [u32;2], layer: usize, rooms_size: [u32;2], dirty_map: (&mut DirtyRooms,&mut LruCache)) {
         assert!(rooms_size[0] % 8 == 0 && rooms_size[1] % 8 == 0);
         //TODO Room::ensure_loaded
         for &(room_id,_,roff) in &self.rooms {
             let Some(room) = rooms.get_mut(room_id) else {continue};
+            if room.image.img.is_empty() {continue;}
             let Some((op_0,op_1)) = effective_bounds((off,size),(roff,rooms_size)) else {continue};
             
             assert!(room.image.img.width() == rooms_size[0]);
@@ -287,7 +290,8 @@ impl DrawImageGroup {
             }
 
             room.dirty_file = true;
-            dirty_map.insert(room_id);
+            dirty_map.0.insert(room_id);
+            dirty_map.1.pop(&room_id);
 
             if let Some(tc) = &mut room.image.tex {
                 tc.dirty_region((
@@ -308,6 +312,7 @@ impl DrawImageGroup {
         //TODO Room::ensure_loaded
         for &(room_id,_,roff) in &self.rooms {
             let Some(room) = rooms.get(room_id) else {continue};
+            if room.image.img.is_empty() {continue;}
             let Some((op_0,op_1)) = effective_bounds((off,size),(roff,rooms_size)) else {continue};
             
             assert!(room.image.img.width() == rooms_size[0]);
@@ -405,7 +410,7 @@ impl DrawImageGroup {
         }
     }
 
-    pub fn selmatrix_mut<'a,'b>(&'a self, layer: usize, rooms: &'b mut RoomMap, rooms_size: [u32;2], dirty_map: &'b mut DirtyRooms) -> DIGMatrixAccessMut<'a,'b> {
+    pub fn selmatrix_mut<'a,'b>(&'a self, layer: usize, rooms: &'b mut RoomMap, rooms_size: [u32;2], dirty_map: (&'b mut DirtyRooms,&'b mut LruCache)) -> DIGMatrixAccessMut<'a,'b> {
         DIGMatrixAccessMut {
             dig: self,
             layer,
@@ -661,7 +666,7 @@ impl ImgWrite for DIGMatrixAccessMut<'_,'_> {
             self.layer,
             src_off,
             self.rooms_size,
-            self.dirty_map,
+            (self.dirty_map.0,self.dirty_map.1),
             replace
         )
     }
@@ -673,7 +678,7 @@ impl ImgWrite for DIGMatrixAccessMut<'_,'_> {
             size,
             self.layer,
             self.rooms_size,
-            self.dirty_map,
+            (self.dirty_map.0,self.dirty_map.1),
         )
     }
 }

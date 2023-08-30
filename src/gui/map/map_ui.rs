@@ -536,9 +536,12 @@ impl Map {
                 |[cx,cy]| {
                     if cx < 256 && cy < 256 {
                         if let Some(&room_id) = self.room_matrix.get([cx as u8,cy as u8,self.state.current_level]) {
-                            *self.texlru.get_or_insert_mut(room_id, || self.texlru_gen) = self.texlru_gen;
-
                             let Some(room) = self.state.rooms.get_mut(room_id) else {return};
+
+                            self.texlru.put(room_id, self.texlru_gen);
+                            if !room.dirty_file {
+                                self.imglru.put(room_id, self.texlru_gen);
+                            }
 
                             let vl = room.visible_layers.clone(); //TODO lifetime wranglery
                             room.render(
@@ -610,7 +613,11 @@ impl Map {
         }
 
         for (room_id,_,_) in &self.editsel.rooms {
-            *self.texlru.get_or_insert_mut(*room_id, || self.texlru_gen) = self.texlru_gen;
+            let Some(room) = self.state.rooms.get(*room_id) else {continue;};
+            self.texlru.put(*room_id, self.texlru_gen);
+            if !room.dirty_file {
+                self.imglru.put(*room_id, self.texlru_gen);
+            }
         }
     }
 

@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::map::{RoomMap, DirtyRooms};
+use super::map::{RoomMap, DirtyRooms, LruCache};
 use super::room::draw_image::{DrawImageGroup, DrawImage};
 use super::util::ArrUtl;
 
@@ -358,7 +358,7 @@ pub struct DIGMatrixAccessMut<'a,'b> {
     pub(crate) layer: usize,
     pub(crate) rooms: &'b mut RoomMap,
     pub(crate) rooms_size: [u32;2],
-    pub(crate) dirty_map: &'b mut DirtyRooms,
+    pub(crate) dirty_map: (&'b mut DirtyRooms,&'b mut LruCache),
 }
 
 impl SelEntryRead for DIGMatrixAccess<'_,'_> {

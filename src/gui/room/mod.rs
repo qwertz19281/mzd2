@@ -121,13 +121,6 @@ impl Room {
         let image = image::load_from_memory(&file_content)?;
         drop(file_content);
         let mut image = image.to_rgba8();
-        let img_size = [image.width() as u32, image.height() as u32];
-
-        if img_size != img_size {
-            let mut nimg = RgbaImage::new(img_size[0], img_size[1]);
-            image::imageops::overlay(&mut nimg, &image, 0, 0);
-            image = nimg;
-        }
         
         self.visible_layers.resize(self.image.layers, true);
 

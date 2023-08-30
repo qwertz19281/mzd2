@@ -77,7 +77,7 @@ impl Map {
                                 0 /*TODO*/,
                                 &mut self.state.rooms,
                                 self.state.rooms_size,
-                                &mut self.dirty_rooms,
+                                (&mut self.dirty_rooms,&mut self.imglru),
                             );
                             self.draw_state.draw_mouse_up(&mut mm);
                         },

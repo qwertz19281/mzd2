@@ -6,8 +6,7 @@ use std::sync::Arc;
 
 use egui::{TextureHandle, TextureOptions};
 use egui::epaint::ahash::{HashSet, AHasher};
-use image::RgbaImage;
-use lru::LruCache;
+use image::{RgbaImage, ImageBuffer};
 use serde::{Serialize, Deserialize};
 use slotmap::{HopSlotMap, SlotMap};
 
@@ -28,6 +27,7 @@ pub mod map_ui;
 pub mod draw_ui;
 
 pub type DirtyRooms = HashSet<RoomId>;
+pub type LruCache = lru::LruCache<RoomId,u64,BuildHasherDefault<AHasher>>;
 
 pub struct Map {
     pub id: MapId,
@@ -44,9 +44,11 @@ pub struct Map {
     pub windowsize_estim: egui::Vec2,
     pub draw_state: DrawState,
     pub dsel_state: DSelState,
-    pub texlru: lru::LruCache<RoomId,u64,BuildHasherDefault<AHasher>>,
+    pub texlru: LruCache,
+    pub imglru: LruCache,
     pub texlru_gen: u64,
     pub texlru_limit: usize,
+    pub imglru_limit: usize,
 }
 
 pub type RoomMap = HopSlotMap<RoomId,Room>;
@@ -148,8 +150,10 @@ impl Map {
             dsel_state: DSelState::new(),
             state,
             texlru: LruCache::unbounded(),
+            imglru: LruCache::unbounded(),
             texlru_gen: 0,
             texlru_limit: 64,
+            imglru_limit: 128,
         };
 
         map.set_view_pos(map.state.view_pos);
@@ -250,8 +254,10 @@ impl Map {
             draw_state: DrawState::new(),
             dsel_state: DSelState::new(),
             texlru: LruCache::unbounded(),
+            imglru: LruCache::unbounded(),
             texlru_gen: 0,
             texlru_limit: 64,
+            imglru_limit: 128,
         }
     }
 
@@ -261,9 +267,16 @@ impl Map {
     }
 
     fn lru_tick(&mut self) {
-        fn unload_room(s: &mut Map, room: RoomId) {
+        fn unload_room_tex(s: &mut Map, room: RoomId) {
             if let Some(v) = s.state.rooms.get_mut(room).and_then(|r| r.image.tex.as_mut() ) {
                 v.tex_handle = None;
+            }
+        }
+        fn unload_room_img(s: &mut Map, room: RoomId) {
+            if let Some(v) = s.state.rooms.get_mut(room) {
+                if !v.dirty_file {
+                    v.image.img = Default::default();
+                }
             }
         }
         let pre_gen = self.texlru_gen;
@@ -271,15 +284,28 @@ impl Map {
         self.texlru_gen = next_gen;
         if next_gen == 0 {
             while let Some((r,_)) = self.texlru.pop_lru() {
-                unload_room(self, r);
+                unload_room_tex(self, r);
+            }
+            while let Some((r,_)) = self.imglru.pop_lru() {
+                unload_room_img(self, r);
             }
             return;
         }
         while self.texlru.len() > self.texlru_limit {
             if let Some((k,v)) = self.texlru.peek_lru().map(|(&k,&v)| (k,v) ) {
                 if v < pre_gen {
-                    unload_room(self, k);
+                    unload_room_tex(self, k);
                     self.texlru.pop_lru();
+                } else {
+                    return;
+                }
+            }
+        }
+        while self.imglru.len() > self.imglru_limit {
+            if let Some((k,v)) = self.imglru.peek_lru().map(|(&k,&v)| (k,v) ) {
+                if v < pre_gen {
+                    unload_room_img(self, k);
+                    self.imglru.pop_lru();
                 } else {
                     return;
                 }
