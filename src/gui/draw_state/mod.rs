@@ -68,31 +68,23 @@ impl DrawState {
             let size = src.src.img.dimensions();
 
             if let Some(tex) = &src.texture {
-                if matches!(self.mode, DrawMode::TileEraseRect) {
+                if self.replace {
                     for &q in self.current_dest.iter().chain(self.current_dest2.iter()) {
                         let q = q.as_u32().mul8();
                         let rect = rector(q[0], q[1], q[0] + size.0, q[1] + size.1);
-                        dest(egui::Shape::rect_filled(rect, Rounding::none(), Color32::RED))
+                        dest(egui::Shape::rect_filled(rect, Rounding::none(), Color32::BLACK))
                     }
-                } else {
-                    if self.replace {
-                        for &q in self.current_dest.iter().chain(self.current_dest2.iter()) {
-                            let q = q.as_u32().mul8();
-                            let rect = rector(q[0], q[1], q[0] + size.0, q[1] + size.1);
-                            dest(egui::Shape::rect_filled(rect, Rounding::none(), Color32::BLACK))
-                        }
-                    }
-    
-                    let mut mesh = egui::Mesh::with_texture(tex.id());
-    
-                    for &q in self.current_dest.iter().chain(self.current_dest2.iter()) {
-                        let q = q.as_u32().mul8();
-                        let rect = rector(q[0], q[1], q[0] + size.0, q[1] + size.1);
-                        mesh.add_rect_with_uv(rect, src.uv, blend);
-                    }
-    
-                    dest(egui::Shape::Mesh(mesh));
                 }
+
+                let mut mesh = egui::Mesh::with_texture(tex.id());
+
+                for &q in self.current_dest.iter().chain(self.current_dest2.iter()) {
+                    let q = q.as_u32().mul8();
+                    let rect = rector(q[0], q[1], q[0] + size.0, q[1] + size.1);
+                    mesh.add_rect_with_uv(rect, src.uv, blend);
+                }
+
+                dest(egui::Shape::Mesh(mesh));
             }
         } else {
             if src.is_empty() {return;}
@@ -132,21 +124,13 @@ impl DrawState {
                 );
             }
 
-            if matches!(self.mode, DrawMode::TileEraseRect) {
-                dest.img_erase(
-                    doff.as_u32().mul8(),
-                    src.src.img.dimensions().into(),
-                );
-            } else {
-                dest.img_write(
-                    doff.as_u32().mul8(),
-                    src.src.img.dimensions().into(),
-                    &src.src.img,
-                    [0,0],
-                    self.replace,
-                );
-            }
-            
+            dest.img_write(
+                doff.as_u32().mul8(),
+                src.src.img.dimensions().into(),
+                &src.src.img,
+                [0,0],
+                self.replace,
+            );
         }
 
         self.draw_cancel();
@@ -233,6 +217,7 @@ pub enum DrawMode {
     Line,
     Rect,
     TileEraseRect,
+    TileEraseDirect,
 }
 
 /// tile_size is in eight-pixel unit

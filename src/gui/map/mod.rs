@@ -17,6 +17,7 @@ use self::room_ops::{OpAxis, RoomOp, ShiftSmartCollected};
 
 use super::conndraw_state::ConnDrawState;
 use super::draw_state::{DrawMode, DrawState};
+use super::dsel_state::del::DelState;
 use super::dsel_state::{DSelMode, DSelState};
 use super::room::Room;
 use super::room::draw_image::DrawImageGroup;
@@ -46,6 +47,7 @@ pub struct Map {
     pub draw_state: DrawState,
     pub dsel_state: DSelState,
     pub cd_state: ConnDrawState,
+    pub del_state: DelState,
     pub texlru: LruCache,
     pub imglru: LruCache,
     pub texlru_gen: u64,
@@ -150,6 +152,7 @@ impl Map {
             windowsize_estim: state.rooms_size.as_f32().into(),
             draw_state: DrawState::new(),
             dsel_state: DSelState::new(),
+            del_state: DelState::new(),
             state,
             texlru: LruCache::unbounded(),
             imglru: LruCache::unbounded(),
@@ -256,6 +259,7 @@ impl Map {
             windowsize_estim: rooms_size.as_f32().into(),
             draw_state: DrawState::new(),
             dsel_state: DSelState::new(),
+            del_state: DelState::new(),
             texlru: LruCache::unbounded(),
             imglru: LruCache::unbounded(),
             texlru_gen: 0,

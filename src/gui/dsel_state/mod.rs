@@ -16,6 +16,7 @@ use super::sel_matrix::{SelMatrix, SelPt, SelEntry, SelEntryRead};
 use super::util::ArrUtl;
 
 pub mod cse;
+pub mod del;
 
 pub struct DSelState {
     active: Option<[u16;2]>,

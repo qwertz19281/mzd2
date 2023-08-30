@@ -10,6 +10,7 @@ use crate::util::{TilesetId, attached_to_path, ResultExt, next_tex_id};
 
 use super::draw_state::{DrawMode, DrawState};
 use super::dsel_state::cse::CSEState;
+use super::dsel_state::del::DelState;
 use super::dsel_state::{DSelMode, DSelState};
 use super::map::{DrawOp, DrawOp2};
 use super::palette::{Palette, PaletteItem};
@@ -30,6 +31,7 @@ pub struct Tileset {
     pub quant: u8,
     pub draw_state: DrawState,
     pub dsel_state: DSelState,
+    pub del_state: DelState,
     pub cse_state: CSEState,
 }
 
@@ -92,6 +94,7 @@ impl Tileset {
                     ui.radio_value(&mut self.state.draw_draw_mode, DrawMode::Direct, "Direct");
                     ui.radio_value(&mut self.state.draw_draw_mode, DrawMode::Line, "Line");
                     ui.radio_value(&mut self.state.draw_draw_mode, DrawMode::Rect, "Rect");
+                    ui.radio_value(&mut self.state.draw_draw_mode, DrawMode::TileEraseDirect, "TileEraseDirect");
                     ui.radio_value(&mut self.state.draw_draw_mode, DrawMode::TileEraseRect, "TileEraseRect");
                 },
                 DrawOp2::Sel | DrawOp2::CSE => {
@@ -132,6 +135,33 @@ impl Tileset {
         let mods = ui.input(|i| i.modifiers );
 
         match self.state.draw_mode {
+            DrawOp2::Draw if self.state.draw_draw_mode == DrawMode::TileEraseDirect || self.state.draw_draw_mode == DrawMode::TileEraseRect => {
+                match reg.drag_decode(PointerButton::Primary, ui) {
+                    DragOp::Start(p) =>
+                        self.del_state.del_mouse_down(
+                            p.into(),
+                            &self.state.sel_matrix,
+                            self.state.draw_draw_mode,
+                            true,
+                            self.state.dsel_whole,
+                        ),
+                    DragOp::Tick(Some(p)) =>
+                        self.del_state.del_mouse_down(
+                            p.into(),
+                            &self.state.sel_matrix,
+                            self.state.draw_draw_mode,
+                            false,
+                            self.state.dsel_whole,
+                        ),
+                    DragOp::End(p) =>
+                        self.del_state.del_mouse_up(
+                            p.into(),
+                            &mut (&mut self.loaded_image, &mut self.state.sel_matrix),
+                        ),
+                    DragOp::Abort => self.del_state.del_cancel(),
+                    _ => {},
+                }
+            },
             DrawOp2::Draw => {
                 let palet = &palette.paletted[palette.selected as usize];
                 match reg.drag_decode(PointerButton::Primary, ui) {
@@ -220,7 +250,15 @@ impl Tileset {
 
         if let Some(h) = reg.hover_pos_rel() {
             match self.state.draw_mode {
-                DrawOp2::Draw => self.draw_state.draw_hover_at_pos(h.into(), &palette.paletted[palette.selected as usize], |v| shapes.push(v) ),
+                DrawOp2::Draw if self.state.draw_draw_mode == DrawMode::TileEraseDirect || self.state.draw_draw_mode == DrawMode::TileEraseRect =>
+                    self.del_state.del_render(
+                        h.into(),
+                        &self.state.sel_matrix,
+                        self.state.dsel_whole,
+                        |v| shapes.push(v)
+                    ),
+                DrawOp2::Draw =>
+                    self.draw_state.draw_hover_at_pos(h.into(), &palette.paletted[palette.selected as usize], |v| shapes.push(v) ),
                 DrawOp2::Sel => self.dsel_state.dsel_render(
                     h.into(),
                     &self.state.sel_matrix,
@@ -293,6 +331,7 @@ impl Tileset {
             quant: 1,
             draw_state: DrawState::new(),
             dsel_state: DSelState::new(),
+            del_state: DelState::new(),
             cse_state: CSEState::new(),
         };
 

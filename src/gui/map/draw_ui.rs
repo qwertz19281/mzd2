@@ -40,6 +40,7 @@ impl Map {
                     ui.radio_value(&mut self.state.draw_draw_mode, DrawMode::Direct, "Direct");
                     ui.radio_value(&mut self.state.draw_draw_mode, DrawMode::Line, "Line");
                     ui.radio_value(&mut self.state.draw_draw_mode, DrawMode::Rect, "Rect");
+                    ui.radio_value(&mut self.state.draw_draw_mode, DrawMode::TileEraseDirect, "TileEraseDirect");
                     ui.radio_value(&mut self.state.draw_draw_mode, DrawMode::TileEraseRect, "TileEraseRect");
                 },
                 DrawOp::Sel => {
@@ -65,6 +66,46 @@ impl Map {
             );
 
             match self.state.draw_mode {
+                DrawOp::Draw if self.state.draw_draw_mode == DrawMode::TileEraseDirect || self.state.draw_draw_mode == DrawMode::TileEraseRect => {
+                    match reg.drag_decode(PointerButton::Primary, ui) {
+                        DragOp::Start(p) =>
+                            self.del_state.del_mouse_down(
+                                p.into(),
+                                &self.editsel.selmatrix(
+                                    0 /*TODO*/,
+                                    &self.state.rooms,
+                                    self.state.rooms_size,
+                                ),
+                                self.state.draw_draw_mode,
+                                true,
+                                self.state.dsel_whole,
+                            ),
+                        DragOp::Tick(Some(p)) =>
+                            self.del_state.del_mouse_down(
+                                p.into(),
+                                &self.editsel.selmatrix(
+                                    0 /*TODO*/,
+                                    &self.state.rooms,
+                                    self.state.rooms_size,
+                                ),
+                                self.state.draw_draw_mode,
+                                false,
+                                self.state.dsel_whole,
+                            ),
+                        DragOp::End(p) =>
+                            self.del_state.del_mouse_up(
+                                p.into(),
+                                &mut self.editsel.selmatrix_mut(
+                                    0 /*TODO*/,
+                                    &mut self.state.rooms,
+                                    self.state.rooms_size,
+                                    (&mut self.dirty_rooms,&mut self.imglru),
+                                ),
+                            ),
+                        DragOp::Abort => self.del_state.del_cancel(),
+                        _ => {},
+                    }
+                },
                 DrawOp::Draw => {
                     let palet = &palette.paletted[palette.selected as usize];
                     match reg.drag_decode(PointerButton::Primary, ui) {
@@ -147,16 +188,30 @@ impl Map {
 
             if let Some(h) = reg.hover_pos_rel() {
                 match self.state.draw_mode {
-                    DrawOp::Draw => self.draw_state.draw_hover_at_pos(h.into(), &palette.paletted[palette.selected as usize], |v| shapes.push(v) ),
-                    DrawOp::Sel => self.dsel_state.dsel_render(
-                        h.into(),
-                        &self.editsel.selmatrix(
-                            0 /*TODO*/,
-                            &self.state.rooms,
-                            self.state.rooms_size,
+                    DrawOp::Draw if self.state.draw_draw_mode == DrawMode::TileEraseDirect || self.state.draw_draw_mode == DrawMode::TileEraseRect =>
+                        self.del_state.del_render(
+                            h.into(),
+                            &self.editsel.selmatrix(
+                                0 /*TODO*/,
+                                &self.state.rooms,
+                                self.state.rooms_size,
+                            ),
+                            self.state.dsel_whole,
+                            |v| shapes.push(v)
                         ),
-                        self.state.dsel_whole,
-                        |v| shapes.push(v) ),
+                    DrawOp::Draw =>
+                        self.draw_state.draw_hover_at_pos(h.into(), &palette.paletted[palette.selected as usize], |v| shapes.push(v) ),
+                    DrawOp::Sel =>
+                        self.dsel_state.dsel_render(
+                            h.into(),
+                            &self.editsel.selmatrix(
+                                0 /*TODO*/,
+                                &self.state.rooms,
+                                self.state.rooms_size,
+                            ),
+                            self.state.dsel_whole,
+                            |v| shapes.push(v)
+                        ),
                 }
             }
 
