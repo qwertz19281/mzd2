@@ -27,6 +27,7 @@ use super::util::ArrUtl;
 pub mod room_ops;
 pub mod map_ui;
 pub mod draw_ui;
+pub mod draw_layers_ui;
 
 pub type DirtyRooms = HashSet<RoomId>;
 pub type LruCache = lru::LruCache<RoomId,u64,BuildHasherDefault<AHasher>>;

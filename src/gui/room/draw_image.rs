@@ -227,7 +227,7 @@ impl DrawImageGroup {
             
             assert!(room.image.img.width() == rooms_size[0]);
             assert!(room.image.img.height() % rooms_size[1] == 0);
-            assert!((layer * rooms_size[0] as usize) < room.image.img.height() as usize, "Layer overflow");
+            assert!((layer * rooms_size[1] as usize) < room.image.img.height() as usize, "Layer overflow");
 
             assert!(roff[0] % 8 == 0 && roff[1] % 8 == 0 && room.image.img.width() % 8 == 0 && room.image.img.height() % 8 == 0);
             assert!(op_0[0] % 8 == 0 && op_0[1] % 8 == 0 && op_1[0] % 8 == 0 && op_1[1] % 8 == 0);
@@ -275,7 +275,7 @@ impl DrawImageGroup {
             
             assert!(room.image.img.width() == rooms_size[0]);
             assert!(room.image.img.height() % rooms_size[1] == 0);
-            assert!((layer * rooms_size[0] as usize) < room.image.img.height() as usize, "Layer overflow");
+            assert!((layer * rooms_size[1] as usize) < room.image.img.height() as usize, "Layer overflow");
 
             assert!(roff[0] % 8 == 0 && roff[1] % 8 == 0 && room.image.img.width() % 8 == 0 && room.image.img.height() % 8 == 0);
             assert!(op_0[0] % 8 == 0 && op_0[1] % 8 == 0 && op_1[0] % 8 == 0 && op_1[1] % 8 == 0);
@@ -317,7 +317,7 @@ impl DrawImageGroup {
             
             assert!(room.image.img.width() == rooms_size[0]);
             assert!(room.image.img.height() % rooms_size[1] == 0);
-            assert!((layer * rooms_size[0] as usize) < room.image.img.height() as usize, "Layer overflow");
+            assert!((layer * rooms_size[1] as usize) < room.image.img.height() as usize, "Layer overflow");
 
             assert!(roff[0] % 8 == 0 && roff[1] % 8 == 0 && room.image.img.width() % 8 == 0 && room.image.img.height() % 8 == 0);
             assert!(op_0[0] % 8 == 0 && op_0[1] % 8 == 0 && op_1[0] % 8 == 0 && op_1[1] % 8 == 0);
@@ -339,7 +339,7 @@ impl DrawImageGroup {
         }
     }
 
-    pub fn render(&self, rooms: &mut RoomMap, rooms_size: [u32;2], mut dest: impl FnMut(egui::Shape), map_path: &Path, ctx: &egui::Context) {
+    pub fn render(&self, rooms: &mut RoomMap, rooms_size: [u32;2], rsl: Option<usize>, mut dest: impl FnMut(egui::Shape), map_path: &Path, ctx: &egui::Context) {
         let Some(visible_layers) = self.rooms.get(0)
             .and_then(|&(r,_,_)| rooms.get(r) )
             .map(|r| r.visible_layers.clone() )
@@ -348,14 +348,25 @@ impl DrawImageGroup {
         for &(room_id,_,roff) in &self.rooms {
             let Some(room) = rooms.get_mut(room_id) else {continue};
 
-            room.render(
-                roff,
-                visible_layers.iter().enumerate().filter(|&(_,&v)| v ).map(|(i,_)| i ),
-                rooms_size,
-                |v| dest(v),
-                map_path,
-                ctx,
-            );
+            if let Some(vsl) = rsl {
+                room.render(
+                    roff,
+                    std::iter::once(vsl),
+                    rooms_size,
+                    |v| dest(v),
+                    map_path,
+                    ctx,
+                );
+            } else {
+                room.render(
+                    roff,
+                    visible_layers.iter().enumerate().filter(|&(_,&v)| v ).map(|(i,_)| i ),
+                    rooms_size,
+                    |v| dest(v),
+                    map_path,
+                    ctx,
+                );
+            }
         }
     }
 
