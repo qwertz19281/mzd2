@@ -13,7 +13,7 @@ pub struct SelMatrix {
 }
 
 /// SelEntry is relative to that one SelEntry, while SelPt is "absolute" (relative to whole img)
-#[derive(Clone, Deserialize,Serialize)]
+#[derive(Clone, Debug, Deserialize,Serialize)]
 pub struct SelEntry {
     pub start: [i8;2],
     pub size: [u8;2],

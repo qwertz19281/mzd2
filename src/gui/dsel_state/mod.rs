@@ -75,7 +75,7 @@ impl DSelState {
                 eprintln!("SELE {:?} {:?}",e.start,e.size);
                 let ept = e.to_sel_pt(pos);
                 eprintln!("SELPT {:?} {:?}",ept.start,ept.size);
-                if self.whole_selentry {
+                if whole_selentry {
                     rect = rector(
                         ept.start[0] as u32 * 8,
                         ept.start[1] as u32 * 8,
@@ -194,7 +194,9 @@ impl DSelState {
                 if self.whole_selentry {
                     for y in ept.start[1] .. ept.start[1] + ept.size[1] as u16 {
                         for x in ept.start[0] .. ept.start[0] + ept.size[0] as u16 {
-                            self.selected_staging.insert([x,y], e.clone());
+                            if let Some(e) = src.get([x,y].as_u32()).filter(|e| !e.is_empty() ) {
+                                self.selected_staging.insert([x,y], e.clone());
+                            }
                         }
                     }
                 } else {

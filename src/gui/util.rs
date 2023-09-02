@@ -247,6 +247,7 @@ pub trait ArrUtl: Clone {
     fn as_u64(self) -> [u64;2];
     fn as_usize(self) -> [usize;2];
     fn as_i8(self) -> [i8;2];
+    fn as_i8_clamped(self) -> [i8;2];
     fn as_i16(self) -> [i16;2];
     fn as_i32(self) -> [i32;2];
     fn as_i64(self) -> [i64;2];
@@ -312,6 +313,12 @@ macro_rules! marco_arrutl {
                     [
                         (self[0] as i64).clamp(0,255) as u8,
                         (self[1] as i64).clamp(0,255) as u8,
+                    ]
+                }
+                fn as_i8_clamped(self) -> [i8;2] {
+                    [
+                        (self[0] as i64).clamp(-128,127) as i8,
+                        (self[1] as i64).clamp(-128,127) as i8,
                     ]
                 }
 
