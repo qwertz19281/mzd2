@@ -143,7 +143,7 @@ impl Tileset {
                             &self.state.sel_matrix,
                             self.state.draw_draw_mode,
                             true,
-                            self.state.dsel_whole,
+                            false,
                         ),
                     DragOp::Tick(Some(p)) =>
                         self.del_state.del_mouse_down(
@@ -151,7 +151,7 @@ impl Tileset {
                             &self.state.sel_matrix,
                             self.state.draw_draw_mode,
                             false,
-                            self.state.dsel_whole,
+                            false,
                         ),
                     DragOp::End(p) =>
                         self.del_state.del_mouse_up(
