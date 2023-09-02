@@ -28,6 +28,7 @@ pub mod room_ops;
 pub mod map_ui;
 pub mod draw_ui;
 pub mod draw_layers_ui;
+pub mod import_mzd1;
 
 pub type DirtyRooms = HashSet<RoomId>;
 pub type LruCache = lru::LruCache<RoomId,u64,BuildHasherDefault<AHasher>>;
@@ -213,6 +214,8 @@ impl Map {
     }
 
     pub fn new(path: PathBuf, rooms_size: [u32;2]) -> Self {
+        assert!(rooms_size[0] % 8 == 0 && rooms_size[1] % 8 == 0);
+
         let title = match path.file_stem() {
             Some(name) => {
                 let name = name.to_string_lossy();

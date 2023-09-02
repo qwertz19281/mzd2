@@ -150,7 +150,7 @@ impl Map {
                 // UNCHECKED
             },
             RoomOp::Multi(v) => {
-                ok &= v.into_iter().all(|v| self.validate_apply(op, messages) );
+                ok &= v.into_iter().all(|v| self.validate_apply(v, messages) );
             },
         }
 
@@ -626,7 +626,7 @@ fn apply_unsift(mut v: [u8;3], n_sift: u8, axis: OpAxis, dir: bool) -> [u8;3] {
     apply_sift(v, n_sift, axis, !dir)
 }
 
-fn try_6_sides(v: [u8;3], mut fun: impl FnMut([u8;3],u8,bool)) {
+pub(crate) fn try_6_sides(v: [u8;3], mut fun: impl FnMut([u8;3],u8,bool)) {
     if v[0] != 255 {
         fun([v[0]+1, v[1]  , v[2]  ], 0,true);
     }

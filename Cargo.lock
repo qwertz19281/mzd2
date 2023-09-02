@@ -1637,6 +1637,7 @@ dependencies = [
  "native-dialog",
  "num",
  "qcell",
+ "regex",
  "rmp-serde",
  "serde",
  "serde_bytes",

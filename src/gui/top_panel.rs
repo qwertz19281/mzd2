@@ -5,6 +5,7 @@ use egui::Ui;
 
 use super::init::SharedApp;
 use super::map::Map;
+use super::util::ArrUtl;
 
 pub struct TopPanel {
     create_size: [u32;2],
@@ -39,6 +40,8 @@ pub fn top_panel_ui(state: &mut SharedApp, ui: &mut egui::Ui) {
 }
 
 fn new_map(state: &mut SharedApp) {
+    state.top_panel.create_size = state.top_panel.create_size.div8().mul8();
+
     let mut dialog = native_dialog::FileDialog::new();
     if let Some(v) = state.top_panel.last_map_path.as_ref().and_then(|f| f.parent() ) {
         dialog = dialog.set_location(v);

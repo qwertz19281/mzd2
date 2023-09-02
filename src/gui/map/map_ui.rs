@@ -17,7 +17,7 @@ impl Map {
         if let Some(roomcreate_op) = self.create_create_room(coord) {
             let ur = self.apply_room_op(roomcreate_op);
             let room_id = match &ur {
-                &super::room_ops::RoomOp::Del(id) => id,
+                &RoomOp::Del(id) => id,
                 _ => panic!(),
             };
             self.undo_buf.push_back(ur);
@@ -106,6 +106,14 @@ impl Map {
         let mut smart_preview_hovered = false;
 
         let mods = ui.input(|i| i.modifiers );
+
+        if
+            matches!(self.state.edit_mode, MapEditMode::RoomSel) &&
+            mods.ctrl && mods.shift &&
+            ui.input(|i| i.key_released(egui::Key::I) && !i.key_down(egui::Key::Escape) )
+        {
+            self.ui_import_mzd1();
+        }
 
         // on close of the map, palette textures should be unchained
         ui.horizontal(|ui| {
