@@ -6,6 +6,7 @@ use egui::{Vec2, TextureOptions, Color32, PointerButton};
 use image::RgbaImage;
 use serde::{Deserialize, Serialize};
 
+use crate::gui::util::dragslider_up;
 use crate::util::{TilesetId, attached_to_path, ResultExt, next_tex_id};
 
 use super::draw_state::{DrawMode, DrawState};
@@ -71,8 +72,7 @@ impl Tileset {
             ui.text_edit_singleline(&mut self.state.title);
         });
         ui.horizontal(|ui| {
-            //ui.add(egui::DragValue::new(&mut self.state.zoom).speed(1).clamp_range(1..=4));
-            ui.add(egui::Slider::new(&mut self.state.zoom, 1..=2).drag_value_speed(0.03125));
+            dragslider_up(&mut self.state.zoom, 0.03125, 1..=2, 1, ui);
             if self.edit_path.is_none() {
                 if ui.button("Make editable").double_clicked() {
                     if self.quant != 1 {
@@ -81,7 +81,7 @@ impl Tileset {
                     self.save_editstate();
                 }
                 ui.label("Quant: ");
-                ui.add(egui::Slider::new(&mut self.quant, 1..=2).drag_value_speed(0.03125));
+                dragslider_up(&mut self.quant, 0.03125, 1..=2, 1, ui);
             }
         });
         ui.horizontal(|ui| {
