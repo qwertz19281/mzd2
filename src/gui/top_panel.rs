@@ -5,7 +5,7 @@ use egui::Ui;
 
 use super::init::SharedApp;
 use super::map::Map;
-use super::util::ArrUtl;
+use super::util::{ArrUtl, dragvalion_down, dragvalion_up};
 
 pub struct TopPanel {
     create_size: [u32;2],
@@ -29,8 +29,8 @@ pub fn top_panel_ui(state: &mut SharedApp, ui: &mut egui::Ui) {
         if ui.button("Create new Map with dimensions:").clicked() {
             new_map(state);
         }
-        ui.add(egui::DragValue::new(&mut state.top_panel.create_size[0]).speed(16).clamp_range(160..=320));
-        ui.add(egui::DragValue::new(&mut state.top_panel.create_size[1]).speed(16).clamp_range(128..=240));
+        dragvalion_up(&mut state.top_panel.create_size[0], 16, 160..=320, 16, ui);
+        dragvalion_up(&mut state.top_panel.create_size[1], 16, 128..=240, 16, ui);
         if let Some(warpon) = state.warpon {
             if ui.button(format!("Cancel warp creation")).clicked() {
                 state.warpon = None;
@@ -40,7 +40,7 @@ pub fn top_panel_ui(state: &mut SharedApp, ui: &mut egui::Ui) {
 }
 
 fn new_map(state: &mut SharedApp) {
-    state.top_panel.create_size = state.top_panel.create_size.div8().mul8();
+    state.top_panel.create_size = state.top_panel.create_size.div([16,16]).mul([16,16]);
 
     let mut dialog = native_dialog::FileDialog::new();
     if let Some(v) = state.top_panel.last_map_path.as_ref().and_then(|f| f.parent() ) {

@@ -214,7 +214,7 @@ impl Map {
     }
 
     pub fn new(path: PathBuf, rooms_size: [u32;2]) -> Self {
-        assert!(rooms_size[0] % 8 == 0 && rooms_size[1] % 8 == 0);
+        assert!(rooms_size[0] % 16 == 0 && rooms_size[1] % 16 == 0);
 
         let title = match path.file_stem() {
             Some(name) => {

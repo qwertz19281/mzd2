@@ -6,7 +6,7 @@ use crate::gui::{MutQueue, rector};
 use crate::gui::init::{SharedApp, SAM};
 use crate::gui::palette::Palette;
 use crate::gui::texture::basic_tex_shape;
-use crate::gui::util::{alloc_painter_rel, alloc_painter_rel_ds, draw_grid, ArrUtl, dpad, DragOp};
+use crate::gui::util::{alloc_painter_rel, alloc_painter_rel_ds, draw_grid, ArrUtl, dpad, DragOp, dragvalion_up, dragvalion_down, dragslider_up};
 use crate::util::{MapId, gui_error};
 
 use super::room_ops::{render_picomap, RoomOp, OpAxis};
@@ -133,7 +133,7 @@ impl Map {
                     }
                     ui.add(egui::TextEdit::singleline(&mut self.state.title).desired_width(200. * sam.dpi_scale));
                     ui.label("| Zoom: ");
-                    ui.add(egui::Slider::new(&mut self.state.map_zoom, -1..=1).drag_value_speed(0.0625));
+                    dragslider_up(&mut self.state.map_zoom, 0.03125, -1..=1, 1, ui);
                 });
                 ui.horizontal(|ui| {
                     ui.radio_value(&mut self.state.edit_mode, MapEditMode::DrawSel, "Draw Sel");
@@ -146,7 +146,7 @@ impl Map {
                 ui.horizontal(|ui| {
                     let mut level = self.state.current_level;
                     ui.label("| Z: ");
-                    ui.add(egui::DragValue::new(&mut level).speed(0.03125).clamp_range(0..=255));
+                    dragvalion_up(&mut level, 0.03125, 0..=255, 1, ui);
                     if level != self.state.current_level {
                         self.update_level(level);
                     }
@@ -155,8 +155,8 @@ impl Map {
                     let oldy = self.state.view_pos[1] / self.state.rooms_size[1] as f32;
                     let mut x = oldx;
                     let mut y = oldy;
-                    ui.add(egui::DragValue::new(&mut x).speed(0.0625).clamp_range(0..=255));
-                    ui.add(egui::DragValue::new(&mut y).speed(0.0625).clamp_range(0..=255));
+                    dragvalion_down(&mut x, 0.0625, 0.0..=255.0, 1., ui);
+                    dragvalion_down(&mut y, 0.0625, 0.0..=255.0, 1., ui);
                     if x != oldx {
                         eprintln!("MODX");
                         self.state.view_pos[0] = x * self.state.rooms_size[0] as f32;
@@ -288,7 +288,7 @@ impl Map {
                             }
 
                             ui.label("| ShiftAway/Collapse Size: ");
-                            ui.add(egui::DragValue::new(&mut self.state.sift_size).speed(0.015625).clamp_range(0..=16));
+                            dragvalion_up(&mut self.state.sift_size, 0.015625, 0..=16, 1, ui);
 
                             ui.checkbox(&mut self.state.smart_awaylock_mode, "SmartMove AwayLock");
                         },

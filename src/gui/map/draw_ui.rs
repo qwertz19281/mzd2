@@ -8,7 +8,7 @@ use crate::gui::dsel_state::DSelMode;
 use crate::gui::init::SAM;
 use crate::gui::palette::{Palette, PaletteItem};
 use crate::gui::texture::RECT_0_0_1_1;
-use crate::gui::util::{alloc_painter_rel_ds, alloc_painter_rel, ArrUtl, DragOp, draw_grid};
+use crate::gui::util::{alloc_painter_rel_ds, alloc_painter_rel, ArrUtl, DragOp, draw_grid, dragslider_up};
 use crate::util::MapId;
 
 use super::{RoomId, Map, DrawOp};
@@ -28,7 +28,7 @@ impl Map {
 
         ui.horizontal(|ui| {
             ui.label("Zoom: ");
-            ui.add(egui::Slider::new(&mut self.state.draw_zoom, 1..=2).drag_value_speed(0.0625));
+            dragslider_up(&mut self.state.draw_zoom, 0.03125, 1..=2, 1, ui);
         });
 
         ui.horizontal(|ui| {

@@ -256,6 +256,13 @@ pub trait ArrUtl: Clone {
     fn as_f64(self) -> [f64;2];
 }
 
+pub trait NumUtl: Clone {
+    const ONE: Self;
+
+    fn sat_add(self, v: Self, c: RangeInclusive<Self>) -> Self;
+    fn sat_sub(self, v: Self, c: RangeInclusive<Self>) -> Self;
+}
+
 macro_rules! marco_arrutl {
     ($($t:ty)*) => {
         $(
@@ -363,9 +370,52 @@ macro_rules! marco_arrutl {
     };
 }
 
+macro_rules! marco_numutl_1 {
+    ($($t:ty)*) => {
+        $(
+            impl NumUtl for $t {
+                const ONE: Self = 1 as _;
+
+                fn sat_add(self, v: Self, c: RangeInclusive<Self>) -> Self {
+                    self.saturating_add(v).clamp(*c.start(),*c.end())
+                }
+                fn sat_sub(self, v: Self, c: RangeInclusive<Self>) -> Self {
+                    self.saturating_sub(v).clamp(*c.start(),*c.end())
+                }
+            }
+        )*
+    };
+}
+
+macro_rules! marco_numutl_2 {
+    ($($t:ty)*) => {
+        $(
+            impl NumUtl for $t {
+                const ONE: Self = 1 as _;
+
+                fn sat_add(self, v: Self, c: RangeInclusive<Self>) -> Self {
+                    (self + v).clamp(*c.start(),*c.end())
+                }
+                fn sat_sub(self, v: Self, c: RangeInclusive<Self>) -> Self {
+                    (self - v).clamp(*c.start(),*c.end())
+                }
+            }
+        )*
+    };
+}
+
 marco_arrutl!(
     u8 u16 u32 u64 usize
     i8 i16 i32 i64 isize
+    f32 f64
+);
+
+marco_numutl_1!(
+    u8 u16 u32 u64 usize
+    i8 i16 i32 i64 isize
+);
+
+marco_numutl_2!(
     f32 f64
 );
 
@@ -712,4 +762,64 @@ pub fn dpad(
     });
 
     pa.extend_rel(shapes);
+}
+
+pub fn dragvalion_down<Num>(value: &mut Num, speed: impl Into<f64>, clamp_range: RangeInclusive<Num>, stepu: Num, ui: &mut egui::Ui) where Num: egui::emath::Numeric + NumUtl + Clone {
+    let resp = ui.add(egui::DragValue::new(value).speed(speed).clamp_range(clamp_range.clone()));
+    if resp.hovered() {
+        let delta = ui.input(|i| i.scroll_delta );
+        if delta.y < -0.9 {
+            *value = value.clone().sat_add(stepu.clone(), clamp_range.clone());
+            ui.ctx().request_repaint();
+        }
+        if delta.y > 0.9 {
+            *value = value.clone().sat_sub(stepu.clone(), clamp_range.clone());
+            ui.ctx().request_repaint();
+        }
+    }
+}
+
+pub fn dragvalion_up<Num>(value: &mut Num, speed: impl Into<f64>, clamp_range: RangeInclusive<Num>, stepu: Num, ui: &mut egui::Ui) where Num: egui::emath::Numeric + NumUtl + Clone {
+    let resp = ui.add(egui::DragValue::new(value).speed(speed).clamp_range(clamp_range.clone()));
+    if resp.hovered() {
+        let delta = ui.input(|i| i.scroll_delta );
+        if delta.y < -0.9 {
+            *value = value.clone().sat_sub(stepu.clone(), clamp_range.clone());
+            ui.ctx().request_repaint();
+        }
+        if delta.y > 0.9 {
+            *value = value.clone().sat_add(stepu.clone(), clamp_range.clone());
+            ui.ctx().request_repaint();
+        }
+    }
+}
+
+pub fn dragslider_down<Num>(value: &mut Num, speed: impl Into<f64>, clamp_range: RangeInclusive<Num>, stepu: Num, ui: &mut egui::Ui) where Num: egui::emath::Numeric + NumUtl + Clone {
+    let resp = ui.add(egui::Slider::new(value, clamp_range.clone()).drag_value_speed(speed.into()));
+    if resp.hovered() {
+        let delta = ui.input(|i| i.scroll_delta );
+        if delta.y < -0.9 {
+            *value = value.clone().sat_add(stepu.clone(), clamp_range.clone());
+            ui.ctx().request_repaint();
+        }
+        if delta.y > 0.9 {
+            *value = value.clone().sat_sub(stepu.clone(), clamp_range.clone());
+            ui.ctx().request_repaint();
+        }
+    }
+}
+
+pub fn dragslider_up<Num>(value: &mut Num, speed: impl Into<f64>, clamp_range: RangeInclusive<Num>, stepu: Num, ui: &mut egui::Ui) where Num: egui::emath::Numeric + NumUtl + Clone {
+    let resp = ui.add(egui::Slider::new(value, clamp_range.clone()).drag_value_speed(speed.into()));
+    if resp.hovered() {
+        let delta = ui.input(|i| i.scroll_delta );
+        if delta.y < -0.9 {
+            *value = value.clone().sat_sub(stepu.clone(), clamp_range.clone());
+            ui.ctx().request_repaint();
+        }
+        if delta.y > 0.9 {
+            *value = value.clone().sat_add(stepu.clone(), clamp_range.clone());
+            ui.ctx().request_repaint();
+        }
+    }
 }
