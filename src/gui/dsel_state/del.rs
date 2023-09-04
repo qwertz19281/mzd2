@@ -49,7 +49,7 @@ impl DelState {
             let rect;
             if let Some(e) = src.get(pos).filter(|e| !e.is_empty() ) {
                 let ept = e.to_sel_pt(pos);
-                if self.whole_selentry {
+                if whole_selentry {
                     rect = rector(
                         ept.start[0] as u32 * 8,
                         ept.start[1] as u32 * 8,
