@@ -1,18 +1,17 @@
 use std::ops::Range;
-use std::rc::Rc;
 
 use egui::{Shape, Rounding, Color32};
-use egui::epaint::ahash::{HashSet, HashMap};
+use egui::epaint::ahash::HashMap;
 use image::RgbaImage;
 use serde::{Serialize, Deserialize};
 
 use crate::util::{TilesetId, MapId};
 
 use super::map::RoomId;
-use super::palette::{PaletteItem, SelImg};
+use super::palette::SelImg;
 use super::rector;
 use super::room::draw_image::ImgRead;
-use super::sel_matrix::{SelMatrix, SelPt, SelEntry, SelEntryRead};
+use super::sel_matrix::{SelEntry, SelEntryRead};
 use super::util::ArrUtl;
 
 pub mod cse;
@@ -97,12 +96,12 @@ impl DSelState {
             dest(egui::Shape::rect_filled(rect, Rounding::none(), Color32::from_rgba_unmultiplied(255,0,0,64)));
         };
         
-        for (&a,b) in &self.selected {
+        for (&a,_) in &self.selected {
             if !self.staging_mode && self.selected_staging.contains_key(&a) {continue;}
             render_rect(a);
         }
         if self.staging_mode {
-            for (&a,b) in &self.selected_staging {
+            for (&a,_) in &self.selected_staging {
                 if self.selected.contains_key(&a) {continue;}
                 render_rect(a);
             }
@@ -122,7 +121,7 @@ impl DSelState {
         self.sel_area = ([65535,65535],[0,0]);
     }
 
-    pub fn dsel_mouse_up(&mut self, pos: [f32;2], img: &impl ImgRead) -> SelImg {
+    pub fn dsel_mouse_up(&mut self, _: [f32;2], img: &impl ImgRead) -> SelImg {
         // apply staging
         for (a,b) in self.selected_staging.drain() {
             if self.staging_mode {
@@ -149,7 +148,6 @@ impl DSelState {
         for (&a,b) in &self.selected {
             let draw_src_off = a.as_u32().mul8();
             let draw_dest_off = a.sub(min).as_u32().mul8();
-            let draw_size = siz.mul8();
 
             sels.push((
                 a.sub(min),

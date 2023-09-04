@@ -1,14 +1,13 @@
 use std::sync::Arc;
 
-use egui::{Vec2, PointerButton, Color32};
+use egui::{PointerButton, Color32};
 
-use crate::gui::MutQueue;
 use crate::gui::draw_state::DrawMode;
 use crate::gui::dsel_state::DSelMode;
 use crate::gui::init::SAM;
 use crate::gui::palette::{Palette, PaletteItem};
 use crate::gui::texture::RECT_0_0_1_1;
-use crate::gui::util::{alloc_painter_rel_ds, alloc_painter_rel, ArrUtl, DragOp, draw_grid, dragslider_up};
+use crate::gui::util::{alloc_painter_rel, ArrUtl, DragOp, draw_grid, dragslider_up};
 use crate::util::MapId;
 
 use super::{RoomId, Map, DrawOp};
@@ -59,7 +58,7 @@ impl Map {
             ui.horizontal(|ui| {
                 let size_v = self.editsel.region_size.as_f32().into();
         
-                let mut reg = alloc_painter_rel(
+                let reg = alloc_painter_rel(
                     ui,
                     size_v,
                     egui::Sense::click_and_drag(),
@@ -98,9 +97,8 @@ impl Map {
                                     false,
                                     false,
                                 ),
-                            DragOp::End(p) =>
+                            DragOp::End(_) =>
                                 self.del_state.del_mouse_up(
-                                    p.into(),
                                     &mut self.editsel.selmatrix_mut(
                                         draw_selected_layer,
                                         &mut self.state.rooms,
@@ -119,7 +117,7 @@ impl Map {
                                 self.draw_state.draw_mouse_down(p.into(), palet, self.state.draw_draw_mode, true, self.state.ds_replace),
                             DragOp::Tick(Some(p)) =>
                                 self.draw_state.draw_mouse_down(p.into(), palet, self.state.draw_draw_mode, false, self.state.ds_replace),
-                            DragOp::End(p) => {
+                            DragOp::End(_) => {
                                 let mut mm = self.editsel.selmatrix_mut(
                                     draw_selected_layer,
                                     &mut self.state.rooms,
@@ -134,7 +132,7 @@ impl Map {
                     },
                     DrawOp::Sel => {
                         let palet = &mut palette.paletted[palette.selected as usize];
-                        let mut mm = self.editsel.selmatrix(
+                        let mm = self.editsel.selmatrix(
                             draw_selected_layer,
                             &self.state.rooms,
                             self.state.rooms_size,

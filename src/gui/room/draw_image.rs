@@ -1,15 +1,15 @@
 use std::hash::{Hash, Hasher};
-use std::path::{PathBuf, Path};
+use std::path::Path;
 
-use egui::{TextureHandle, Color32, Rounding, Stroke, Pos2, Align2, FontId};
+use egui::{Color32, Rounding, Stroke, Pos2, Align2, FontId};
 use egui::epaint::ahash::AHasher;
 use image::{RgbaImage, GenericImage, GenericImageView, ImageBuffer};
 use serde::{Deserialize, Serialize};
 
-use crate::gui::map::{RoomId, RoomMap, DirtyRooms, MapEditMode, Map, LruCache};
+use crate::gui::map::{RoomId, RoomMap, DirtyRooms, MapEditMode, LruCache};
 use crate::gui::util::ArrUtl;
 use crate::gui::{rector, line2};
-use crate::gui::sel_matrix::{SelPt, SelEntry, DIGMatrixAccess, DIGMatrixAccessMut, SelMatrix};
+use crate::gui::sel_matrix::{SelPt, DIGMatrixAccess, DIGMatrixAccessMut, SelMatrix};
 use crate::gui::texture::TextureCell;
 
 use super::Room;
@@ -29,7 +29,7 @@ impl DrawImage {
         assert_eq!(self.img.height() as usize, rooms_size[1] as usize * self.layers);
         assert_eq!(self.img.width(), rooms_size[0]);
 
-        let mut img = std::mem::take(&mut self.img);
+        let img = std::mem::take(&mut self.img);
         let (iw,ih) = img.dimensions();
         let mut iv = img.into_raw();
         let seg_len = rooms_size[0] as usize * rooms_size[1] as usize * 4;
@@ -37,7 +37,7 @@ impl DrawImage {
 
         create_gap_inside_vec(&mut iv, seg_len * off, seg_len);
 
-        let mut img = RgbaImage::from_raw(iw, ih + rooms_size[1], iv).unwrap();
+        let img = RgbaImage::from_raw(iw, ih + rooms_size[1], iv).unwrap();
 
         self.img = img;
         self.layers += 1;
@@ -48,7 +48,7 @@ impl DrawImage {
         assert_eq!(self.img.height() as usize, rooms_size[1] as usize * self.layers);
         assert_eq!(self.img.width(), rooms_size[0]);
 
-        let mut img = std::mem::take(&mut self.img);
+        let img = std::mem::take(&mut self.img);
         let (iw,ih) = img.dimensions();
         let mut iv = img.into_raw();
         let seg_len = rooms_size[0] as usize * rooms_size[1] as usize * 4;
@@ -56,7 +56,7 @@ impl DrawImage {
 
         collapse_inside_vec(&mut iv, seg_len * off, seg_len);
 
-        let mut img = RgbaImage::from_raw(iw, ih - rooms_size[1], iv).unwrap();
+        let img = RgbaImage::from_raw(iw, ih - rooms_size[1], iv).unwrap();
 
         self.img = img;
         self.layers -= 1;
@@ -68,7 +68,7 @@ impl DrawImage {
         assert_eq!(self.img.height() as usize, rooms_size[1] as usize * self.layers);
         assert_eq!(self.img.width(), rooms_size[0]);
 
-        let mut iv: &mut [u8] = &mut *self.img;
+        let iv: &mut [u8] = &mut *self.img;
 
         let seg_len = rooms_size[0] as usize * rooms_size[1] as usize * 4;
 
@@ -153,7 +153,6 @@ pub fn collapse_inside_vec<T>(v: &mut Vec<T>, off: usize, len: usize) {
     assert!(off + len <= v.len());
 
     let vlen = v.len();
-    let dlen = v.len() + len;
 
     unsafe {
         // infallible
@@ -176,9 +175,6 @@ pub fn swap_inside_vec<T>(v: &mut [T], swap0: usize, swap1: usize, len: usize) {
     assert!(swap1 + len <= v.len());
 
     assert!(!overlap(swap0, swap1, len));
-
-    let vlen = v.len();
-    let dlen = v.len() + len;
 
     unsafe {
         let ptr_a = v.as_mut_ptr().add(swap0);

@@ -1,5 +1,3 @@
-use std::collections::VecDeque;
-
 use crate::util::MapId;
 
 use super::{MutQueue, dpi_hack};

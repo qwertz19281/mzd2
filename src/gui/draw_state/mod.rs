@@ -1,17 +1,15 @@
 use std::ops::Range;
-use std::rc::Rc;
 
 use egui::{Shape, Color32, Rounding};
 use egui::epaint::ahash::HashSet;
-use image::RgbaImage;
 use serde::{Serialize, Deserialize};
 
 use crate::gui::rector;
 
 use super::palette::PaletteItem;
-use super::room::draw_image::{DrawImageGroup, ImgWrite};
+use super::room::draw_image::ImgWrite;
 use super::sel_matrix::SelEntryWrite;
-use super::texture::{basic_tex_shape, RECT_0_0_1_1, basic_tex_shape_c};
+use super::texture::basic_tex_shape_c;
 use super::util::ArrUtl;
 
 pub struct DrawState {

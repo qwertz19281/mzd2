@@ -1,5 +1,4 @@
-use std::ops::{Range, RangeInclusive};
-use std::sync::Arc;
+use std::ops::RangeInclusive;
 
 use egui::{Shape, Pos2, Rect, Vec2, Sense, PointerButton, Align2, FontId, Color32, Rounding};
 

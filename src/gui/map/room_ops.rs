@@ -1,15 +1,15 @@
 use std::collections::VecDeque;
-use std::fmt::{Write, format};
+use std::fmt::Write;
 use std::sync::Arc;
 
 use egui::{ColorImage, Color32};
 use image::RgbaImage;
 
-use crate::gui::room::{Room, self};
+use crate::gui::room::Room;
 use crate::map::coord_store::CoordStore;
 use crate::util::next_op_gen_evo;
 
-use super::{RoomId, Map, UROrphanId, MapState};
+use super::{RoomId, Map, MapState};
 
 pub enum RoomOp {
     Move(RoomId,[u8;3]),
@@ -622,7 +622,7 @@ fn apply_sift(mut v: [u8;3], n_sift: u8, axis: OpAxis, dir: bool) -> [u8;3] {
     v
 }
 
-fn apply_unsift(mut v: [u8;3], n_sift: u8, axis: OpAxis, dir: bool) -> [u8;3] {
+fn apply_unsift(v: [u8;3], n_sift: u8, axis: OpAxis, dir: bool) -> [u8;3] {
     apply_sift(v, n_sift, axis, !dir)
 }
 

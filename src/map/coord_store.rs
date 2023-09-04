@@ -1,4 +1,3 @@
-use std::hint::unreachable_unchecked;
 use std::mem::MaybeUninit;
 
 use crate::gui::map::room_ops::OpAxis;

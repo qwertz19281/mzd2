@@ -2,18 +2,16 @@ use std::io::{ErrorKind, Cursor};
 use std::path::PathBuf;
 
 use egui::{TextureHandle, TextureOptions};
-use egui::epaint::ahash::{HashMap, HashSet};
 use image::{RgbaImage, ImageFormat};
 use serde::{Deserialize, Serialize};
 
 use crate::gui::texture::TextureCell;
-use crate::util::{attached_to_path, gui_error, ResultExt, next_tex_id};
+use crate::util::{attached_to_path, gui_error};
 
 use self::draw_image::DrawImage;
 
-use super::sel_matrix::{SelMatrix, sel_entry_dims, SelMatrixLayered};
+use super::sel_matrix::{sel_entry_dims, SelMatrixLayered};
 use super::tags::TagState;
-use super::texture::ensure_texture_from_image;
 
 pub mod draw_image;
 
@@ -120,7 +118,7 @@ impl Room {
 
         let image = image::load_from_memory(&file_content)?;
         drop(file_content);
-        let mut image = image.to_rgba8();
+        let image = image.to_rgba8();
         
         self.visible_layers.resize(self.image.layers, true);
 

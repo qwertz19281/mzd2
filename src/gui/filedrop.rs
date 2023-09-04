@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use egui::DroppedFile;
-use image::{ImageFormat, RgbaImage};
+use image::RgbaImage;
 
 use crate::util::*;
 

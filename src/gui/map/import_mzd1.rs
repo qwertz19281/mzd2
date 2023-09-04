@@ -1,11 +1,10 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use anyhow::{ensure, anyhow, bail};
 use image::GenericImageView;
 use regex::Regex;
 
 use crate::gui::map::room_ops::{RoomOp, try_6_sides};
-use crate::gui::room;
 use crate::gui::sel_matrix::{SelEntryWrite, SelEntry};
 use crate::gui::util::ArrUtl;
 use crate::util::{gui_error, next_op_gen_evo};

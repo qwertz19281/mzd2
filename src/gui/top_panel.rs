@@ -1,11 +1,9 @@
 use std::ffi::OsStr;
 use std::path::PathBuf;
 
-use egui::Ui;
-
 use super::init::SharedApp;
 use super::map::Map;
-use super::util::{ArrUtl, dragvalion_down, dragvalion_up};
+use super::util::{ArrUtl, dragvalion_up};
 
 pub struct TopPanel {
     create_size: [u32;2],

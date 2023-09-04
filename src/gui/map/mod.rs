@@ -2,18 +2,16 @@ use std::collections::VecDeque;
 use std::hash::BuildHasherDefault;
 use std::io::ErrorKind;
 use std::path::PathBuf;
-use std::sync::Arc;
 
-use egui::{TextureHandle, TextureOptions};
+use egui::TextureOptions;
 use egui::epaint::ahash::{HashSet, AHasher};
-use image::{RgbaImage, ImageBuffer};
 use serde::{Serialize, Deserialize};
 use slotmap::{HopSlotMap, SlotMap};
 
 use crate::map::coord_store::CoordStore;
 use crate::util::*;
 
-use self::room_ops::{OpAxis, RoomOp, ShiftSmartCollected};
+use self::room_ops::{RoomOp, ShiftSmartCollected};
 
 use super::conndraw_state::ConnDrawState;
 use super::draw_state::{DrawMode, DrawState};

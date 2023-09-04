@@ -71,7 +71,7 @@ impl DelState {
             dest(egui::Shape::rect_filled(rect, Rounding::none(), Color32::from_rgba_unmultiplied(255,0,0,64)));
         };
         
-        for (&a,b) in &self.selected {
+        for (&a,_) in &self.selected {
             render_rect(a);
         }
     }
@@ -82,8 +82,8 @@ impl DelState {
         self.prev_tik = None;
     }
 
-    pub fn del_mouse_up(&mut self, pos: [f32;2], write: &mut (impl SelEntryWrite + ImgWrite)) {
-        for (&a,b) in &self.selected {
+    pub fn del_mouse_up(&mut self, write: &mut (impl SelEntryWrite + ImgWrite)) {
+        for (&a,_) in &self.selected {
             let draw_src_off = a.as_u32().mul8();
 
             if let Some(se) = write.get_mut(a.as_u32()) {

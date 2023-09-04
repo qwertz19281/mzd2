@@ -1,13 +1,12 @@
-use std::rc::Rc;
 use std::sync::Arc;
 
-use egui::{TextureHandle, Pos2, TextureOptions, Rounding};
-use image::{RgbaImage, ImageBuffer};
+use egui::{TextureHandle, TextureOptions, Rounding};
+use image::RgbaImage;
 
 use super::init::SharedApp;
-use super::sel_matrix::{SelPt, SelEntry};
+use super::sel_matrix::SelEntry;
 use super::util::alloc_painter_rel;
-use super::{rector, rector_off, line2_off, line2};
+use super::{rector, line2};
 use super::texture::{RECT_0_0_1_1, ensure_texture_from_image};
 
 pub struct Palette {

@@ -2,7 +2,7 @@ use egui::{Sense, Vec2, Color32, Rounding, PointerButton};
 
 use crate::gui::map::room_ops::describe_direction;
 use crate::gui::room::draw_image::DrawImageGroup;
-use crate::gui::{MutQueue, rector};
+use crate::gui::rector;
 use crate::gui::init::{SharedApp, SAM};
 use crate::gui::palette::Palette;
 use crate::gui::texture::basic_tex_shape;
@@ -428,8 +428,6 @@ impl Map {
             );
 
             self.windowsize_estim = super_map.area_size();
-
-            let kp_plus = ui.input(|i| i.key_down(egui::Key::P) );
 
             // drag needs to be handled first, before the ops that require the off
             if let Some(_) = super_map.hover_pos_rel() {

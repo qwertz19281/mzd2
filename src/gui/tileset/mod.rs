@@ -1,4 +1,3 @@
-use std::collections::VecDeque;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -7,20 +6,20 @@ use image::RgbaImage;
 use serde::{Deserialize, Serialize};
 
 use crate::gui::util::dragslider_up;
-use crate::util::{TilesetId, attached_to_path, ResultExt, next_tex_id};
+use crate::util::{TilesetId, attached_to_path, ResultExt};
 
 use super::draw_state::{DrawMode, DrawState};
 use super::dsel_state::cse::CSEState;
 use super::dsel_state::del::DelState;
 use super::dsel_state::{DSelMode, DSelState};
-use super::map::{DrawOp, DrawOp2};
+use super::map::DrawOp2;
 use super::palette::{Palette, PaletteItem};
 use super::room::draw_image::DrawImage;
-use super::{MutQueue, rector};
+use super::rector;
 use super::init::{SharedApp, SAM};
 use super::sel_matrix::{SelMatrix, sel_entry_dims};
-use super::texture::{ensure_texture_from_image, RECT_0_0_1_1, TextureCell};
-use super::util::{alloc_painter_rel, alloc_painter_rel_ds, ArrUtl, draw_grid, DragOp};
+use super::texture::{RECT_0_0_1_1, TextureCell};
+use super::util::{alloc_painter_rel_ds, ArrUtl, draw_grid, DragOp};
 
 pub struct Tileset {
     pub id: TilesetId,
@@ -153,9 +152,8 @@ impl Tileset {
                             false,
                             false,
                         ),
-                    DragOp::End(p) =>
+                    DragOp::End(_) =>
                         self.del_state.del_mouse_up(
-                            p.into(),
                             &mut (&mut self.loaded_image, &mut self.state.sel_matrix),
                         ),
                     DragOp::Abort => self.del_state.del_cancel(),
@@ -169,7 +167,7 @@ impl Tileset {
                         self.draw_state.draw_mouse_down(p.into(), palet, self.state.draw_draw_mode, true, self.state.ds_replace),
                     DragOp::Tick(Some(p)) =>
                         self.draw_state.draw_mouse_down(p.into(), palet, self.state.draw_draw_mode, false, self.state.ds_replace),
-                    DragOp::End(p) => self.draw_state.draw_mouse_up(&mut (&mut self.loaded_image, &mut self.state.sel_matrix)),
+                    DragOp::End(_) => self.draw_state.draw_mouse_up(&mut (&mut self.loaded_image, &mut self.state.sel_matrix)),
                     DragOp::Abort => self.draw_state.draw_cancel(),
                     _ => {},
                 }
