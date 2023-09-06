@@ -1,12 +1,14 @@
+use std::ffi::OsStr;
+use std::io::Cursor;
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use egui::{Vec2, TextureOptions, Color32, PointerButton};
-use image::RgbaImage;
+use image::{RgbaImage, ImageFormat};
 use serde::{Deserialize, Serialize};
 
 use crate::gui::util::dragslider_up;
-use crate::util::{TilesetId, attached_to_path, ResultExt};
+use crate::util::{TilesetId, attached_to_path, ResultExt, gui_error};
 
 use super::draw_state::{DrawMode, DrawState};
 use super::dsel_state::cse::CSEState;
@@ -33,6 +35,7 @@ pub struct Tileset {
     pub dsel_state: DSelState,
     pub del_state: DelState,
     pub cse_state: CSEState,
+    pub dirty_img: bool,
 }
 
 #[derive(Deserialize,Serialize)]
@@ -51,15 +54,17 @@ pub struct TilesetState {
 
 impl Tileset {
     pub fn ui(&mut self, palette: &mut Palette, ui: &mut egui::Ui, sam: &mut SAM) {
+        let draw_allowed = self.edit_path.as_deref().is_some_and(|p| p.extension() == Some(OsStr::new("png")));
+
         ui.horizontal(|ui| {
             if ui.button("Save").clicked() {
                 if self.edit_path.is_some() {
-                    self.save_editstate();
+                    self.ui_save(draw_allowed && self.edit_mode);
                 }
             }
             if ui.button("Save&Close").clicked() {
                 if self.edit_path.is_some() {
-                    self.save_editstate();
+                    self.ui_save(draw_allowed && self.edit_mode);
                 }
                 let id = self.id;
                 sam.mut_queue.push(Box::new(move |state: &mut SharedApp| {state.tilesets.open_tilesets.remove(&id);} ))
@@ -77,10 +82,12 @@ impl Tileset {
                     if self.quant != 1 {
                         self.state.sel_matrix.intervalize([self.quant,self.quant]);
                     }
-                    self.save_editstate();
+                    self.ui_save(false);
                 }
                 ui.label("Quant: ");
                 dragslider_up(&mut self.quant, 0.03125, 1..=2, 1, ui);
+            } else if draw_allowed {
+                ui.checkbox(&mut self.edit_mode, "AllowDraw");
             }
         });
         ui.horizontal(|ui| {
@@ -134,44 +141,51 @@ impl Tileset {
         let mods = ui.input(|i| i.modifiers );
 
         match self.state.draw_mode {
-            DrawOp2::Draw if self.state.draw_draw_mode == DrawMode::TileEraseDirect || self.state.draw_draw_mode == DrawMode::TileEraseRect => {
-                match reg.drag_decode(PointerButton::Primary, ui) {
-                    DragOp::Start(p) =>
-                        self.del_state.del_mouse_down(
-                            p.into(),
-                            &self.state.sel_matrix,
-                            self.state.draw_draw_mode,
-                            true,
-                            false,
-                        ),
-                    DragOp::Tick(Some(p)) =>
-                        self.del_state.del_mouse_down(
-                            p.into(),
-                            &self.state.sel_matrix,
-                            self.state.draw_draw_mode,
-                            false,
-                            false,
-                        ),
-                    DragOp::End(_) =>
-                        self.del_state.del_mouse_up(
-                            &mut (&mut self.loaded_image, &mut self.state.sel_matrix),
-                        ),
-                    DragOp::Abort => self.del_state.del_cancel(),
-                    _ => {},
-                }
-            },
-            DrawOp2::Draw => {
-                let palet = &palette.paletted[palette.selected as usize];
-                match reg.drag_decode(PointerButton::Primary, ui) {
-                    DragOp::Start(p) =>
-                        self.draw_state.draw_mouse_down(p.into(), palet, self.state.draw_draw_mode, true, self.state.ds_replace),
-                    DragOp::Tick(Some(p)) =>
-                        self.draw_state.draw_mouse_down(p.into(), palet, self.state.draw_draw_mode, false, self.state.ds_replace),
-                    DragOp::End(_) => self.draw_state.draw_mouse_up(&mut (&mut self.loaded_image, &mut self.state.sel_matrix)),
-                    DragOp::Abort => self.draw_state.draw_cancel(),
-                    _ => {},
-                }
-            },
+            DrawOp2::Draw if self.state.draw_draw_mode == DrawMode::TileEraseDirect || self.state.draw_draw_mode == DrawMode::TileEraseRect =>
+                if draw_allowed && self.edit_mode {
+                    match reg.drag_decode(PointerButton::Primary, ui) {
+                        DragOp::Start(p) =>
+                            self.del_state.del_mouse_down(
+                                p.into(),
+                                &self.state.sel_matrix,
+                                self.state.draw_draw_mode,
+                                true,
+                                false,
+                            ),
+                        DragOp::Tick(Some(p)) =>
+                            self.del_state.del_mouse_down(
+                                p.into(),
+                                &self.state.sel_matrix,
+                                self.state.draw_draw_mode,
+                                false,
+                                false,
+                            ),
+                        DragOp::End(_) => {
+                            self.del_state.del_mouse_up(
+                                &mut (&mut self.loaded_image, &mut self.state.sel_matrix),
+                            );
+                            self.dirty_img = true;
+                        },
+                        DragOp::Abort => self.del_state.del_cancel(),
+                        _ => {},
+                    }
+                },
+            DrawOp2::Draw =>
+                if draw_allowed && self.edit_mode {
+                    let palet = &palette.paletted[palette.selected as usize];
+                    match reg.drag_decode(PointerButton::Primary, ui) {
+                        DragOp::Start(p) =>
+                            self.draw_state.draw_mouse_down(p.into(), palet, self.state.draw_draw_mode, true, self.state.ds_replace),
+                        DragOp::Tick(Some(p)) =>
+                            self.draw_state.draw_mouse_down(p.into(), palet, self.state.draw_draw_mode, false, self.state.ds_replace),
+                        DragOp::End(_) => {
+                            self.draw_state.draw_mouse_up(&mut (&mut self.loaded_image, &mut self.state.sel_matrix));
+                            self.dirty_img = true;
+                        },
+                        DragOp::Abort => self.draw_state.draw_cancel(),
+                        _ => {},
+                    }
+                },
             DrawOp2::Sel => {
                 let palet = &mut palette.paletted[palette.selected as usize];
                 match reg.drag_decode(PointerButton::Primary, ui) {
@@ -271,12 +285,34 @@ impl Tileset {
         // let hover_pos = reg.hover_pos_rel();
     }
 
-    pub fn save_editstate(&mut self) {
+    pub fn ui_save(&mut self, save_draw: bool) {
+        if self.save_editstate() && save_draw && self.dirty_img {
+            if let Err(e) = self.save_image() {
+                gui_error("Error saving tileset image", e);
+            } else {
+                self.dirty_img = false;
+            }
+        }
+    }
+
+    pub fn save_editstate(&mut self) -> bool {
         let edit_path = self.edit_path.get_or_insert_with(|| attached_to_path(&self.path, ".mzdtileset") );
 
-        let Some(ser) = serde_json::to_vec(&self.state).unwrap_gui("Error saving tileset metadata") else {return};
+        let Some(ser) = serde_json::to_vec(&self.state).unwrap_gui("Error saving tileset metadata") else {return false};
 
-        std::fs::write(edit_path, ser).unwrap_gui("Error saving tileset metadata");
+        std::fs::write(edit_path, ser).unwrap_gui("Error saving tileset metadata").is_some()
+    }
+
+    fn save_image(&mut self) -> anyhow::Result<()> {
+        let mut buf = Vec::with_capacity(1024*1024);
+        image::write_buffer_with_format(
+            &mut Cursor::new(&mut buf),
+            &self.loaded_image.img,
+            self.loaded_image.img.width(), self.loaded_image.img.height(),
+            image::ColorType::Rgba8, ImageFormat::Png
+        )?;
+        std::fs::write(&self.path, buf)?;
+        Ok(())
     }
 
     pub fn load(path: PathBuf) -> anyhow::Result<Self> {
@@ -331,6 +367,7 @@ impl Tileset {
             dsel_state: DSelState::new(),
             del_state: DelState::new(),
             cse_state: CSEState::new(),
+            dirty_img: false,
         };
 
         Ok(ts)
