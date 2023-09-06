@@ -33,6 +33,7 @@ impl Map {
         ui.horizontal(|ui| {
             ui.radio_value(&mut self.state.draw_mode, DrawOp::Draw, "Draw");
             ui.radio_value(&mut self.state.draw_mode, DrawOp::Sel, "Sel");
+            ui.radio_value(&mut self.state.draw_mode, DrawOp::CSE, "CSE");
             ui.label("|");
             match self.state.draw_mode {
                 DrawOp::Draw => {
@@ -42,7 +43,7 @@ impl Map {
                     ui.radio_value(&mut self.state.draw_draw_mode, DrawMode::TileEraseDirect, "TileEraseDirect");
                     ui.radio_value(&mut self.state.draw_draw_mode, DrawMode::TileEraseRect, "TileEraseRect");
                 },
-                DrawOp::Sel => {
+                DrawOp::Sel | DrawOp::CSE => {
                     ui.radio_value(&mut self.state.draw_sel, DSelMode::Direct, "Direct");
                     ui.radio_value(&mut self.state.draw_sel, DSelMode::Rect, "Rect");
                 },
@@ -172,6 +173,23 @@ impl Map {
                             _ => {},
                         }
                     },
+                    DrawOp::CSE => {
+                        match reg.drag_decode(PointerButton::Primary, ui) {
+                            DragOp::Start(p) => self.cse_state.cse_mouse_down(p.into(), true),
+                            DragOp::Tick(Some(p)) => self.cse_state.cse_mouse_down(p.into(), false),
+                            DragOp::End(p) => {
+                                let mut mm = self.editsel.selmatrix_mut(
+                                    draw_selected_layer,
+                                    &mut self.state.rooms,
+                                    self.state.rooms_size,
+                                    (&mut self.dirty_rooms,&mut self.imglru),
+                                );
+                                self.cse_state.cse_mouse_up(p.into(), &mut mm);
+                            },
+                            DragOp::Abort => self.dsel_state.dsel_cancel(),
+                            _ => {},
+                        }
+                    },
                 }
 
                 let mut shapes = vec![];
@@ -217,6 +235,7 @@ impl Map {
                                 self.state.dsel_whole,
                                 |v| shapes.push(v)
                             ),
+                        DrawOp::CSE => self.cse_state.cse_render(h.into(), |v| shapes.push(v) ),
                     }
                 }
 

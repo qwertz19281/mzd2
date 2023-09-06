@@ -15,6 +15,7 @@ use self::room_ops::{RoomOp, ShiftSmartCollected};
 
 use super::conndraw_state::ConnDrawState;
 use super::draw_state::{DrawMode, DrawState};
+use super::dsel_state::cse::CSEState;
 use super::dsel_state::del::DelState;
 use super::dsel_state::{DSelMode, DSelState};
 use super::room::Room;
@@ -48,6 +49,7 @@ pub struct Map {
     pub dsel_state: DSelState,
     pub cd_state: ConnDrawState,
     pub del_state: DelState,
+    pub cse_state: CSEState,
     pub texlru: LruCache,
     pub imglru: LruCache,
     pub texlru_gen: u64,
@@ -160,6 +162,7 @@ impl Map {
             texlru_limit: 64,
             imglru_limit: 128,
             cd_state: ConnDrawState::new(),
+            cse_state: CSEState::new(),
         };
 
         map.set_view_pos(map.state.view_pos);
@@ -268,6 +271,7 @@ impl Map {
             texlru_limit: 64,
             imglru_limit: 128,
             cd_state: ConnDrawState::new(),
+            cse_state: CSEState::new(),
         }
     }
 
@@ -338,13 +342,6 @@ pub enum MapEditMode {
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[derive(Serialize, Deserialize)]
 pub enum DrawOp {
-    Draw,
-    Sel,
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-#[derive(Serialize, Deserialize)]
-pub enum DrawOp2 {
     Draw,
     Sel,
     CSE,
