@@ -85,6 +85,7 @@ impl Map {
     fn post_drawroom_switch(&mut self) {
         self.draw_state.draw_cancel();
         self.dsel_state.clear_selection();
+        self.del_state.del_cancel();
     }
 
     pub fn ui_map(
