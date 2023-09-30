@@ -110,14 +110,6 @@ impl Map {
 
         let mods = ui.input(|i| i.modifiers );
 
-        if
-            matches!(self.state.edit_mode, MapEditMode::RoomSel) &&
-            mods.ctrl && mods.shift &&
-            ui.input(|i| i.key_released(egui::Key::I) && !i.key_down(egui::Key::Escape) )
-        {
-            self.ui_import_mzd1();
-        }
-
         // on close of the map, palette textures should be unchained
         ui.horizontal(|ui| {
             ui.vertical(|ui| {
@@ -449,6 +441,14 @@ impl Map {
             let mut preview_smart_move: Option<u64> = None;
 
             if let Some(hover_abs) = super_map.hover_pos_rel() {
+                if
+                    matches!(self.state.edit_mode, MapEditMode::RoomSel) &&
+                    mods.ctrl && mods.shift &&
+                    ui.input(|i| i.key_released(egui::Key::I) && !i.key_down(egui::Key::Escape) )
+                {
+                    self.ui_import_mzd1();
+                }
+
                 let click_coord = <[f32;2]>::from(hover_abs).as_u32().div(self.state.rooms_size);
                 let click_coord = [click_coord[0].min(255) as u8, click_coord[1].min(255) as u8, self.state.current_level];
 
