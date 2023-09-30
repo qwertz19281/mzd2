@@ -118,7 +118,7 @@ pub fn dpi_hack(ctx: &egui::Context, frame: &mut eframe::Frame) -> f32 {
             s.popup_shadow.extrusion *= scale;
             s.resize_corner_size *= scale;
             s.selection.stroke.width *= scale;
-            s.text_cursor_width *= scale;
+            s.text_cursor.width *= scale;
             rond(&mut s.window_rounding, scale);
             s.window_shadow.extrusion *= scale;
             s.window_stroke.width *= scale;

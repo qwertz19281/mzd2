@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use egui::{Sense, Vec2, Color32, Rounding, PointerButton};
 
 use crate::gui::map::room_ops::describe_direction;
@@ -380,7 +382,7 @@ impl Map {
         
                 let picomap_tex = self.picomap_tex.ensure_colorimage(
                     [256;2],
-                    || render_picomap(self.state.current_level,&self.room_matrix),
+                    || Arc::new(render_picomap(self.state.current_level,&self.room_matrix)),
                     ui.ctx()
                 );
 

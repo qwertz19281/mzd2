@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use egui::epaint::ImageDelta;
 use egui::{TextureHandle, Context, ColorImage, Color32, TextureOptions, ImageData, Rect};
 use image::RgbaImage;
@@ -47,7 +49,7 @@ pub fn ensure_texture_from_image<'a> (
             let tex_manager = ctx.tex_manager();
             let mut tex_manager = tex_manager.write();
             tex_manager.set(tex.as_ref().unwrap().id(), ImageDelta {
-                image: ImageData::Color(image_part),
+                image: ImageData::Color(Arc::new(image_part)),
                 options: opts,
                 pos: Some([region.0[0] as usize, region.0[1] as usize]),
             });
@@ -59,7 +61,7 @@ pub fn ensure_texture_from_image<'a> (
         let tex_manager = ctx.tex_manager();
         let mut tex_manager = tex_manager.write();
         tex_manager.set(tex.as_ref().unwrap().id(), ImageDelta {
-            image: ImageData::Color(image),
+            image: ImageData::Color(Arc::new(image)),
             options: opts,
             pos: None,
         });
@@ -146,7 +148,7 @@ pub fn ensure_texture2<'a> (
     name: impl Into<String>,
     opts: TextureOptions,
     image_size: [usize;2],
-    image: impl FnOnce() -> ColorImage,
+    image: impl FnOnce() -> Arc<ColorImage>,
     mut force: bool,
     ctx: &Context
 ) -> &'a mut TextureHandle {
@@ -236,7 +238,7 @@ impl TextureCell {
     pub fn ensure_colorimage<'a>(
         &'a mut self,
         image_size: [usize;2],
-        image: impl FnOnce() -> ColorImage,
+        image: impl FnOnce() -> Arc<ColorImage>,
         ctx: &Context,
     ) -> &'a mut TextureHandle {
         let tex = ensure_texture2(

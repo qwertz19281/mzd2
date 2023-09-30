@@ -7,8 +7,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-egui = "0.22"
-eframe = "0.22"
+egui = "0.23"
+eframe = "0.23"
 native-dialog = "0.6"
 serde = { version = "1", features = ["derive"] }
 rmp-serde = "1.1"
@@ -22,7 +22,7 @@ slotmap = { version = "1.0", features = ["serde"] }
 #egui-toast = "0.8"
 chrono = "0.4"
 hex = "0.4"
-lru = "0.10"
+lru = "0.11"
 regex = "1.8"
 
 [profile.dev.package."*"]
@@ -31,3 +31,9 @@ codegen-units = 16
 
 [profile.dev]
 #opt-level = 3
+
+[profile.dev-opti]
+inherits = "dev"
+opt-level = 3
+codegen-units = 1
+lto = true
