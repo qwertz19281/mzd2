@@ -3,7 +3,7 @@ use std::fmt::Display;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicI64, Ordering::Relaxed};
 
-use native_dialog::MessageDialog;
+use crate::gui::init::CURRENT_WINDOW_HANDLE;
 
 #[repr(transparent)]
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
@@ -80,12 +80,12 @@ impl<T,E> ResultExt<T> for Result<T,E> where E: Display {
         match self {
             Ok(v) => Some(v),
             Err(e) => {
-                MessageDialog::new()
-                    .set_type(native_dialog::MessageType::Error)
+                rfd::MessageDialog::new()
+                    .set_level(rfd::MessageLevel::Error)
                     .set_title(title)
-                    .set_text(&format!("{}", e))
-                    .show_alert()
-                    .unwrap();
+                    .set_description(&format!("{}", e))
+                    .set_parent(&CURRENT_WINDOW_HANDLE.with(|f| f.get().unwrap()))
+                    .show();
                 None
             },
         }
@@ -93,12 +93,12 @@ impl<T,E> ResultExt<T> for Result<T,E> where E: Display {
 }
 
 pub fn gui_error(title: &str, error: impl std::fmt::Display) {
-    MessageDialog::new()
-                    .set_type(native_dialog::MessageType::Error)
-                    .set_title(title)
-                    .set_text(&format!("{}", error))
-                    .show_alert()
-                    .unwrap();
+    rfd::MessageDialog::new()
+        .set_level(rfd::MessageLevel::Error)
+        .set_title(title)
+        .set_description(&format!("{}", error))
+        .set_parent(&CURRENT_WINDOW_HANDLE.with(|f| f.get().unwrap()))
+        .show();
 }
 
 static OP_GEN_EVO: AtomicI64 = AtomicI64::new(64);

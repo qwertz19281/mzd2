@@ -4,6 +4,7 @@ use anyhow::{ensure, anyhow, bail};
 use image::GenericImageView;
 use regex::Regex;
 
+use crate::gui::init::CURRENT_WINDOW_HANDLE;
 use crate::gui::map::room_ops::{RoomOp, try_6_sides};
 use crate::gui::sel_matrix::{SelEntryWrite, SelEntry};
 use crate::gui::util::ArrUtl;
@@ -15,10 +16,11 @@ impl Map {
     pub(super) fn ui_import_mzd1(&mut self) -> bool {
         let Some(ssel_coord) = self.state.ssel_coord else {return false};
 
-        let dialog = native_dialog::FileDialog::new();
+        let dialog = rfd::FileDialog::new();
         let result = dialog
-            .show_open_single_dir()
-            .unwrap();
+            .set_title("Import mzd1")
+            .set_parent(&CURRENT_WINDOW_HANDLE.with(|f| f.get().unwrap()))
+            .pick_folder();
         
         let Some(path) = result else {return false};
 

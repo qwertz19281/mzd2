@@ -9,7 +9,6 @@ edition = "2021"
 [dependencies]
 egui = "0.23"
 eframe = "0.23"
-native-dialog = "0.6"
 serde = { version = "1", features = ["derive"] }
 rmp-serde = "1.1"
 serde_json = "1"
@@ -24,6 +23,8 @@ chrono = "0.4"
 hex = "0.4"
 lru = "0.11"
 regex = "1.8"
+rfd = "0.12"
+raw-window-handle = "0.5.2"
 
 [profile.dev.package."*"]
 opt-level = 3

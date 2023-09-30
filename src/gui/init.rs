@@ -1,3 +1,7 @@
+use std::cell::Cell;
+
+use raw_window_handle::{RawWindowHandle, HasRawWindowHandle};
+
 use crate::util::MapId;
 
 use super::{MutQueue, dpi_hack};
@@ -56,6 +60,7 @@ impl SharedApp {
 
 impl eframe::App for SharedApp {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        CURRENT_WINDOW_HANDLE.with(|f| f.set(Some(StupidRawWindowHandleWrapper(frame.raw_window_handle()))) );
         //eprintln!("PPI: {}", ctx.pixels_per_point());
         
         if self.sam.dpi_scale == 0. {
@@ -90,5 +95,20 @@ impl eframe::App for SharedApp {
         for v in std::mem::replace(&mut self.sam.mut_queue, vec![]) {
             v(self);
         }
+
+        CURRENT_WINDOW_HANDLE.with(|f| f.set(None) );
+    }
+}
+
+thread_local! {
+    pub(crate) static CURRENT_WINDOW_HANDLE: Cell<Option<StupidRawWindowHandleWrapper>> = Cell::new(None);
+}
+
+#[derive(Clone, Copy)]
+pub struct StupidRawWindowHandleWrapper(RawWindowHandle);
+
+unsafe impl HasRawWindowHandle for StupidRawWindowHandleWrapper {
+    fn raw_window_handle(&self) -> RawWindowHandle {
+        self.0
     }
 }

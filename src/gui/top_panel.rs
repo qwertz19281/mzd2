@@ -1,7 +1,7 @@
 use std::ffi::OsStr;
 use std::path::PathBuf;
 
-use super::init::SharedApp;
+use super::init::{SharedApp, CURRENT_WINDOW_HANDLE};
 use super::map::Map;
 use super::util::{ArrUtl, dragvalion_up};
 
@@ -40,13 +40,14 @@ pub fn top_panel_ui(state: &mut SharedApp, ui: &mut egui::Ui) {
 fn new_map(state: &mut SharedApp) {
     state.top_panel.create_size = state.top_panel.create_size.div([16,16]).mul([16,16]);
 
-    let mut dialog = native_dialog::FileDialog::new();
+    let mut dialog = rfd::FileDialog::new();
     if let Some(v) = state.top_panel.last_map_path.as_ref().and_then(|f| f.parent() ) {
-        dialog = dialog.set_location(v);
+        dialog = dialog.set_directory(v);
     }
     let result = dialog
-        .show_save_single_file()
-        .unwrap();
+        .set_title("mzdmap save path")
+        .set_parent(&CURRENT_WINDOW_HANDLE.with(|f| f.get().unwrap()))
+        .save_file();
     
     let Some(mut path) = result else {return};
 
