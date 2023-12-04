@@ -167,6 +167,7 @@ impl Room {
         self.image.img = src.image.img.clone();
         self.sel_matrix = src.sel_matrix.clone();
         self.selected_layer = src.selected_layer;
+        self.desc_text = src.desc_text.clone();
         self.tags = src.tags.clone();
         self.visible_layers = src.visible_layers.clone();
     }
