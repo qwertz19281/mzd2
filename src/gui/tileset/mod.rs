@@ -4,11 +4,11 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use egui::{Vec2, TextureOptions, Color32, PointerButton};
-use image::{RgbaImage, ImageFormat};
+use image::RgbaImage;
 use serde::{Deserialize, Serialize};
 
 use crate::gui::util::dragslider_up;
-use crate::util::{TilesetId, attached_to_path, ResultExt, gui_error};
+use crate::util::{TilesetId, attached_to_path, ResultExt, gui_error, write_png};
 
 use super::draw_state::{DrawMode, DrawState};
 use super::dsel_state::cse::CSEState;
@@ -305,12 +305,7 @@ impl Tileset {
 
     fn save_image(&mut self) -> anyhow::Result<()> {
         let mut buf = Vec::with_capacity(1024*1024);
-        image::write_buffer_with_format(
-            &mut Cursor::new(&mut buf),
-            &self.loaded_image.img,
-            self.loaded_image.img.width(), self.loaded_image.img.height(),
-            image::ColorType::Rgba8, ImageFormat::Png
-        )?;
+        write_png(&mut Cursor::new(&mut buf), &self.loaded_image.img)?;
         std::fs::write(&self.path, buf)?;
         Ok(())
     }

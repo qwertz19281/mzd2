@@ -122,3 +122,12 @@ pub fn next_tex_id() -> u64 {
         panic!("TexId Overflow");
     }
 }
+
+pub fn write_png(writer: impl std::io::Write, image: &image::RgbaImage) -> image::ImageResult<()> {
+    let encoder = image::codecs::png::PngEncoder::new_with_quality(
+        writer,
+        image::codecs::png::CompressionType::Best,
+        Default::default()
+    );
+    image.write_with_encoder(encoder)
+}

@@ -2,11 +2,11 @@ use std::io::{ErrorKind, Cursor};
 use std::path::PathBuf;
 
 use egui::{TextureHandle, TextureOptions};
-use image::{RgbaImage, ImageFormat};
+use image::RgbaImage;
 use serde::{Deserialize, Serialize};
 
 use crate::gui::texture::TextureCell;
-use crate::util::{attached_to_path, gui_error};
+use crate::util::{attached_to_path, gui_error, write_png};
 
 use self::draw_image::DrawImage;
 
@@ -134,12 +134,7 @@ impl Room {
     pub fn save_image2(&mut self, map_path: impl Into<PathBuf>) -> anyhow::Result<()> {
         if !self.image.img.is_empty() {
             let mut buf = Vec::with_capacity(1024*1024);
-            image::write_buffer_with_format(
-                &mut Cursor::new(&mut buf),
-                &self.image.img,
-                self.image.img.width(), self.image.img.height(),
-                image::ColorType::Rgba8, ImageFormat::Png
-            )?;
+            write_png(&mut Cursor::new(&mut buf), &self.image.img)?;
             std::fs::write(self.tex_file(map_path), buf)?;
         }
 
