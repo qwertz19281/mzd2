@@ -136,7 +136,7 @@ impl Tileset {
 
         reg.voff -= Vec2::from(self.state.voff) * self.state.zoom as f32;
 
-        eprintln!("VOFF {:?}", self.state.voff);
+        // eprintln!("VOFF {:?}", self.state.voff);
 
         let mods = ui.input(|i| i.modifiers );
 

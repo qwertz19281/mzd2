@@ -45,7 +45,7 @@ impl Map {
 
     fn ui_do_smart(&mut self, clicked: bool, axis: OpAxis, dir: bool) {
         if clicked {
-            eprintln!("DPAD CLICK {}",describe_direction(axis,dir));
+            // eprintln!("DPAD CLICK {}",describe_direction(axis,dir));
         }
         let coord = self.state.rooms.get(self.state.ssel_room.unwrap()).unwrap().coord;
         let mut regen = true;
@@ -153,11 +153,11 @@ impl Map {
                     dragvalion_down(&mut x, 0.0625, 0.0..=255.0, 1., ui);
                     dragvalion_down(&mut y, 0.0625, 0.0..=255.0, 1., ui);
                     if x != oldx {
-                        eprintln!("MODX");
+                        // eprintln!("MODX");
                         self.state.view_pos[0] = x * self.state.rooms_size[0] as f32;
                     }
                     if y != oldy {
-                        eprintln!("MODY");
+                        // eprintln!("MODY");
                         self.state.view_pos[1] = y * self.state.rooms_size[1] as f32;
                     }
                     ui.label("|");
@@ -318,7 +318,7 @@ impl Map {
                                 ui,
                                 |_,clicked,axis,dir| {
                                     if !clicked {return;}
-                                    eprintln!("DPAD CLICK {}",describe_direction(axis,dir));
+                                    // eprintln!("DPAD CLICK {}",describe_direction(axis,dir));
                                     if let Some(op) = self.create_single_move(self.state.ssel_room.unwrap(), axis, dir) {
                                         self.ui_apply_roomop(op);
                                     }
@@ -331,7 +331,7 @@ impl Map {
                                 ui,
                                 |_,clicked,axis,dir| {
                                     if !clicked {return;}
-                                    eprintln!("DPAD CLICK {}",describe_direction(axis,dir));
+                                    // eprintln!("DPAD CLICK {}",describe_direction(axis,dir));
                                     if let Some(op) = self.create_shift_away(self.state.ssel_coord.unwrap(), self.state.sift_size, axis, dir) {
                                         self.ui_apply_roomop(op);
                                     }
@@ -344,7 +344,7 @@ impl Map {
                                 ui,
                                 |_,clicked,axis,dir| {
                                     if !clicked {return;}
-                                    eprintln!("DPAD CLICK {}",describe_direction(axis,dir));
+                                    // eprintln!("DPAD CLICK {}",describe_direction(axis,dir));
                                     if let Some(op) = self.create_collapse(self.state.ssel_coord.unwrap(), self.state.sift_size, axis, dir, true) {
                                         self.ui_apply_roomop(op);
                                     }

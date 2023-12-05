@@ -68,12 +68,12 @@ impl DSelState {
     pub fn dsel_render(&self, current_pos: [f32;2], src: &impl SelEntryRead, whole_selentry: bool, mut dest: impl FnMut(Shape)) { // TODO the dest fn should scale and translate the shape
         if self.active.is_none() {
             let pos = quantize1(current_pos);
-            eprintln!("QUANT {:?} => {:?}",current_pos,pos);
+            // eprintln!("QUANT {:?} => {:?}",current_pos,pos);
             let rect;
             if let Some(e) = src.get(pos).filter(|e| !e.is_empty() ) {
-                eprintln!("SELE {:?} {:?}",e.start,e.size);
+                // eprintln!("SELE {:?} {:?}",e.start,e.size);
                 let ept = e.to_sel_pt(pos);
-                eprintln!("SELPT {:?} {:?}",ept.start,ept.size);
+                // eprintln!("SELPT {:?} {:?}",ept.start,ept.size);
                 if whole_selentry {
                     rect = rector(
                         ept.start[0] as u32 * 8,

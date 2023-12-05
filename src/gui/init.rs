@@ -64,7 +64,7 @@ impl eframe::App for SharedApp {
         //eprintln!("PPI: {}", ctx.pixels_per_point());
         
         if self.sam.dpi_scale == 0. {
-            eprintln!("DPI HACK");
+            // eprintln!("DPI HACK");
             self.sam.dpi_scale = dpi_hack(ctx, frame);
         }
 
