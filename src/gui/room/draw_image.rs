@@ -348,6 +348,7 @@ impl DrawImageGroup {
                 room.render(
                     roff,
                     std::iter::once(vsl),
+                    None,
                     rooms_size,
                     |v| dest(v),
                     map_path,
@@ -357,6 +358,7 @@ impl DrawImageGroup {
                 room.render(
                     roff,
                     visible_layers.iter().enumerate().filter(|&(_,&v)| v ).map(|(i,_)| i ),
+                    None,
                     rooms_size,
                     |v| dest(v),
                     map_path,
@@ -429,7 +431,7 @@ impl DrawImageGroup {
 }
 
 impl Room {
-    pub fn render(&mut self, off: [u32;2], visible_layers: impl Iterator<Item=usize>, rooms_size: [u32;2], mut dest: impl FnMut(egui::Shape), map_path: &Path, ctx: &egui::Context) {
+    pub fn render(&mut self, off: [u32;2], visible_layers: impl Iterator<Item=usize>, bg_color: Option<egui::Color32>, rooms_size: [u32;2], mut dest: impl FnMut(egui::Shape), map_path: &Path, ctx: &egui::Context) {
         if self.load_tex(map_path,rooms_size,ctx).is_none() {return}
 
         if self.image.img.is_empty() {return}
@@ -441,6 +443,10 @@ impl Room {
 
         let mut mesh = egui::Mesh::with_texture(tex.id());
         let dest_rect = rector(off[0], off[1], off[0]+rooms_size[0], off[1]+rooms_size[1]);
+
+        if let Some(bg_color) = bg_color {
+            dest(egui::Shape::rect_filled(dest_rect, egui::Rounding::ZERO, bg_color))
+        }
         
         for i in visible_layers {
             mesh.add_rect_with_uv(dest_rect, self.image.layer_uv(i, rooms_size), egui::Color32::WHITE);
