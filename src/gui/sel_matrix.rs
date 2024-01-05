@@ -280,6 +280,12 @@ pub trait SelEntryWrite: SelEntryRead {
     fn fill(&mut self, p0: [u32;2], p1: [u32;2]);
 
     fn set_and_fix(&mut self, pos: [u32;2], v: SelEntry);
+
+    fn set_and_fixi(&mut self, pos: [i32;2], v: SelEntry) {
+        if pos[0] >= 0 && pos[1] >= 0 {
+            self.set_and_fix(pos.as_u32(), v);
+        }
+    }
 }
 
 impl<T> SelEntryRead for &'_ T where T: SelEntryRead {
