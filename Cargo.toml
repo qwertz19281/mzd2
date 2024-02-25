@@ -31,7 +31,7 @@ opt-level = 3
 codegen-units = 16
 
 [profile.dev]
-#opt-level = 3
+opt-level = 1
 
 [profile.dev-opti]
 inherits = "dev"

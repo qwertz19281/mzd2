@@ -18,6 +18,7 @@ use super::draw_state::{DrawMode, DrawState};
 use super::dsel_state::cse::CSEState;
 use super::dsel_state::del::DelState;
 use super::dsel_state::{DSelMode, DSelState};
+use super::key_manager::KMKey;
 use super::room::Room;
 use super::room::draw_image::DrawImageGroup;
 use super::texture::TextureCell;
@@ -55,6 +56,7 @@ pub struct Map {
     pub texlru_gen: u64,
     pub texlru_limit: usize,
     pub imglru_limit: usize,
+    pub key_manager_state: Option<KMKey>,
 }
 
 pub type RoomMap = HopSlotMap<RoomId,Room>;
@@ -79,7 +81,7 @@ pub struct MapState {
     pub rooms_size: [u32;2],
     pub current_level: u8,
     pub edit_mode: MapEditMode,
-    pub draw_mode: DrawOp,
+    //pub draw_mode: DrawOp,
     pub draw_draw_mode: DrawMode,
     pub draw_sel: DSelMode,
     pub sift_size: u8,
@@ -163,6 +165,7 @@ impl Map {
             imglru_limit: 128,
             cd_state: ConnDrawState::new(),
             cse_state: CSEState::new(),
+            key_manager_state: None,
         };
 
         map.set_view_pos(map.state.view_pos);
@@ -243,7 +246,7 @@ impl Map {
                 rooms_size,
                 current_level: 128,
                 edit_mode: MapEditMode::DrawSel,
-                draw_mode: DrawOp::Draw,
+                //draw_mode: DrawOp::Draw,
                 draw_draw_mode: DrawMode::Rect,
                 draw_sel: DSelMode::Rect,
                 sift_size: 1,
@@ -272,6 +275,7 @@ impl Map {
             imglru_limit: 128,
             cd_state: ConnDrawState::new(),
             cse_state: CSEState::new(),
+            key_manager_state: None,
         }
     }
 
@@ -345,6 +349,13 @@ pub enum DrawOp {
     Draw,
     Sel,
     CSE,
+}
+
+pub enum HackRenderMode {
+    Draw,
+    CSE,
+    Sel,
+    Del,
 }
 
 fn create_picomap_texcell() -> TextureCell {

@@ -14,7 +14,8 @@ use super::draw_state::{DrawMode, DrawState};
 use super::dsel_state::cse::CSEState;
 use super::dsel_state::del::DelState;
 use super::dsel_state::{DSelMode, DSelState};
-use super::map::DrawOp;
+use super::key_manager::KMKey;
+use super::map::HackRenderMode;
 use super::palette::{Palette, PaletteItem};
 use super::room::draw_image::DrawImage;
 use super::rector;
@@ -36,6 +37,7 @@ pub struct Tileset {
     pub del_state: DelState,
     pub cse_state: CSEState,
     pub dirty_img: bool,
+    pub key_manager_state: Option<KMKey>,
 }
 
 #[derive(Deserialize,Serialize)]
@@ -45,7 +47,7 @@ pub struct TilesetState {
     pub voff: [f32;2],
     pub validate_size: [u32;2],
     pub sel_matrix: SelMatrix,
-    pub draw_mode: DrawOp,
+    //pub draw_mode: DrawOp,
     pub draw_draw_mode: DrawMode,
     pub draw_sel: DSelMode,
     pub ds_replace: bool,
@@ -91,23 +93,13 @@ impl Tileset {
             }
         });
         ui.horizontal(|ui| {
-            ui.radio_value(&mut self.state.draw_mode, DrawOp::Draw, "Draw");
-            ui.radio_value(&mut self.state.draw_mode, DrawOp::Sel, "Sel");
-            ui.radio_value(&mut self.state.draw_mode, DrawOp::CSE, "CSE");
-            ui.label("|");
-            match self.state.draw_mode {
-                DrawOp::Draw => {
-                    ui.radio_value(&mut self.state.draw_draw_mode, DrawMode::Direct, "Direct");
-                    ui.radio_value(&mut self.state.draw_draw_mode, DrawMode::Line, "Line");
-                    ui.radio_value(&mut self.state.draw_draw_mode, DrawMode::Rect, "Rect");
-                    ui.radio_value(&mut self.state.draw_draw_mode, DrawMode::TileEraseDirect, "TileEraseDirect");
-                    ui.radio_value(&mut self.state.draw_draw_mode, DrawMode::TileEraseRect, "TileEraseRect");
-                },
-                DrawOp::Sel | DrawOp::CSE => {
-                    ui.radio_value(&mut self.state.draw_sel, DSelMode::Direct, "Direct");
-                    ui.radio_value(&mut self.state.draw_sel, DSelMode::Rect, "Rect");
-                },
-            }
+            // ui.radio_value(&mut self.state.draw_mode, DrawOp::Draw, "Draw");
+            // ui.radio_value(&mut self.state.draw_mode, DrawOp::Sel, "Sel");
+            // ui.radio_value(&mut self.state.draw_mode, DrawOp::CSE, "CSE");
+            // ui.label("|");
+            ui.radio_value(&mut self.state.draw_draw_mode, DrawMode::Direct, "Direct");
+            //ui.radio_value(&mut self.state.draw_draw_mode, DrawMode::Line, "Line");
+            ui.radio_value(&mut self.state.draw_draw_mode, DrawMode::Rect, "Rect");
             ui.label("|");
             ui.checkbox(&mut self.state.ds_replace, "DrawReplace");
             ui.checkbox(&mut self.state.dsel_whole, "DSelWhole");
@@ -140,99 +132,118 @@ impl Tileset {
 
         let mods = ui.input(|i| i.modifiers );
 
-        match self.state.draw_mode {
-            DrawOp::Draw if self.state.draw_draw_mode == DrawMode::TileEraseDirect || self.state.draw_draw_mode == DrawMode::TileEraseRect =>
-                if draw_allowed && self.edit_mode {
-                    match reg.drag_decode(PointerButton::Primary, ui) {
-                        DragOp::Start(p) =>
-                            self.del_state.del_mouse_down(
-                                p.into(),
-                                &self.state.sel_matrix,
-                                self.state.draw_draw_mode,
-                                true,
-                                false,
-                            ),
-                        DragOp::Tick(Some(p)) =>
-                            self.del_state.del_mouse_down(
-                                p.into(),
-                                &self.state.sel_matrix,
-                                self.state.draw_draw_mode,
-                                false,
-                                false,
-                            ),
-                        DragOp::End(_) => {
-                            self.del_state.del_mouse_up(
-                                &mut (&mut self.loaded_image, &mut self.state.sel_matrix),
-                            );
-                            self.dirty_img = true;
-                        },
-                        DragOp::Abort => self.del_state.del_cancel(),
-                        _ => {},
-                    }
-                },
-            DrawOp::Draw =>
-                if draw_allowed && self.edit_mode {
-                    let palet = &palette.paletted[palette.selected as usize];
-                    match reg.drag_decode(PointerButton::Primary, ui) {
-                        DragOp::Start(p) =>
-                            self.draw_state.draw_mouse_down(p.into(), palet, self.state.draw_draw_mode, true, self.state.ds_replace),
-                        DragOp::Tick(Some(p)) =>
-                            self.draw_state.draw_mouse_down(p.into(), palet, self.state.draw_draw_mode, false, self.state.ds_replace),
-                        DragOp::End(_) => {
-                            self.draw_state.draw_mouse_up(&mut (&mut self.loaded_image, &mut self.state.sel_matrix));
-                            self.dirty_img = true;
-                        },
-                        DragOp::Abort => self.draw_state.draw_cancel(),
-                        _ => {},
-                    }
-                },
-            DrawOp::Sel => {
-                let palet = &mut palette.paletted[palette.selected as usize];
-                match reg.drag_decode(PointerButton::Primary, ui) {
-                    DragOp::Start(p) => {
-                        self.dsel_state.dsel_mouse_down(
-                            p.into(),
-                            &self.state.sel_matrix,
-                            self.state.draw_sel,
-                            !mods.shift,
-                            mods.ctrl,
-                            true,
-                            self.state.dsel_whole,
-                        )
-                    },
-                    DragOp::Tick(Some(p)) => {
-                        self.dsel_state.dsel_mouse_down(
-                            p.into(),
-                            &self.state.sel_matrix,
-                            self.state.draw_sel,
-                            !mods.shift,
-                            mods.ctrl,
-                            false,
-                            self.state.dsel_whole,
-                        )
-                    },
-                    DragOp::End(p) => {
-                        let ss = self.dsel_state.dsel_mouse_up(p.into(), &self.loaded_image);
-                        *palet = PaletteItem {
-                            texture: None, //TODO
-                            src: Arc::new(ss),
-                            uv: RECT_0_0_1_1,
+        let mut hack_render_mode = None;
+
+        let pressable_keys = &[
+            KMKey::nomods(PointerButton::Primary),
+            KMKey::nomods(PointerButton::Secondary),
+            KMKey::with_ctrl(PointerButton::Middle, false),
+            KMKey::with_ctrl(PointerButton::Middle, true),
+        ];
+
+        reg.key_manager(pressable_keys, &mut self.key_manager_state, ui, |key,dop| {
+            match key {
+                key if key == KMKey::nomods(PointerButton::Primary) => {
+                    hack_render_mode = Some(HackRenderMode::Draw);
+                    if draw_allowed && self.edit_mode {
+                        hack_render_mode = Some(HackRenderMode::Draw);
+                        let palet = &palette.paletted[palette.selected as usize];
+                        match reg.drag_decode(PointerButton::Primary, ui) {
+                            DragOp::Start(p) =>
+                                self.draw_state.draw_mouse_down(p.into(), palet, self.state.draw_draw_mode, true, self.state.ds_replace),
+                            DragOp::Tick(Some(p)) =>
+                                self.draw_state.draw_mouse_down(p.into(), palet, self.state.draw_draw_mode, false, self.state.ds_replace),
+                            DragOp::End(_) => {
+                                self.draw_state.draw_mouse_up(&mut (&mut self.loaded_image, &mut self.state.sel_matrix));
+                                self.dirty_img = true;
+                            },
+                            DragOp::Abort => self.draw_state.draw_cancel(),
+                            _ => {},
                         }
-                    },
-                    DragOp::Abort => self.dsel_state.dsel_cancel(),
-                    _ => {},
-                }
-            },
-            DrawOp::CSE => {
-                match reg.drag_decode(PointerButton::Primary, ui) {
-                    DragOp::Start(p) => self.cse_state.cse_mouse_down(p.into(), true),
-                    DragOp::Tick(Some(p)) => self.cse_state.cse_mouse_down(p.into(), false),
-                    DragOp::End(p) => self.cse_state.cse_mouse_up(p.into(), &mut self.state.sel_matrix),
-                    DragOp::Abort => self.dsel_state.dsel_cancel(),
-                    _ => {},
-                }
-            },
-        }
+                    }
+                },
+                key if key == KMKey::nomods(PointerButton::Secondary) => {
+                    hack_render_mode = Some(HackRenderMode::Del);
+                    if draw_allowed && self.edit_mode {
+                        match dop {
+                            DragOp::Start(p) =>
+                                self.del_state.del_mouse_down(
+                                    p.into(),
+                                    &self.state.sel_matrix,
+                                    self.state.draw_draw_mode,
+                                    true,
+                                    false,
+                                ),
+                            DragOp::Tick(Some(p)) =>
+                                self.del_state.del_mouse_down(
+                                    p.into(),
+                                    &self.state.sel_matrix,
+                                    self.state.draw_draw_mode,
+                                    false,
+                                    false,
+                                ),
+                            DragOp::End(_) => {
+                                self.del_state.del_mouse_up(
+                                    &mut (&mut self.loaded_image, &mut self.state.sel_matrix),
+                                );
+                                self.dirty_img = true;
+                            },
+                            DragOp::Abort => self.del_state.del_cancel(),
+                            _ => {},
+                        }
+                    }
+                },
+                key if key == KMKey::with_ctrl(PointerButton::Middle, false) => {
+                    hack_render_mode = Some(HackRenderMode::Sel);
+                    let palet = &mut palette.paletted[palette.selected as usize];
+                    match dop {
+                        DragOp::Start(p) => {
+                            self.dsel_state.dsel_mouse_down(
+                                p.into(),
+                                &self.state.sel_matrix,
+                                self.state.draw_sel,
+                                !mods.shift,
+                                mods.ctrl,
+                                true,
+                                self.state.dsel_whole,
+                            )
+                        },
+                        DragOp::Tick(Some(p)) => {
+                            self.dsel_state.dsel_mouse_down(
+                                p.into(),
+                                &self.state.sel_matrix,
+                                self.state.draw_sel,
+                                !mods.shift,
+                                mods.ctrl,
+                                false,
+                                self.state.dsel_whole,
+                            )
+                        },
+                        DragOp::End(p) => {
+                            let ss = self.dsel_state.dsel_mouse_up(p.into(), &self.loaded_image);
+                            *palet = PaletteItem {
+                                texture: None, //TODO
+                                src: Arc::new(ss),
+                                uv: RECT_0_0_1_1,
+                            }
+                        },
+                        DragOp::Abort => self.dsel_state.dsel_cancel(),
+                        _ => {},
+                    }
+                },
+                key if key == KMKey::with_ctrl(PointerButton::Middle, true) => {
+                    hack_render_mode = Some(HackRenderMode::CSE);
+                    match reg.drag_decode(PointerButton::Primary, ui) {
+                        DragOp::Start(p) => self.cse_state.cse_mouse_down(p.into(), true),
+                        DragOp::Tick(Some(p)) => self.cse_state.cse_mouse_down(p.into(), false),
+                        DragOp::End(p) => self.cse_state.cse_mouse_up(p.into(), &mut self.state.sel_matrix),
+                        DragOp::Abort => self.dsel_state.dsel_cancel(),
+                        _ => {},
+                    }
+                },
+                _ => {},
+            }
+        });
 
         let mut shapes = vec![];
 
@@ -261,22 +272,23 @@ impl Tileset {
         ));
 
         if let Some(h) = reg.hover_pos_rel() {
-            match self.state.draw_mode {
-                DrawOp::Draw if self.state.draw_draw_mode == DrawMode::TileEraseDirect || self.state.draw_draw_mode == DrawMode::TileEraseRect =>
+            match hack_render_mode {
+                Some(HackRenderMode::Draw) => self.draw_state.draw_hover_at_pos(h.into(), &palette.paletted[palette.selected as usize], |v| shapes.push(v) ),
+                Some(HackRenderMode::CSE) => self.cse_state.cse_render(h.into(), |v| shapes.push(v) ),
+                Some(HackRenderMode::Sel) | None =>
+                    self.dsel_state.dsel_render(
+                        h.into(),
+                        &self.state.sel_matrix,
+                        self.state.dsel_whole,
+                        |v| shapes.push(v)
+                    ),
+                Some(HackRenderMode::Del) => 
                     self.del_state.del_render(
                         h.into(),
                         &self.state.sel_matrix,
                         self.state.dsel_whole,
                         |v| shapes.push(v)
                     ),
-                DrawOp::Draw =>
-                    self.draw_state.draw_hover_at_pos(h.into(), &palette.paletted[palette.selected as usize], |v| shapes.push(v) ),
-                DrawOp::Sel => self.dsel_state.dsel_render(
-                    h.into(),
-                    &self.state.sel_matrix,
-                    self.state.dsel_whole,
-                    |v| shapes.push(v) ),
-                DrawOp::CSE => self.cse_state.cse_render(h.into(), |v| shapes.push(v) ),
             }
         }
 
@@ -338,7 +350,7 @@ impl Tileset {
                 validate_size: img_size,
                 sel_matrix: SelMatrix::new_emptyfilled(sel_entry_dims(img_size)),
                 voff: [0.;2],
-                draw_mode: DrawOp::Sel,
+                //draw_mode: DrawOp::Draw,
                 draw_draw_mode: DrawMode::Rect,
                 draw_sel: DSelMode::Rect,
                 ds_replace: false,
@@ -363,6 +375,7 @@ impl Tileset {
             del_state: DelState::new(),
             cse_state: CSEState::new(),
             dirty_img: false,
+            key_manager_state: None,
         };
 
         Ok(ts)

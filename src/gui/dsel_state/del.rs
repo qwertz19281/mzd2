@@ -25,7 +25,7 @@ impl DelState {
             active: None,
             selected: Default::default(),
             prev_tik: None,
-            del_mode: DrawMode::TileEraseDirect,
+            del_mode: DrawMode::Direct,
             whole_selentry: true,
         }
     }
@@ -113,7 +113,7 @@ impl DelState {
         if self.prev_tik == Some(dest) {return;}
         self.prev_tik = Some(dest);
 
-        if matches!(self.del_mode,DrawMode::TileEraseRect) {
+        if matches!(self.del_mode, DrawMode::Rect | DrawMode::TileEraseRect) {
             self.selected.clear();
         }
 
@@ -133,10 +133,10 @@ impl DelState {
         };
 
         match self.del_mode {
-            DrawMode::TileEraseDirect => {
+            DrawMode::Direct | DrawMode::TileEraseDirect => {
                 add_sel_entry(dest);
             },
-            DrawMode::TileEraseRect => {
+            DrawMode::Rect | DrawMode::TileEraseRect => {
                 fn range_se(a: u16, b: u16) -> Range<u16> {
                     if b > a {
                         a .. b+1
