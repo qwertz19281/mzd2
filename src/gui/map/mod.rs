@@ -281,12 +281,14 @@ impl Map {
     }
 
     fn lru_tick(&mut self) {
+        //TODO also consider rooms in undo/redo buf in lru
         fn unload_room_tex(s: &mut Map, room: RoomId) {
             if let Some(v) = s.state.rooms.get_mut(room).and_then(|r| r.image.tex.as_mut() ) {
                 v.tex_handle = None;
             }
         }
         fn unload_room_img(s: &mut Map, room: RoomId) {
+            if s.state.ssel_room == Some(room) || s.state.dsel_room == Some(room) || s.state.template_room == Some(room) {return;}
             if let Some(v) = s.state.rooms.get_mut(room) {
                 if !v.dirty_file {
                     v.image.img = Default::default();
