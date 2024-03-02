@@ -9,8 +9,7 @@ const SEL_MATRIX_FILE_HEADER: &[u8] = b"#!80c2014a-5cfd-4b23-b767-f5b295edf15e\n
 #[derive(Clone, Deserialize,Serialize)]
 pub struct SelMatrix {
     pub dims: [u32;2],
-    #[serde(serialize_with = "ser_selentry")]
-    #[serde(deserialize_with = "deser_selentry")]
+    #[serde(with = "selentries_serde")]
     pub entries: Vec<SelEntry>,
 }
 
@@ -277,39 +276,43 @@ pub fn deoverlap_layered(i: impl Iterator<Item=(usize,SelPt)>, matrix: &[SelMatr
     collect
 }
 
-fn ser_selentry<S>(se: &Vec<SelEntry>, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: serde::Serializer
-{
-    let mut sdest = vec![0;se.len()*8];
-    let mut sd1 = &mut sdest[..];
-    for s in se {
-        let sob = s.enc();
-        assert!(sd1.len() >= 8);
-        hex::encode_to_slice(sob, &mut sd1[..8]).unwrap();
-        sd1 = &mut sd1[8..];
-    }
-    let str = unsafe { String::from_utf8_unchecked(sdest) };
-    str.serialize(serializer)
-}
+mod selentries_serde {
+    use super::*;
 
-fn deser_selentry<'de,D>(deserializer: D) -> Result<Vec<SelEntry>, D::Error>
-where
-    D: serde::Deserializer<'de>
-{
-    let str = String::deserialize(deserializer)?;
-
-    let mut entries = Vec::with_capacity(str.len()/8);
-
-    assert!(str.len()%8 == 0);
-
-    for s in str.as_bytes().chunks_exact(8) {
-        let mut sob = [0;4];
-        hex::decode_to_slice(s, &mut sob).unwrap();
-        entries.push(SelEntry::dec(&sob));
+    pub(super) fn serialize<S>(se: &Vec<SelEntry>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer
+    {
+        let mut sdest = vec![0;se.len()*8];
+        let mut sd1 = &mut sdest[..];
+        for s in se {
+            let sob = s.enc();
+            assert!(sd1.len() >= 8);
+            hex::encode_to_slice(sob, &mut sd1[..8]).unwrap();
+            sd1 = &mut sd1[8..];
+        }
+        let str = unsafe { String::from_utf8_unchecked(sdest) };
+        str.serialize(serializer)
     }
 
-    Ok(entries)
+    pub(super) fn deserialize<'de,D>(deserializer: D) -> Result<Vec<SelEntry>, D::Error>
+    where
+        D: serde::Deserializer<'de>
+    {
+        let str = String::deserialize(deserializer)?;
+
+        let mut entries = Vec::with_capacity(str.len()/8);
+
+        assert!(str.len()%8 == 0);
+
+        for s in str.as_bytes().chunks_exact(8) {
+            let mut sob = [0;4];
+            hex::decode_to_slice(s, &mut sob).unwrap();
+            entries.push(SelEntry::dec(&sob));
+        }
+
+        Ok(entries)
+    }
 }
 
 fn effective_bounds2i((aoff,aoff2): ([i32;2],[i32;2]), (boff,boff2): ([i32;2],[i32;2])) -> ([i32;2],[i32;2]) {

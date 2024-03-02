@@ -48,7 +48,7 @@ impl Map {
         if clicked {
             // eprintln!("DPAD CLICK {}",describe_direction(axis,dir));
         }
-        let coord = self.state.rooms.get(self.state.ssel_room.unwrap()).unwrap().coord;
+        let coord = self.state.rooms.get(self.ssel_room.unwrap()).unwrap().coord;
         let mut regen = true;
         if let Some(v) = &self.smartmove_preview {
             if
@@ -98,10 +98,10 @@ impl Map {
         ui: &mut egui::Ui,
         sam: &mut SAM,
     ) {
-        if let Some(r) = self.state.dsel_room.and_then(|r| self.state.rooms.get(r) ) {
+        if let Some(r) = self.dsel_room.and_then(|r| self.state.rooms.get(r) ) {
             self.state.dsel_coord = Some(r.coord);
         }
-        if let Some(r) = self.state.ssel_room.and_then(|r| self.state.rooms.get(r) ) {
+        if let Some(r) = self.ssel_room.and_then(|r| self.state.rooms.get(r) ) {
             self.state.ssel_coord = Some(r.coord);
         }
 
@@ -120,11 +120,15 @@ impl Map {
                     }
                     if ui.button("Save&Close").clicked() {
                         self.save_map(&mut sam.uuidmap);
+                        self.unload_map(&mut sam.uuidmap);
+                        sam.uuidmap.remove(&self.state.uuid);
                         let id = self.id;
                         sam.mut_queue.push(Box::new(move |state: &mut SharedApp| {state.maps.open_maps.remove(&id);} ))
                     }
                     if ui.button("Abort&Close").double_clicked() {
                         let id = self.id;
+                        self.unload_map(&mut sam.uuidmap);
+                        sam.uuidmap.remove(&self.state.uuid);
                         sam.mut_queue.push(Box::new(move |state: &mut SharedApp| {state.maps.open_maps.remove(&id);} ))
                     }
                     ui.add(egui::TextEdit::singleline(&mut self.state.title).desired_width(200. * sam.dpi_scale));
@@ -216,34 +220,34 @@ impl Map {
 
                     match self.state.edit_mode {
                         MapEditMode::DrawSel => {
-                            if let Some(v) = self.state.dsel_room.filter(|&v| self.state.rooms.contains_key(v) ) {
+                            if let Some(v) = self.dsel_room.filter(|&v| self.state.rooms.contains_key(v) ) {
                                 if ui.button("Delete Room").double_clicked() {
-                                    self.state.dsel_room = None;
+                                    self.dsel_room = None;
                                     self.editsel = DrawImageGroup::unsel(self.state.rooms_size);
                                     self.post_drawroom_switch();
                                     self.ui_delete_room(v, &mut sam.uuidmap);
                                 }
                                 if ui.button("As Template").clicked() {
-                                    self.state.template_room = Some(v);
+                                    self.template_room = Some(v);
                                 }
                             } else if let Some(v) = self.state.dsel_coord {
                                 if ui.button("Create Room").clicked() {
                                     if let Some(new_id) = self.ui_create_room(v, &mut sam.uuidmap) {
-                                        self.state.dsel_room = Some(new_id);
+                                        self.dsel_room = Some(new_id);
                                         self.state.dsel_coord = Some(v);
                                         self.editsel = DrawImageGroup::single(new_id, v, self.state.rooms_size);
                                         self.post_drawroom_switch();
                                     }
                                 }
                                 let resp = ui.add_enabled(
-                                    self.state.template_room.is_some_and(|t| self.state.rooms.contains_key(t) ),
+                                    self.template_room.is_some_and(|t| self.state.rooms.contains_key(t) ),
                                     egui::Button::new("From Template")
                                 );
                                 if resp.clicked() {
                                     if let Some(new_id) = self.ui_create_room(v, &mut sam.uuidmap) {
-                                        let [a,b] = self.state.rooms.get_disjoint_mut([new_id,self.state.template_room.unwrap()]).unwrap();
+                                        let [a,b] = self.state.rooms.get_disjoint_mut([new_id,self.template_room.unwrap()]).unwrap();
                                         a.clone_from(b, &self.path, self.state.rooms_size);
-                                        self.state.dsel_room = Some(new_id);
+                                        self.dsel_room = Some(new_id);
                                         self.state.dsel_coord = Some(v);
                                         self.editsel = DrawImageGroup::single(new_id, v, self.state.rooms_size);
                                         self.post_drawroom_switch();
@@ -252,30 +256,30 @@ impl Map {
                             }
                         },
                         _ => {
-                            if let Some(v) = self.state.ssel_room.filter(|&v| self.state.rooms.contains_key(v) ) {
+                            if let Some(v) = self.ssel_room.filter(|&v| self.state.rooms.contains_key(v) ) {
                                 if ui.button("Delete Room").double_clicked() {
-                                    self.state.ssel_room = None;
+                                    self.ssel_room = None;
                                     self.ui_delete_room(v, &mut sam.uuidmap);
                                 }
                                 if ui.button("As Template").clicked() {
-                                    self.state.template_room = Some(v);
+                                    self.template_room = Some(v);
                                 }
                             } else if let Some(v) = self.state.ssel_coord {
                                 if ui.button("Create Room").clicked() {
                                     if let Some(new_id) = self.ui_create_room(v, &mut sam.uuidmap) {
-                                        self.state.ssel_room = Some(new_id);
+                                        self.ssel_room = Some(new_id);
                                         self.state.ssel_coord = Some(v);
                                     }
                                 }
                                 let resp = ui.add_enabled(
-                                    self.state.template_room.is_some_and(|t| self.state.rooms.contains_key(t) ),
+                                    self.template_room.is_some_and(|t| self.state.rooms.contains_key(t) ),
                                     egui::Button::new("From Template")
                                 );
                                 if resp.clicked() {
                                     if let Some(new_id) = self.ui_create_room(v, &mut sam.uuidmap) {
-                                        let [a,b] = self.state.rooms.get_disjoint_mut([new_id,self.state.template_room.unwrap()]).unwrap();
+                                        let [a,b] = self.state.rooms.get_disjoint_mut([new_id,self.template_room.unwrap()]).unwrap();
                                         a.clone_from(b, &self.path, self.state.rooms_size);
-                                        self.state.ssel_room = Some(new_id);
+                                        self.ssel_room = Some(new_id);
                                         self.state.ssel_coord = Some(v);
                                         self.editsel = DrawImageGroup::single(new_id, v, self.state.rooms_size);
                                         self.post_drawroom_switch();
@@ -292,7 +296,7 @@ impl Map {
                 });
                 match self.state.edit_mode {
                     MapEditMode::DrawSel => {
-                        if let Some(v) = self.state.dsel_room.filter(|&v| self.state.rooms.contains_key(v) ) {
+                        if let Some(v) = self.dsel_room.filter(|&v| self.state.rooms.contains_key(v) ) {
                             let room = self.state.rooms.get_mut(v).unwrap();
                             ui.add(
                                 egui::TextEdit::multiline(&mut room.desc_text)
@@ -315,12 +319,12 @@ impl Map {
                             dpad(
                                 "Single Move",
                                 20. * sam.dpi_scale, 32. * sam.dpi_scale, sam.dpi_scale, false,
-                                self.state.ssel_room.is_some_and(|id| self.state.rooms.contains_key(id) ),
+                                self.ssel_room.is_some_and(|id| self.state.rooms.contains_key(id) ),
                                 ui,
                                 |_,clicked,axis,dir| {
                                     if !clicked {return;}
                                     // eprintln!("DPAD CLICK {}",describe_direction(axis,dir));
-                                    if let Some(op) = self.create_single_move(self.state.ssel_room.unwrap(), axis, dir) {
+                                    if let Some(op) = self.create_single_move(self.ssel_room.unwrap(), axis, dir) {
                                         self.ui_apply_roomop(op, &mut sam.uuidmap);
                                     }
                                 },
@@ -354,7 +358,7 @@ impl Map {
                             dpad(
                                 "Smart Move",
                                 20. * sam.dpi_scale, 32. * sam.dpi_scale, sam.dpi_scale, false,
-                                self.state.ssel_room.is_some_and(|id| self.state.rooms.contains_key(id) ),
+                                self.ssel_room.is_some_and(|id| self.state.rooms.contains_key(id) ),
                                 ui,
                                 |_,clicked,axis,dir| {
                                     smart_preview_hovered = true;
@@ -458,9 +462,9 @@ impl Map {
                         if super_map.response.clicked_by(egui::PointerButton::Primary) {
                             if !mods.ctrl {
                                 self.state.dsel_coord = Some(click_coord);
-                                self.state.dsel_room = self.room_matrix.get(click_coord).cloned();
+                                self.dsel_room = self.room_matrix.get(click_coord).cloned();
                                 
-                                if let Some(room) = self.state.dsel_room {
+                                if let Some(room) = self.dsel_room {
                                     self.editsel = DrawImageGroup::single(room, click_coord, self.state.rooms_size);
                                 } else {
                                     self.editsel = DrawImageGroup::unsel(self.state.rooms_size);
@@ -478,7 +482,7 @@ impl Map {
                     MapEditMode::RoomSel => {
                         if super_map.response.clicked_by(egui::PointerButton::Primary) {
                             self.state.ssel_coord = Some(click_coord);
-                            self.state.ssel_room = self.room_matrix.get(click_coord).cloned();
+                            self.ssel_room = self.room_matrix.get(click_coord).cloned();
                         }
                     },
                     MapEditMode::Tags => {

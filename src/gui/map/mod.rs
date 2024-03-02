@@ -5,10 +5,14 @@ use std::path::PathBuf;
 
 use egui::TextureOptions;
 use egui::epaint::ahash::{HashSet, AHasher};
+use scoped_tls_hkt::scoped_thread_local;
 use serde::{Serialize, Deserialize};
 use slotmap::{HopSlotMap, SlotMap};
+use ::uuid::Uuid;
 
+use crate::gui::map::uuid::UUIDTarget;
 use crate::map::coord_store::CoordStore;
+use crate::util::uuid::generate_uuid;
 use crate::util::*;
 
 use self::room_ops::{RoomOp, ShiftSmartCollected};
@@ -58,6 +62,9 @@ pub struct Map {
     pub texlru_limit: usize,
     pub imglru_limit: usize,
     pub key_manager_state: Option<KMKey>,
+    pub dsel_room: Option<RoomId>,
+    pub ssel_room: Option<RoomId>,
+    pub template_room: Option<RoomId>,
 }
 
 pub type RoomMap = HopSlotMap<RoomId,Room>;
@@ -65,17 +72,14 @@ pub type UROrphanMap = SlotMap<UROrphanId,Room>;
 
 #[derive(Deserialize,Serialize)]
 pub struct MapState {
+    pub mzd_format: u64,
+    pub uuid: Uuid,
     pub title: String,
     pub map_zoom: i32,
     pub draw_zoom: u32,
+    #[serde(with = "roommap_serde")]
     pub rooms: RoomMap,
-    #[serde(default)]
-    pub dsel_room: Option<RoomId>,
-    #[serde(default)]
-    pub ssel_room: Option<RoomId>,
-    #[serde(default)]
     pub dsel_coord: Option<[u8;3]>,
-    #[serde(default)]
     pub ssel_coord: Option<[u8;3]>,
     pub file_counter: u64,
     pub view_pos: [f32;2],
@@ -89,8 +93,18 @@ pub struct MapState {
     pub smart_awaylock_mode: bool,
     pub ds_replace: bool,
     pub dsel_whole: bool,
-    #[serde(default)]
-    pub template_room: Option<RoomId>,
+    #[serde(rename = "dsel_room")]
+    _serde_dsel_room: Option<Uuid>,
+    #[serde(rename = "ssel_room")]
+    _serde_ssel_room: Option<Uuid>,
+    #[serde(rename = "template_room")]
+    _serde_template_room: Option<Uuid>,
+}
+
+#[derive(Deserialize,Serialize)]
+pub struct MapDeserProbe {
+    pub mzd_format: u64,
+    pub uuid: Uuid,
 }
 
 slotmap::new_key_type! {
@@ -149,18 +163,70 @@ impl Map {
     }
 
     fn save_map2(&mut self) -> anyhow::Result<()> {
+        self.state._serde_dsel_room = self.dsel_room.and_then(|r| self.state.rooms.get(r) ).map(|r| r.uuid );
+        self.state._serde_ssel_room = self.ssel_room.and_then(|r| self.state.rooms.get(r) ).map(|r| r.uuid );
+        self.state._serde_template_room = self.template_room.and_then(|r| self.state.rooms.get(r) ).map(|r| r.uuid );
+
         let ser = serde_json::to_vec(&self.state)?;
         std::fs::write(&self.path, ser)?;
         Ok(())
     }
 
-    pub fn load_map(path: PathBuf) -> anyhow::Result<Self> {
+    fn unload_map(&self, uuidmap: &mut UUIDMap) {
+        for (_,r) in &self.state.rooms {
+            uuidmap.remove(&r.resuuid);
+            uuidmap.remove(&r.uuid);
+            //TODO have a separate uuidmap for uuidgen only which isn't cleared
+        }
+    }
+
+    pub fn load_map(path: PathBuf, uuidmap: &mut UUIDMap) -> anyhow::Result<Self> {
         let data = std::fs::read(&path)?;
+        
+        let header = serde_json::from_slice::<MapDeserProbe>(&data)?;
+
+        anyhow::ensure!(header.mzd_format == 2, "Unsupported mzd_format {}", header.mzd_format);
+
+        if uuidmap.contains_key(&header.uuid) {
+            anyhow::bail!("Map already loaded: {}", header.uuid);
+        }
+
         let state = serde_json::from_slice::<MapState>(&data)?;
+
         drop(data);
 
+        let id = MapId::new();
+
+        // check for room uuid collisions
+        for (room_id,r) in &state.rooms {
+            if let Some(prev) = uuidmap.insert(r.uuid, UUIDTarget::Room(id, room_id)) {
+                uuidmap.insert(r.uuid, prev);
+                anyhow::bail!("UUID COLLISION {}", r.uuid);
+            }
+        }
+
+        // get the selected room ids from the UUIDs
+        fn get_room_id(v: &Uuid, uuidmap: &mut UUIDMap, state: &MapState, typ: &str) -> Option<RoomId> {
+            let room_id = uuidmap.get(v)
+                .and_then(|v| match v {
+                    UUIDTarget::Room(map, room) => Some(*room),
+                    _ => None,
+                })
+                .filter(|&v| state.rooms.contains_key(v));
+
+            if room_id.is_none() {
+                gui_error("Room UUID not found", format_args!("Room UUID of {} not found: {}", typ, v))
+            }
+
+            room_id
+        }
+
+        let dsel_room = state._serde_dsel_room.as_ref().and_then(|v| get_room_id(v, uuidmap, &state, "dsel_room") );
+        let ssel_room = state._serde_ssel_room.as_ref().and_then(|v| get_room_id(v, uuidmap, &state, "ssel_room") );
+        let template_room = state._serde_template_room.as_ref().and_then(|v| get_room_id(v, uuidmap, &state, "template_room") );
+
         let mut map = Self {
-            id: MapId::new(),
+            id,
             editsel: DrawImageGroup::unsel(state.rooms_size),
             path,
             dirty_rooms: Default::default(),
@@ -183,6 +249,9 @@ impl Map {
             cd_state: ConnDrawState::new(),
             cse_state: CSEState::new(),
             key_manager_state: None,
+            dsel_room,
+            ssel_room,
+            template_room,
         };
 
         map.set_view_pos(map.state.view_pos);
@@ -206,17 +275,17 @@ impl Map {
             map.state.rooms.remove(room);
         }
 
-        if map.state.dsel_room.is_none() {
+        if map.dsel_room.is_none() {
             if let Some(coord) = map.state.dsel_coord {
                 if let Some(&room) = map.room_matrix.get(coord) {
                     if map.state.rooms.contains_key(room) {
-                        map.state.dsel_room = Some(room);
+                        map.dsel_room = Some(room);
                     }
                 }
             }
         }
 
-        if let Some(sel_room) = map.state.dsel_room {
+        if let Some(sel_room) = map.dsel_room {
             if let Some(room) = map.state.rooms.get(sel_room) {
                 map.state.dsel_coord = Some(room.coord);
             }
@@ -232,10 +301,12 @@ impl Map {
             // }
             // edit_path = Some(epath);
 
+        uuidmap.insert(header.uuid, UUIDTarget::Map(id));
+
         Ok(map)
     }
 
-    pub fn new(path: PathBuf, rooms_size: [u32;2]) -> Self {
+    pub fn new(path: PathBuf, rooms_size: [u32;2], uuidmap: &mut UUIDMap) -> Self {
         assert!(rooms_size[0] % 16 == 0 && rooms_size[1] % 16 == 0);
 
         let title = match path.file_stem() {
@@ -248,15 +319,15 @@ impl Map {
                 moment.to_rfc3339()
             }
         };
-        Self {
+        let this = Self {
             id: MapId::new(),
             state: MapState {
+                mzd_format: 2,
+                uuid: generate_uuid(uuidmap),
                 title,
                 map_zoom: 0,
                 draw_zoom: 2,
                 rooms: HopSlotMap::with_capacity_and_key(1024),
-                dsel_room: None,
-                ssel_room: None,
                 dsel_coord: None,
                 ssel_coord: None,
                 file_counter: 0,
@@ -271,7 +342,9 @@ impl Map {
                 smart_awaylock_mode: false,
                 ds_replace: false,
                 dsel_whole: true,
-                template_room: None,
+                _serde_dsel_room: None,
+                _serde_ssel_room: None,
+                _serde_template_room: None,
             },
             path,
             dirty_rooms: Default::default(),
@@ -294,7 +367,14 @@ impl Map {
             cd_state: ConnDrawState::new(),
             cse_state: CSEState::new(),
             key_manager_state: None,
-        }
+            dsel_room: None,
+            ssel_room: None,
+            template_room: None,
+        };
+
+        uuidmap.insert(this.state.uuid, UUIDTarget::Map(this.id));
+
+        this
     }
 
     fn update_level(&mut self, new_z: u8) {
@@ -310,7 +390,7 @@ impl Map {
             }
         }
         fn unload_room_img(s: &mut Map, room: RoomId) {
-            if s.state.ssel_room == Some(room) || s.state.dsel_room == Some(room) || s.state.template_room == Some(room) {return;}
+            if s.ssel_room == Some(room) || s.dsel_room == Some(room) || s.template_room == Some(room) {return;}
             if let Some(v) = s.state.rooms.get_mut(room) {
                 if !v.loaded.as_ref().is_some_and(|v| v.dirty_file) {
                     v.loaded = None;
@@ -390,5 +470,47 @@ fn zoomf(zoom: i32) -> f32 {
         (zoom+1) as f32
     } else {
         1. / (((-zoom)+1) as f32)
+    }
+}
+
+mod roommap_serde {
+    use super::*;
+    use serde::de::{Error, MapAccess, Visitor};
+
+    pub(super) fn serialize<S>(v: &RoomMap, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer
+    {
+        let iter = v.iter().map(|(_,r)| (r.uuid,r) );
+        serializer.collect_map(iter)
+    }
+
+    pub(super) fn deserialize<'de,D>(deserializer: D) -> Result<RoomMap, D::Error>
+    where
+        D: serde::Deserializer<'de>
+    {
+        struct RoomMapVisitor;
+
+        impl<'de> Visitor<'de> for RoomMapVisitor {
+            type Value = RoomMap;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("a map")
+            }
+
+            fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error> where A: MapAccess<'de> {
+                let mut rooms = RoomMap::with_capacity_and_key(map.size_hint().unwrap_or(64));
+
+                while let Some((k,mut v)) = map.next_entry::<Uuid,Room>()? {
+                    v.uuid = k;
+                    rooms.insert(v);
+                }
+
+                Ok(rooms)
+            }
+        }
+        
+        let visitor = RoomMapVisitor;
+        deserializer.deserialize_map(visitor)
     }
 }

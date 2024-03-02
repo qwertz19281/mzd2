@@ -57,7 +57,7 @@ fn new_map(state: &mut SharedApp) {
 
     state.top_panel.last_map_path = Some(path.clone());
 
-    let map = Map::new(path, state.top_panel.create_size);
+    let map = Map::new(path, state.top_panel.create_size, &mut state.sam.uuidmap);
 
     state.maps.open_maps.insert(map.id, map);
 }

@@ -21,10 +21,10 @@ pub mod draw_image;
 
 #[derive(Deserialize,Serialize)]
 pub struct Room {
+    #[serde(skip)]
     pub uuid: Uuid,
     pub coord: [u8;3],
     pub resuuid: Uuid,
-    #[serde(default)]
     pub desc_text: String,
     pub tags: Vec<TagState>,
     #[serde(skip)]
@@ -34,7 +34,7 @@ pub struct Room {
     pub loaded: Option<RoomLoaded>,
     pub visible_layers: Vec<bool>,
     pub selected_layer: usize,
-    #[serde(default)]
+    #[serde(with = "dirconn_serde")]
     pub dirconn: [[bool;2];3],
 }
 
@@ -48,7 +48,7 @@ impl Room {
     pub fn create_empty(file_id: u64, coord: [u8;3], rooms_size: [u32;2], image: RgbaImage, initial_layers: usize, uuidmap: &mut UUIDMap, map_id: MapId, map_path: impl Into<PathBuf>) -> Self {
         assert!(rooms_size[0] % 16 == 0 && rooms_size[1] % 16 == 0);
         assert!(image.width() == rooms_size[0] && image.height() as usize == rooms_size[1] as usize * initial_layers as usize);
-        let senf = Self {
+        let this = Self {
             loaded: Some(RoomLoaded {
                 image: DrawImage {
                     img: image,
@@ -70,10 +70,10 @@ impl Room {
             desc_text: Default::default(),
         };
 
-        uuidmap.insert(senf.uuid, UUIDTarget::Room(map_id, RoomId::null()));
-        uuidmap.insert(senf.resuuid, UUIDTarget::Resource(map_id, RoomId::null()));
+        uuidmap.insert(this.uuid, UUIDTarget::Room(map_id, RoomId::null()));
+        uuidmap.insert(this.resuuid, UUIDTarget::Resource(map_id, RoomId::null()));
 
-        senf
+        this
     }
 
     pub fn update_uuidmap(&self, room_id: RoomId, uuidmap: &mut UUIDMap, map_id: MapId) {
@@ -244,3 +244,57 @@ const ROOM_TEX_OPTS: TextureOptions = TextureOptions {
     magnification: egui::TextureFilter::Nearest,
     minification: egui::TextureFilter::Linear,
 };
+
+mod dirconn_serde {
+    use super::*;
+    use serde::de::Error;
+
+    pub(super) fn serialize<S>(v: &[[bool;2];3], serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer
+    {
+        stupid_dirconn_ser(*v).serialize(serializer)
+    }
+
+    pub(super) fn deserialize<'de,D>(deserializer: D) -> Result<[[bool;2];3], D::Error>
+    where
+        D: serde::Deserializer<'de>
+    {
+        let v = <[[u8;2];3]>::deserialize(deserializer)?;
+        let v = stupid_dirconn_deser(v).map_err(|e| D::Error::custom(e))?;
+        Ok(v)
+    }
+
+    fn stupid_dirconn_ser(v: [[bool;2];3]) -> [[u8;2];3] {
+        let mut dest = [[0u8;2];3];
+
+        for i in 0..3 {
+            for j in 0..2 {
+                dest[i][j] = v[i][j] as u8;
+            }
+        }
+
+        dest
+    }
+
+    fn stupid_dirconn_deser(v: [[u8;2];3]) -> anyhow::Result<[[bool;2];3]> {
+        // https://github.com/rust-lang/rust/pull/43220
+
+        fn conv(v: u8) -> anyhow::Result<bool> {
+            match v {
+                0 => Ok(false),
+                1 => Ok(true),
+                _ => Err(anyhow::anyhow!("dirconn type must be 0 or 1"))
+            }
+        }
+        let mut dest = [[false;2];3];
+
+        for i in 0..3 {
+            for j in 0..2 {
+                dest[i][j] = conv(v[i][j])?;
+            }
+        }
+
+        Ok(dest)
+    }
+}

@@ -30,7 +30,7 @@ impl SharedApp {
     }
 
     fn try_load_map(&mut self, path: PathBuf) {
-        let Some(map) = Map::load_map(path).unwrap_gui("Failed to load map") else {return};
+        let Some(map) = Map::load_map(path, &mut self.sam.uuidmap).unwrap_gui("Failed to load map") else {return};
 
         self.maps.open_maps.insert(map.id, map);
     }

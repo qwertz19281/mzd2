@@ -165,6 +165,8 @@ impl DSelState {
 
         self.dsel_cancel();
 
+        // eprintln!("{:?}",&sels);
+
         SelImg {
             img: dest_img,
             sels,

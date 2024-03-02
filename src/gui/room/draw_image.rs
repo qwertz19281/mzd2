@@ -29,6 +29,7 @@ impl DrawImage {
     pub fn insert_layer(&mut self, rooms_size: [u32;2], off: usize) {
         assert_eq!(self.img.height() as usize, rooms_size[1] as usize * self.layers);
         assert_eq!(self.img.width(), rooms_size[0]);
+        assert!(off <= self.layers);
 
         let img = std::mem::take(&mut self.img);
         let (iw,ih) = img.dimensions();
