@@ -1,4 +1,5 @@
 use std::hash::{Hash, Hasher};
+use std::ops::{Deref, DerefMut};
 use std::path::Path;
 
 use egui::{Color32, Rounding, Stroke, Pos2, Align2, FontId};
@@ -218,20 +219,21 @@ impl DrawImageGroup {
         //TODO Room::ensure_loaded
         for &(room_id,_,roff) in &self.rooms {
             let Some(room) = rooms.get_mut(room_id) else {continue};
-            if room.image.img.is_empty() {continue;}
+            let Some(loaded) = &mut room.loaded else {continue};
+            if loaded.image.img.is_empty() {continue;}
             let Some((op_0,op_1)) = effective_bounds((off,size),(roff,rooms_size)) else {continue};
             
-            assert!(room.image.img.width() == rooms_size[0]);
-            assert!(room.image.img.height() % rooms_size[1] == 0);
-            assert!((layer * rooms_size[1] as usize) < room.image.img.height() as usize, "Layer overflow");
+            assert!(loaded.image.img.width() == rooms_size[0]);
+            assert!(loaded.image.img.height() % rooms_size[1] == 0);
+            assert!((layer * rooms_size[1] as usize) < loaded.image.img.height() as usize, "Layer overflow");
 
-            assert!(roff[0] % 8 == 0 && roff[1] % 8 == 0 && room.image.img.width() % 8 == 0 && room.image.img.height() % 8 == 0);
+            assert!(roff[0] % 8 == 0 && roff[1] % 8 == 0 && loaded.image.img.width() % 8 == 0 && loaded.image.img.height() % 8 == 0);
             assert!(op_0[0] % 8 == 0 && op_0[1] % 8 == 0 && op_1[0] % 8 == 0 && op_1[1] % 8 == 0);
 
             let (opi_0,opi_1) = (op_0.sub(roff),op_1.sub(roff));
 
             imgcopy(
-                &mut room.image.img,
+                &mut loaded.image.img,
                 &*src.view(
                     op_0[0]-off[0]+src_off[0],
                     op_0[1]-off[1]+src_off[1],
@@ -243,11 +245,11 @@ impl DrawImageGroup {
                 replace,
             );
 
-            room.dirty_file = true;
+            loaded.dirty_file = true;
             dirty_map.0.insert(room_id);
             dirty_map.1.pop(&room_id);
 
-            if let Some(tc) = &mut room.image.tex {
+            if let Some(tc) = &mut loaded.image.tex {
                 tc.dirty_region((
                     [
                         op_0[0],
@@ -266,14 +268,15 @@ impl DrawImageGroup {
         //TODO Room::ensure_loaded
         for &(room_id,_,roff) in &self.rooms {
             let Some(room) = rooms.get_mut(room_id) else {continue};
-            if room.image.img.is_empty() {continue;}
+            let Some(loaded) = &mut room.loaded else {continue};
+            if loaded.image.img.is_empty() {continue;}
             let Some((op_0,op_1)) = effective_bounds((off,size),(roff,rooms_size)) else {continue};
             
-            assert!(room.image.img.width() == rooms_size[0]);
-            assert!(room.image.img.height() % rooms_size[1] == 0);
-            assert!((layer * rooms_size[1] as usize) < room.image.img.height() as usize, "Layer overflow");
+            assert!(loaded.image.img.width() == rooms_size[0]);
+            assert!(loaded.image.img.height() % rooms_size[1] == 0);
+            assert!((layer * rooms_size[1] as usize) < loaded.image.img.height() as usize, "Layer overflow");
 
-            assert!(roff[0] % 8 == 0 && roff[1] % 8 == 0 && room.image.img.width() % 8 == 0 && room.image.img.height() % 8 == 0);
+            assert!(roff[0] % 8 == 0 && roff[1] % 8 == 0 && loaded.image.img.width() % 8 == 0 && loaded.image.img.height() % 8 == 0);
             assert!(op_0[0] % 8 == 0 && op_0[1] % 8 == 0 && op_1[0] % 8 == 0 && op_1[1] % 8 == 0);
 
             let (opi_0,opi_1) = (op_0.sub(roff),op_1.sub(roff));
@@ -281,15 +284,15 @@ impl DrawImageGroup {
             for y in opi_0[1] .. opi_1[1] {
                 for x in opi_0[0] .. opi_1[0] {
                     let y = y + (layer as u32 * rooms_size[1] as u32);
-                    unsafe { room.image.img.unsafe_put_pixel(x, y, image::Rgba([0,0,0,0])); }
+                    unsafe { loaded.image.img.unsafe_put_pixel(x, y, image::Rgba([0,0,0,0])); }
                 }
             }
 
-            room.dirty_file = true;
+            loaded.dirty_file = true;
             dirty_map.0.insert(room_id);
             dirty_map.1.pop(&room_id);
 
-            if let Some(tc) = &mut room.image.tex {
+            if let Some(tc) = &mut loaded.image.tex {
                 tc.dirty_region((
                     [
                         op_0[0],
@@ -308,21 +311,22 @@ impl DrawImageGroup {
         //TODO Room::ensure_loaded
         for &(room_id,_,roff) in &self.rooms {
             let Some(room) = rooms.get(room_id) else {continue};
-            if room.image.img.is_empty() {continue;}
+            let Some(loaded) = &room.loaded else {continue};
+            if loaded.image.img.is_empty() {continue;}
             let Some((op_0,op_1)) = effective_bounds((off,size),(roff,rooms_size)) else {continue};
             
-            assert!(room.image.img.width() == rooms_size[0]);
-            assert!(room.image.img.height() % rooms_size[1] == 0);
-            assert!((layer * rooms_size[1] as usize) < room.image.img.height() as usize, "Layer overflow");
+            assert!(loaded.image.img.width() == rooms_size[0]);
+            assert!(loaded.image.img.height() % rooms_size[1] == 0);
+            assert!((layer * rooms_size[1] as usize) < loaded.image.img.height() as usize, "Layer overflow");
 
-            assert!(roff[0] % 8 == 0 && roff[1] % 8 == 0 && room.image.img.width() % 8 == 0 && room.image.img.height() % 8 == 0);
+            assert!(roff[0] % 8 == 0 && roff[1] % 8 == 0 && loaded.image.img.width() % 8 == 0 && loaded.image.img.height() % 8 == 0);
             assert!(op_0[0] % 8 == 0 && op_0[1] % 8 == 0 && op_1[0] % 8 == 0 && op_1[1] % 8 == 0);
 
             let (opi_0,opi_1) = (op_0.sub(roff),op_1.sub(roff));
 
             imgcopy(
                 dest,
-                &*room.image.img.view(
+                &*loaded.image.img.view(
                     opi_0[0],
                     opi_0[1] + (layer as u32 * rooms_size[1]),
                     op_1[0]-op_0[0],
@@ -371,14 +375,14 @@ impl DrawImageGroup {
     pub fn try_attach(&mut self, room_id: RoomId, rooms_size: [u32;2], rooms: &RoomMap) -> bool {
         let Some(room) = rooms.get(room_id) else {return false};  
         let coord = room.coord;
-        let n_layers = room.image.layers;
+        let n_layers = room.visible_layers.len(); //TODO don't rely on the unloaded layer value
 
         let mut attached = false;
 
         if !self.rooms.is_empty() && rooms.contains_key(self.rooms[0].0) {
             let base_coord = self.rooms[0].1;
             let base_room = rooms.get(self.rooms[0].0).unwrap();
-            if n_layers != base_room.image.layers {
+            if n_layers != base_room.visible_layers.len() {
                 return false;
             }
             if 
@@ -433,13 +437,13 @@ impl DrawImageGroup {
 impl Room {
     pub fn render(&mut self, off: [u32;2], visible_layers: impl Iterator<Item=usize>, bg_color: Option<egui::Color32>, rooms_size: [u32;2], mut dest: impl FnMut(egui::Shape), map_path: &Path, ctx: &egui::Context) {
         if self.load_tex(map_path,rooms_size,ctx).is_none() {return}
+        let Some(loaded) = &self.loaded else {return};
+        if loaded.image.img.is_empty() {return}
 
-        if self.image.img.is_empty() {return}
+        assert!(loaded.image.img.width() == rooms_size[0]);
+        assert!(loaded.image.img.height() % rooms_size[1] == 0);
 
-        assert!(self.image.img.width() == rooms_size[0]);
-        assert!(self.image.img.height() % rooms_size[1] == 0);
-
-        let Some(tex) = self.image.tex.as_ref().and_then(|t| t.tex_handle.as_ref() ) else {return};
+        let Some(tex) = loaded.image.tex.as_ref().and_then(|t| t.tex_handle.as_ref() ) else {return};
 
         let mut mesh = egui::Mesh::with_texture(tex.id());
         let dest_rect = rector(off[0], off[1], off[0]+rooms_size[0], off[1]+rooms_size[1]);
@@ -449,7 +453,7 @@ impl Room {
         }
         
         for i in visible_layers {
-            mesh.add_rect_with_uv(dest_rect, self.image.layer_uv(i, rooms_size), egui::Color32::WHITE);
+            mesh.add_rect_with_uv(dest_rect, loaded.image.layer_uv(i, rooms_size), egui::Color32::WHITE);
         }
         
         dest(egui::Shape::Mesh(mesh));
@@ -465,11 +469,11 @@ impl Room {
 
         if mode == MapEditMode::ConnDown {
             if !self.dirconn[2][0] {
-                dest(egui::Shape::rect_filled(dest_rect, Rounding::none(), unconn_color_fill))
+                dest(egui::Shape::rect_filled(dest_rect, Rounding::ZERO, unconn_color_fill))
             }
         } else if mode == MapEditMode::ConnUp {
             if !self.dirconn[2][1] {
-                dest(egui::Shape::rect_filled(dest_rect, Rounding::none(), unconn_color_fill))
+                dest(egui::Shape::rect_filled(dest_rect, Rounding::ZERO, unconn_color_fill))
             }
         }
         if mode == MapEditMode::ConnDown || mode == MapEditMode::ConnUp || mode == MapEditMode::ConnXY || mode == MapEditMode::RoomSel {

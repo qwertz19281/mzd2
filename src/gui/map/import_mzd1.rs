@@ -10,10 +10,11 @@ use crate::gui::sel_matrix::{SelEntryWrite, SelEntry};
 use crate::gui::util::ArrUtl;
 use crate::util::{gui_error, next_op_gen_evo};
 
+use super::uuid::UUIDMap;
 use super::Map;
 
 impl Map {
-    pub(super) fn ui_import_mzd1(&mut self) -> bool {
+    pub(super) fn ui_import_mzd1(&mut self, uuidmap: &mut UUIDMap) -> bool {
         let Some(ssel_coord) = self.state.ssel_coord else {return false};
 
         let dialog = rfd::FileDialog::new();
@@ -24,7 +25,7 @@ impl Map {
         
         let Some(path) = result else {return false};
 
-        if let Err(e) = self.import_mzd1(ssel_coord, path) {
+        if let Err(e) = self.import_mzd1(ssel_coord, path, uuidmap) {
             gui_error("Failed to import mzd1", e);
             false
         } else {
@@ -32,7 +33,7 @@ impl Map {
         }
     }
 
-    pub fn import_mzd1(&mut self, dest: [u8;3], mut level_dir: PathBuf) -> anyhow::Result<()> {
+    pub fn import_mzd1(&mut self, dest: [u8;3], mut level_dir: PathBuf, uuidmap: &mut UUIDMap) -> anyhow::Result<()> {
         ensure!(
             self.state.rooms_size[0] >= 160 && self.state.rooms_size[1] >= 128,
             "map rooms_size not large enough to hold mzd1 rooms (160x128)"
@@ -95,8 +96,8 @@ impl Map {
         let mut undo_ops = vec![];
 
         for (coord,image) in &rooms {
-            let roomcreate_op = self.create_create_room(*coord).unwrap();
-            let ur = self.apply_room_op(roomcreate_op);
+            let roomcreate_op = self.create_create_room(*coord, uuidmap).unwrap();
+            let ur = self.apply_room_op(roomcreate_op, uuidmap);
             let room_id = match &ur {
                 &super::room_ops::RoomOp::Del(id) => id,
                 _ => panic!(),
@@ -108,7 +109,7 @@ impl Map {
             let room = self.state.rooms.get_mut(room_id).unwrap();
 
             image::imageops::replace(
-                &mut room.image.img,
+                &mut room.loaded.as_mut().unwrap().image.img,
                 image,
                 overlay_pos[0] as i64,
                 overlay_pos[1] as i64,
@@ -116,7 +117,7 @@ impl Map {
             
             for y in overlay_pos[1] .. overlay_pos[1] + 128 {
                 for x in overlay_pos[0] .. overlay_pos[0] + 160 {
-                    *room.sel_matrix.layers[0].get_mut([x/8,y/8]).unwrap() = SelEntry { start: [0,0], size: [1,1] };
+                    *room.loaded.as_mut().unwrap().sel_matrix.layers[0].get_mut([x/8,y/8]).unwrap() = SelEntry { start: [0,0], size: [1,1] };
                 }
             }
 

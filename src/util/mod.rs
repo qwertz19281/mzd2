@@ -3,7 +3,11 @@ use std::fmt::Display;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicI64, Ordering::Relaxed};
 
+use ::uuid::Uuid;
+
 use crate::gui::init::CURRENT_WINDOW_HANDLE;
+
+pub mod uuid;
 
 #[repr(transparent)]
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
@@ -130,4 +134,28 @@ pub fn write_png(writer: impl std::io::Write, image: &image::RgbaImage) -> image
         Default::default()
     );
     image.write_with_encoder(encoder)
+}
+
+pub fn tex_resource_dir(map_path: impl Into<PathBuf>) -> PathBuf {
+    let mut dir = attached_to_path(map_path, "_data");
+    dir.push("tex");
+    dir
+}
+
+pub fn tex_resource_path(map_path: impl Into<PathBuf>, resource_uuid: &Uuid) -> PathBuf {
+    let mut dir = tex_resource_dir(map_path);
+    dir.push(format!("{}.png",resource_uuid));
+    dir
+}
+
+pub fn seltrix_resource_dir(map_path: impl Into<PathBuf>) -> PathBuf {
+    let mut dir = attached_to_path(map_path, "_data");
+    dir.push("sel");
+    dir
+}
+
+pub fn seltrix_resource_path(map_path: impl Into<PathBuf>, resource_uuid: &Uuid) -> PathBuf {
+    let mut dir = seltrix_resource_dir(map_path);
+    dir.push(format!("{}.sel",resource_uuid));
+    dir
 }

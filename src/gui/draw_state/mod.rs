@@ -70,7 +70,7 @@ impl DrawState {
                     for &q in self.current_dest.iter().chain(self.current_dest2.iter()) {
                         let q = q.as_i32().mul8();
                         let rect = rector(q[0], q[1], q[0] + size.0 as i32, q[1] + size.1 as i32);
-                        dest(egui::Shape::rect_filled(rect, Rounding::none(), Color32::BLACK))
+                        dest(egui::Shape::rect_filled(rect, Rounding::ZERO, Color32::BLACK))
                     }
                 }
 
@@ -95,7 +95,7 @@ impl DrawState {
 
             let stroke = egui::Stroke::new(1.5, Color32::BLUE);
 
-            dest(egui::Shape::rect_stroke(rect, Rounding::none(), stroke));
+            dest(egui::Shape::rect_stroke(rect, Rounding::ZERO, stroke));
 
             if let Some(tex) = &src.texture {
                 dest(egui::Shape::Mesh(basic_tex_shape_c(tex.id(), rect, blend)));

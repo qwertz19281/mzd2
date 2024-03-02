@@ -1,8 +1,9 @@
 [package]
 name = "mzd2"
 version = "0.2.0"
-license = "Apache-2.0 OR MIT"
+license = "MIT OR Apache-2.0"
 edition = "2021"
+rust-version = "1.71"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -25,13 +26,15 @@ lru = "0.12.1"
 regex = "1.8"
 rfd = "0.12"
 raw-window-handle = "0.5.2"
+uuid = { version = "1.7", features = ["v7", "serde"] }
+scoped-tls-hkt = "0.1.4"
 
 [profile.dev.package."*"]
 opt-level = 3
 codegen-units = 16
 
 [profile.dev]
-opt-level = 1
+opt-level = 0
 
 [profile.dev-opti]
 inherits = "dev"

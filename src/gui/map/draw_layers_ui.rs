@@ -106,33 +106,34 @@ impl Map {
 
         for (room_id,_,_) in &self.editsel.rooms {
             let Some(room) = self.state.rooms.get_mut(*room_id) else {return None};
+            let Some(loaded) = &mut room.loaded else {return None};
 
             assert_eq!(room.visible_layers.len(), n_layers);
-            assert_eq!(room.sel_matrix.layers.len(), n_layers);
+            assert_eq!(loaded.sel_matrix.layers.len(), n_layers);
 
             match op {
                 Oper::Noop => {},
                 Oper::Del(a) => {
                     room.visible_layers.remove(a);
-                    room.image.remove_layer(self.state.rooms_size, a);
-                    room.sel_matrix.layers.remove(a);
-                    if let Some(t) = &mut room.image.tex {
+                    loaded.image.remove_layer(self.state.rooms_size, a);
+                    loaded.sel_matrix.layers.remove(a);
+                    if let Some(t) = &mut loaded.image.tex {
                         t.dirty();
                     }
                 },
                 Oper::Swap(a, b) => {
                     room.visible_layers.swap(a, b);
-                    room.image.swap_layers(self.state.rooms_size, a, b);
-                    room.sel_matrix.layers.swap(a, b);
-                    if let Some(t) = &mut room.image.tex {
+                    loaded.image.swap_layers(self.state.rooms_size, a, b);
+                    loaded.sel_matrix.layers.swap(a, b);
+                    if let Some(t) = &mut loaded.image.tex {
                         t.dirty();
                     }
                 },
                 Oper::Add(a) => {
                     room.visible_layers.insert(a+1, true);
-                    room.image.insert_layer(self.state.rooms_size, a+1);
-                    room.sel_matrix.layers.insert(a+1, SelMatrix::new_empty(room.sel_matrix.dims));
-                    if let Some(t) = &mut room.image.tex {
+                    loaded.image.insert_layer(self.state.rooms_size, a+1);
+                    loaded.sel_matrix.layers.insert(a+1, SelMatrix::new_empty(loaded.sel_matrix.dims));
+                    if let Some(t) = &mut loaded.image.tex {
                         t.dirty();
                     }
                 },
@@ -142,13 +143,14 @@ impl Map {
         }
 
         let Some(room) = self.state.rooms.get_mut(room_id) else {return None};
+        let Some(loaded) = &mut room.loaded else {return None};
 
         if !matches!(op, Oper::Noop) {
             ui.ctx().request_repaint();
         }
 
         room.selected_layer = room.selected_layer.min(room.visible_layers.len().saturating_sub(1));
-        room.image.layers = room.visible_layers.len();
+        loaded.image.layers = room.visible_layers.len();
 
         if hovered_layer.is_some_and(|v| v >= n_layers) {
             hovered_layer = None;

@@ -9,6 +9,7 @@ use crate::gui::room::Room;
 use crate::map::coord_store::CoordStore;
 use crate::util::next_op_gen_evo;
 
+use super::uuid::{UUIDMap, UUIDTarget};
 use super::{RoomId, Map, MapState};
 
 pub enum RoomOp {
@@ -69,7 +70,7 @@ fn try_print_roomcoord2(s: &MapState, room_id: RoomId) -> String {
 }
 
 impl Map {
-    pub fn apply_room_op(&mut self, op: RoomOp) -> RoomOp {
+    pub fn apply_room_op(&mut self, op: RoomOp, uuidmap: &mut UUIDMap) -> RoomOp {
         match op {
             RoomOp::Move(r,c) => {
                 // move room
@@ -87,7 +88,7 @@ impl Map {
                     panic!();
                 }
 
-                let (r,_) = self.insert_room_force(*r);
+                let (r,_) = self.insert_room_force(*r, uuidmap);
 
                 RoomOp::Del(r)
             },
@@ -108,7 +109,7 @@ impl Map {
             },
             RoomOp::Multi(v) => {
                 let v = v.into_iter()
-                    .map(|v| self.apply_room_op(v) )
+                    .map(|v| self.apply_room_op(v, uuidmap) )
                     .rev() // The ops obviously needs to reverted in reverse
                     .collect();
 
@@ -210,10 +211,14 @@ impl Map {
         (old_coord,prev_at_coord)
     }
 
-    fn insert_room_force(&mut self, room: Room) -> (RoomId,Option<RoomId>) {
+    fn insert_room_force(&mut self, room: Room, uuidmap: &mut UUIDMap) -> (RoomId,Option<RoomId>) {
         let coord = room.coord;
-        let dirty_file = room.dirty_file;
+        let dirty_file = room.loaded.as_ref().is_some_and(|v| v.dirty_file);
+        let room_uuid = room.uuid;
+        let room_resuuld = room.resuuid;
         let room_id = self.state.rooms.insert(room);
+        uuidmap.insert(room_uuid, UUIDTarget::Room(self.id, room_id));
+        uuidmap.insert(room_resuuld, UUIDTarget::Resource(self.id, room_id));
         if dirty_file {
             self.dirty_rooms.insert(room_id);
         }
@@ -225,7 +230,7 @@ impl Map {
         self.room_matrix.get(coord).cloned()
     }
 
-    pub fn get_or_create_room_at(&mut self, coord: [u8;3]) -> RoomId {
+    pub fn get_or_create_room_at(&mut self, coord: [u8;3], uuidmap: &mut UUIDMap) -> RoomId {
         *self.room_matrix.get_or_insert_with(coord, || {
             let file_n = self.state.file_counter;
             self.state.file_counter += 1;
@@ -234,8 +239,12 @@ impl Map {
                 coord,
                 self.state.rooms_size,
                 RgbaImage::new(self.state.rooms_size[0], self.state.rooms_size[1] * 1),
-                1
+                1,
+                uuidmap,
+                self.id,
+                &self.path,
             ));
+            self.state.rooms.get(room_id).unwrap().update_uuidmap(room_id, uuidmap, self.id);
             self.dirty_rooms.insert(room_id);
             room_id
         })
@@ -268,7 +277,7 @@ impl Map {
         }
     }
 
-    pub fn create_create_room(&mut self, coord: [u8;3]) -> Option<RoomOp> {
+    pub fn create_create_room(&mut self, coord: [u8;3], uuidmap: &mut UUIDMap) -> Option<RoomOp> {
         if self.room_matrix.get(coord).is_some() {return None;}
 
         let file_n = self.state.file_counter;
@@ -278,7 +287,10 @@ impl Map {
             coord,
             self.state.rooms_size,
             RgbaImage::new(self.state.rooms_size[0], self.state.rooms_size[1] * 1),
-            1
+            1,
+            uuidmap,
+            self.id,
+            &self.path,
         );
 
         self.create_add_room(room)

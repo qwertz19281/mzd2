@@ -754,9 +754,9 @@ pub fn dpad(
             ),
             egui::Shape::line_segment(line2(0, text_size, base_size*2., text_size+base_size*2.), akw_stroke),
             egui::Shape::line_segment(line2(base_size*2., text_size, 0, text_size+base_size*2.), akw_stroke),
-            egui::Shape::rect_stroke(rector(0, text_size, base_size*2., text_size+base_size*2.), Rounding::none(), akw_stroke),
-            egui::Shape::rect_stroke(rector(base_size*2., text_size, base_size*3., text_size+base_size), Rounding::none(), akw_stroke),
-            egui::Shape::rect_stroke(rector(base_size*2., text_size+base_size, base_size*3., text_size+base_size*2.), Rounding::none(), akw_stroke),
+            egui::Shape::rect_stroke(rector(0, text_size, base_size*2., text_size+base_size*2.), Rounding::ZERO, akw_stroke),
+            egui::Shape::rect_stroke(rector(base_size*2., text_size, base_size*3., text_size+base_size), Rounding::ZERO, akw_stroke),
+            egui::Shape::rect_stroke(rector(base_size*2., text_size+base_size, base_size*3., text_size+base_size*2.), Rounding::ZERO, akw_stroke),
         ]);
     });
 

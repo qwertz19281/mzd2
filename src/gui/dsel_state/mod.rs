@@ -86,14 +86,14 @@ impl DSelState {
                 }
 
                 let stroke = egui::Stroke::new(1.5, Color32::BLUE);
-                dest(egui::Shape::rect_stroke(rect, Rounding::none(), stroke));
+                dest(egui::Shape::rect_stroke(rect, Rounding::ZERO, stroke));
             }
             return;
         }
         
         let mut render_rect = |[x,y]: [u16;2]| {
             let rect = rector(x as u32 * 8, y as u32 * 8, (x+1) as u32 * 8, (y+1) as u32 * 8);
-            dest(egui::Shape::rect_filled(rect, Rounding::none(), Color32::from_rgba_unmultiplied(255,0,0,64)));
+            dest(egui::Shape::rect_filled(rect, Rounding::ZERO, Color32::from_rgba_unmultiplied(255,0,0,64)));
         };
         
         for (&a,_) in &self.selected {

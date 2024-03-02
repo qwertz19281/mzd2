@@ -2,6 +2,7 @@ use std::cell::Cell;
 
 use raw_window_handle::{RawWindowHandle, HasRawWindowHandle};
 
+use crate::util::uuid::UUIDMap;
 use crate::util::MapId;
 
 use super::{MutQueue, dpi_hack};
@@ -40,6 +41,7 @@ pub struct SharedApp {
 pub struct SAM {
     pub dpi_scale: f32,
     pub mut_queue: MutQueue,
+    pub uuidmap: UUIDMap,
 }
 
 impl SharedApp {
@@ -53,6 +55,7 @@ impl SharedApp {
             sam: SAM {
                 dpi_scale: 0.,
                 mut_queue: vec![],
+                uuidmap: Default::default(),
             },
         }
     }

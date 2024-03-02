@@ -12,6 +12,7 @@ use crate::map::coord_store::CoordStore;
 use crate::util::*;
 
 use self::room_ops::{RoomOp, ShiftSmartCollected};
+use self::uuid::UUIDMap;
 
 use super::conndraw_state::ConnDrawState;
 use super::draw_state::{DrawMode, DrawState};
@@ -98,24 +99,40 @@ slotmap::new_key_type! {
 }
 
 impl Map {
-    pub fn save_map(&mut self) {
+    pub fn save_map(&mut self, uuidmap: &mut UUIDMap) {
         let mut errors = vec![];
+        let mut cleanup_res = vec![];
 
-        if let Err(e) = std::fs::create_dir_all(self.tex_dir()) {
-            if e.kind() != ErrorKind::AlreadyExists {
-                gui_error("Failed to create dir for rooms", e);
-                if !self.dirty_rooms.is_empty() {
-                    return;
+        let create_dir = |dir| {
+            if let Err(e) = std::fs::create_dir_all(dir) {
+                if e.kind() != ErrorKind::AlreadyExists {
+                    gui_error("Failed to create dir for rooms", &e);
+                    if !self.dirty_rooms.is_empty() {
+                        return Err(e);
+                    }
                 }
             }
+            Ok(())
+        };
+
+        let create_dirs = || -> anyhow::Result<()> {
+            create_dir(tex_resource_dir(&self.path))?;
+            create_dir(seltrix_resource_dir(&self.path))?;
+            Ok(())
+        };
+
+        if create_dirs().is_err() {
+            return;
         }
 
         for dirty_room in self.dirty_rooms.drain() {
             if let Some(room) = self.state.rooms.get_mut(dirty_room) {
-                if let Err(e) = room.save_image2(self.path.clone()) {
-                    errors.push(e);
-                } else {
-                    room.dirty_file = false;
+                if room.loaded.as_ref().is_some_and(|v| v.dirty_file) {
+                    if let Err(e) = room.save_room_res(self.path.clone(), &mut cleanup_res, uuidmap, self.id, dirty_room) {
+                        errors.push(e);
+                    } else {
+                        room.loaded.as_mut().map(|v| v.dirty_file = false);
+                    }
                 }
             }
         }
@@ -124,17 +141,17 @@ impl Map {
             gui_error(&format!("Failed to save img of {} rooms", errors.len()), e);
         }
 
-        self.save_map2().unwrap_gui("Error saving map");
+        let Some(_) = self.save_map2().unwrap_gui("Error saving map") else {return;};
+
+        for path in cleanup_res {
+            let _ = std::fs::remove_file(path);
+        }
     }
 
     fn save_map2(&mut self) -> anyhow::Result<()> {
         let ser = serde_json::to_vec(&self.state)?;
         std::fs::write(&self.path, ser)?;
         Ok(())
-    }
-
-    fn tex_dir(&self) -> PathBuf {
-        attached_to_path(&self.path, "_maptex")
     }
 
     pub fn load_map(path: PathBuf) -> anyhow::Result<Self> {
@@ -172,11 +189,12 @@ impl Map {
 
         let mut corrupted = vec![];
 
-        for (id,room) in &map.state.rooms {
-            if room.dirty_file {
+        for (id,room) in &mut map.state.rooms {
+            if false || room.loaded.as_ref().is_some_and(|v| v.dirty_file) {
+                // room.dirty_file = true;
                 map.dirty_rooms.insert(id);
             }
-            eprintln!("Romer X{}Y{}Z{}",room.coord[0],room.coord[1],room.coord[2]);
+            // eprintln!("Romer X{}Y{}Z{}",room.coord[0],room.coord[1],room.coord[2]);
             if let Some(prev) = map.room_matrix.insert(room.coord, id) {
                 eprintln!("CORRUPTED ROOM @ X{}Y{}Z{}",room.coord[0],room.coord[1],room.coord[2]);
                 corrupted.push(prev);
@@ -287,15 +305,15 @@ impl Map {
     fn lru_tick(&mut self) {
         //TODO also consider rooms in undo/redo buf in lru
         fn unload_room_tex(s: &mut Map, room: RoomId) {
-            if let Some(v) = s.state.rooms.get_mut(room).and_then(|r| r.image.tex.as_mut() ) {
+            if let Some(v) = s.state.rooms.get_mut(room).and_then(|r| r.loaded.as_mut() ).and_then(|r| r.image.tex.as_mut() ) {
                 v.tex_handle = None;
             }
         }
         fn unload_room_img(s: &mut Map, room: RoomId) {
             if s.state.ssel_room == Some(room) || s.state.dsel_room == Some(room) || s.state.template_room == Some(room) {return;}
             if let Some(v) = s.state.rooms.get_mut(room) {
-                if !v.dirty_file {
-                    v.image.img = Default::default();
+                if !v.loaded.as_ref().is_some_and(|v| v.dirty_file) {
+                    v.loaded = None;
                 }
             }
         }

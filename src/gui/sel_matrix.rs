@@ -4,6 +4,8 @@ use super::map::{RoomMap, DirtyRooms, LruCache};
 use super::room::draw_image::{DrawImageGroup, DrawImage};
 use super::util::ArrUtl;
 
+const SEL_MATRIX_FILE_HEADER: &[u8] = b"#!80c2014a-5cfd-4b23-b767-f5b295edf15e\n";
+
 #[derive(Clone, Deserialize,Serialize)]
 pub struct SelMatrix {
     pub dims: [u32;2],
@@ -13,7 +15,7 @@ pub struct SelMatrix {
 }
 
 /// SelEntry is relative to that one SelEntry, while SelPt is "absolute" (relative to whole img)
-#[derive(Clone, Debug, Deserialize,Serialize)]
+#[derive(Clone, Debug)]
 pub struct SelEntry {
     pub start: [i8;2],
     pub size: [u8;2],
@@ -146,7 +148,7 @@ pub fn sel_entry_dims(full: [u32;2]) -> [u32;2] {
     [full[0] / 8, full[1] / 8]
 }
 
-#[derive(Clone, Deserialize,Serialize)]
+#[derive(Clone, Deserialize)]
 pub struct SelMatrixLayered {
     pub dims: [u32;2],
     pub layers: Vec<SelMatrix>,
@@ -154,6 +156,8 @@ pub struct SelMatrixLayered {
 
 impl SelMatrixLayered {
     pub fn new([w,h]: [u32;2], initial_layers: usize) -> Self {
+        assert!(w != 0 && h != 0);
+
         let layers = (0..initial_layers)
             .map(|_| SelMatrix::new_empty([w,h]) ).collect();
 
@@ -178,6 +182,60 @@ impl SelMatrixLayered {
             }
         }
         None
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.dims[0] == 0 || self.dims[1] == 0
+    }
+
+    pub fn ser(&self, mut dest: impl std::io::Write) -> anyhow::Result<()> {
+        dest.write_all(SEL_MATRIX_FILE_HEADER)?;
+        dest.write_all(&self.dims[0].to_le_bytes())?;
+        dest.write_all(&self.dims[1].to_le_bytes())?;
+        dest.write_all(&(self.layers.len() as u64).to_le_bytes())?;
+        for layer in &self.layers {
+            for entry in &layer.entries {
+                dest.write_all(&entry.enc())?;
+            }
+        }
+        Ok(())
+    }
+
+    pub fn deser(mut src: impl std::io::Read, expected_size: [u32;2]) -> anyhow::Result<Self> {
+        let mut match_header = [0u8;SEL_MATRIX_FILE_HEADER.len()];
+        let mut w = [0u8;4];
+        let mut h = [0u8;4];
+        let mut len = [0u8;8];
+        src.read_exact(&mut match_header)?;
+        if SEL_MATRIX_FILE_HEADER != match_header {
+            anyhow::bail!("Invalid seltrix file header");
+        }
+        src.read_exact(&mut w)?;
+        src.read_exact(&mut h)?;
+        src.read_exact(&mut len)?;
+        let size = [u32::from_le_bytes(w), u32::from_le_bytes(h)];
+        let len = u64::from_le_bytes(len) as usize;
+        if size != expected_size {
+            anyhow::bail!("sel matrix size mismatch");
+        }
+        // if len != expected_n_layers {
+        //     anyhow::bail!("sel matrix layers mismatch");
+        // }
+        let mut dest = Self::new(size, len);
+        for layer in &mut dest.layers {
+            for entry in &mut layer.entries {
+                let mut dec = [0u8;4];
+                src.read_exact(&mut dec)?;
+                *entry = SelEntry::dec(&dec);
+            }
+        }
+        Ok(dest)
+    }
+}
+
+impl Default for SelMatrixLayered {
+    fn default() -> Self {
+        Self { dims: Default::default(), layers: Default::default() }
     }
 }
 
@@ -281,6 +339,7 @@ pub trait SelEntryWrite: SelEntryRead {
 
     fn set_and_fix(&mut self, pos: [u32;2], v: SelEntry);
 
+    // TODO must be rewritten so sels can hold selsize top-left <0 as they can hold bottom-right >w/h
     fn set_and_fixi(&mut self, pos: [i32;2], v: SelEntry) {
         if pos[0] >= 0 && pos[1] >= 0 {
             self.set_and_fix(pos.as_u32(), v);
@@ -376,8 +435,9 @@ impl SelEntryRead for DIGMatrixAccess<'_,'_> {
             
             if x >= roff[0] && x < roff[0]+rooms_size[0] && y >= roff[1] && y < roff[1]+rooms_size[1] {
                 let Some(room) = self.rooms.get(room_id) else {continue};
+                let Some(loaded) = &room.loaded else {continue};
 
-                return room.sel_matrix.layers[self.layer].get([x-roff[0],y-roff[1]]);
+                return loaded.sel_matrix.layers[self.layer].get([x-roff[0],y-roff[1]]);
             }
         }
         None
@@ -392,8 +452,9 @@ impl SelEntryRead for DIGMatrixAccessMut<'_,'_> {
             
             if x >= roff[0] && x < roff[0]+rooms_size[0] && y >= roff[1] && y < roff[1]+rooms_size[1] {
                 let Some(room) = self.rooms.get(room_id) else {continue};
+                let Some(loaded) = &room.loaded else {continue};
 
-                return room.sel_matrix.layers[self.layer].get([x-roff[0],y-roff[1]]);
+                return loaded.sel_matrix.layers[self.layer].get([x-roff[0],y-roff[1]]);
             }
         }
         None
@@ -407,9 +468,11 @@ impl SelEntryWrite for DIGMatrixAccessMut<'_,'_> {
             let roff = roff.div8();
             
             if x >= roff[0] && x < roff[0]+rooms_size[0] && y >= roff[1] && y < roff[1]+rooms_size[1] {
-                if !self.rooms.contains_key(room_id) {continue};
+                let Some(room) = self.rooms.get_mut(room_id) else {continue};
+                let Some(loaded) = &mut room.loaded else {continue};
+                loaded.dirty_file = true;
 
-                return self.rooms.get_mut(room_id).unwrap().sel_matrix.layers[self.layer].get_mut([x-roff[0],y-roff[1]]);
+                return self.rooms.get_mut(room_id).unwrap().loaded.as_mut().unwrap().sel_matrix.layers[self.layer].get_mut([x-roff[0],y-roff[1]]);
             }
         }
         None
@@ -422,8 +485,11 @@ impl SelEntryWrite for DIGMatrixAccessMut<'_,'_> {
             let Some((o1,o2)) = effective_bounds2((roff,roff.add(rooms_size)), ([x0,y0],[x1,y1])) else {continue};
 
             let Some(room) = self.rooms.get_mut(room_id) else {continue};
+            let Some(loaded) = &mut room.loaded else {continue};
 
-            room.sel_matrix.layers[self.layer].fill(o1, o2);
+            loaded.sel_matrix.layers[self.layer].fill(o1, o2);
+
+            loaded.dirty_file = true;
         }
     }
 
@@ -433,9 +499,12 @@ impl SelEntryWrite for DIGMatrixAccessMut<'_,'_> {
             let roff = roff.div8();
             
             if pos[0] >= roff[0] && pos[0] < roff[0]+rooms_size[0] && pos[1] >= roff[1] && pos[1] < roff[1]+rooms_size[1] {
-                let Some(room) = self.rooms.get_mut(room_id) else {break};
+                let Some(room) = self.rooms.get_mut(room_id) else {continue};
+                let Some(loaded) = &mut room.loaded else {continue};
 
-                room.sel_matrix.layers[self.layer].set_and_fix(pos.sub(roff), v);
+                loaded.sel_matrix.layers[self.layer].set_and_fix(pos.sub(roff), v);
+
+                loaded.dirty_file = true;
 
                 break;
             }

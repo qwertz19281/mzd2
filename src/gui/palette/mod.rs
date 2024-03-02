@@ -96,7 +96,7 @@ pub fn palette_ui(state: &mut SharedApp, ui: &mut egui::Ui) {
         shapes.extend([
             egui::Shape::rect_filled(
                 texdraw_rect(0),
-                Rounding::none(),
+                Rounding::ZERO,
                 egui::Color32::BLACK,
             ),
             egui::Shape::image(
@@ -111,7 +111,7 @@ pub fn palette_ui(state: &mut SharedApp, ui: &mut egui::Ui) {
     for (pal,(_,pos)) in state.palette.paletted.iter_mut().zip(xbounds_iter(plen)) {
         shapes.push(egui::Shape::rect_filled(
             texdraw_rect(pos),
-            Rounding::none(),
+            Rounding::ZERO,
             egui::Color32::BLACK,
         ));
 
