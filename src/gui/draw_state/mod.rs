@@ -13,10 +13,10 @@ use super::texture::basic_tex_shape_c;
 use super::util::ArrUtl;
 
 pub struct DrawState {
-    draw_start: Option<[u16;2]>,
-    current_dest: HashSet<[u16;2]>,
-    current_dest2: Vec<[u16;2]>,
-    prev_tik: Option<[u16;2]>,
+    draw_start: Option<[i16;2]>,
+    current_dest: HashSet<[i16;2]>,
+    current_dest2: Vec<[i16;2]>,
+    prev_tik: Option<[i16;2]>,
     src: Option<PaletteItem>,
     mode: DrawMode,
     replace: bool,
@@ -68,8 +68,8 @@ impl DrawState {
             if let Some(tex) = &src.texture {
                 if self.replace {
                     for &q in self.current_dest.iter().chain(self.current_dest2.iter()) {
-                        let q = q.as_u32().mul8();
-                        let rect = rector(q[0], q[1], q[0] + size.0, q[1] + size.1);
+                        let q = q.as_i32().mul8();
+                        let rect = rector(q[0], q[1], q[0] + size.0 as i32, q[1] + size.1 as i32);
                         dest(egui::Shape::rect_filled(rect, Rounding::none(), Color32::BLACK))
                     }
                 }
@@ -77,8 +77,8 @@ impl DrawState {
                 let mut mesh = egui::Mesh::with_texture(tex.id());
 
                 for &q in self.current_dest.iter().chain(self.current_dest2.iter()) {
-                    let q = q.as_u32().mul8();
-                    let rect = rector(q[0], q[1], q[0] + size.0, q[1] + size.1);
+                    let q = q.as_i32().mul8();
+                    let rect = rector(q[0], q[1], q[0] + size.0 as i32, q[1] + size.1 as i32);
                     mesh.add_rect_with_uv(rect, src.uv, blend);
                 }
 
@@ -87,11 +87,11 @@ impl DrawState {
         } else {
             if src.is_empty() {return;}
 
-            let q = self.quantin2(pos, src).as_u32().mul8();
+            let q = self.quantin2(pos, src).as_i32().mul8();
             // render quant rect at pos
             let size = src.src.img.dimensions();
 
-            let rect = rector(q[0], q[1], q[0] + size.0, q[1] + size.1);
+            let rect = rector(q[0], q[1], q[0] + size.0 as i32, q[1] + size.1 as i32);
 
             let stroke = egui::Stroke::new(1.5, Color32::BLUE);
 
@@ -116,14 +116,14 @@ impl DrawState {
 
         for &doff in self.current_dest.iter().chain(self.current_dest2.iter()) {
             for (a,b) in &src.src.sels {
-                dest.set_and_fix(
-                    a.add(doff).as_u32(),
+                dest.set_and_fixi(
+                    a.as_i32().add(doff.as_i32()),
                     b.clone()
                 );
             }
 
-            dest.img_write(
-                doff.as_u32().mul8(),
+            dest.img_writei(
+                doff.as_i32().mul8(),
                 src.src.img.dimensions().into(),
                 &src.src.img,
                 [0,0],
@@ -138,7 +138,7 @@ impl DrawState {
         self.draw_start.is_some()
     }
 
-    fn recalc(&mut self, dest: [u16;2]) {
+    fn recalc(&mut self, dest: [i16;2]) {
         if self.prev_tik == Some(dest) {return;}
         let Some(draw_start) = self.draw_start else {return};
 
@@ -155,7 +155,7 @@ impl DrawState {
             _ => {
                 let [sw,sh] = self.src.as_ref().unwrap().quantis8();
 
-                fn range_se(a: u16, b: u16) -> Range<u16> {
+                fn range_se(a: i16, b: i16) -> Range<i16> {
                     if b > a {
                         a .. b+1
                     } else {
@@ -184,21 +184,21 @@ impl DrawState {
         ]
     }
 
-    fn quantoff(&self, v: [u16;2]) -> [u8;2] {
+    fn quantoff(&self, v: [i16;2]) -> [i32;2] {
         let [sw,sh] = self.src.as_ref().unwrap().quantis8();
         [
-            (v[0] as u32 % sw) as u8,
-            (v[1] as u32 % sh) as u8,
+            (v[0] as i32).rem_euclid(sw as i32),
+            (v[1] as i32).rem_euclid(sh as i32),
         ]
     }
 
-    fn quantin(&self, i: [f32;2]) -> [u16;2] {
+    fn quantin(&self, i: [f32;2]) -> [i16;2] {
         self.quantin2(i, self.src.as_ref().unwrap())
     }
 
-    fn quantin2(&self, i: [f32;2], src: &PaletteItem) -> [u16;2] {
+    fn quantin2(&self, i: [f32;2], src: &PaletteItem) -> [i16;2] {
         let (sw,sh) = src.src.img.dimensions();
-        quantize_mouse_tilepos(i, [sw/8,sh/8]).as_u16()
+        quantize_mouse_tilepos(i, [sw/8,sh/8]).as_i16()
     }
 }
 
@@ -219,8 +219,8 @@ pub enum DrawMode {
 }
 
 /// tile_size is in eight-pixel unit
-fn quantize_mouse_tilepos(i: [f32;2], tile_size: [u32;2]) -> [u32;2] {
-    let x = ((i[0] - (tile_size[0] as f32 * 4.)) / 8.).round() as u32;
-    let y = ((i[1] - (tile_size[1] as f32 * 4.)) / 8.).round() as u32;
+fn quantize_mouse_tilepos(i: [f32;2], tile_size: [u32;2]) -> [i32;2] {
+    let x = ((i[0] - (tile_size[0] as f32 * 4.)) / 8.).round() as i32;
+    let y = ((i[1] - (tile_size[1] as f32 * 4.)) / 8.).round() as i32;
     [x,y]
 }

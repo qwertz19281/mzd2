@@ -541,6 +541,25 @@ pub trait ImgWrite {
     fn img_write(&mut self, off: [u32;2], size: [u32;2], src: &RgbaImage, src_off: [u32;2], replace: bool);
 
     fn img_erase(&mut self, off: [u32;2], size: [u32;2]);
+
+    fn img_writei(&mut self, mut off: [i32;2], mut size: [u32;2], src: &RgbaImage, mut src_off: [u32;2], replace: bool) {
+        if off[0] < 0 {
+            let diff = (-off[0]) as u32;
+            if diff >= size[0] {return;}
+            off[0] = 0;
+            size[0] -= diff;
+            src_off[0] += diff;
+        }
+        if off[1] < 0 {
+            let diff = (-off[1]) as u32;
+            if diff >= size[1] {return;}
+            off[1] = 0;
+            size[1] -= diff;
+            src_off[1] += diff;
+        }
+
+        self.img_write(off.as_u32(), size, src, src_off, replace);
+    }
 }
 
 impl ImgRead for DrawImage {
