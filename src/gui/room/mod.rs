@@ -29,6 +29,7 @@ pub struct Room {
     pub tags: Vec<TagState>,
     #[serde(skip)]
     pub op_evo: u64,
+    #[serde(skip)]
     pub locked: Option<String>,
     #[serde(skip)]
     pub loaded: Option<RoomLoaded>,
