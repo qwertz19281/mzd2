@@ -232,10 +232,7 @@ impl Map {
 
     pub fn get_or_create_room_at(&mut self, coord: [u8;3], uuidmap: &mut UUIDMap) -> RoomId {
         *self.room_matrix.get_or_insert_with(coord, || {
-            let file_n = self.state.file_counter;
-            self.state.file_counter += 1;
             let room_id = self.state.rooms.insert(Room::create_empty(
-                file_n,
                 coord,
                 self.state.rooms_size,
                 RgbaImage::new(self.state.rooms_size[0], self.state.rooms_size[1] * 1),
@@ -280,10 +277,7 @@ impl Map {
     pub fn create_create_room(&mut self, coord: [u8;3], uuidmap: &mut UUIDMap) -> Option<RoomOp> {
         if self.room_matrix.get(coord).is_some() {return None;}
 
-        let file_n = self.state.file_counter;
-        self.state.file_counter += 1;
         let room = Room::create_empty(
-            file_n,
             coord,
             self.state.rooms_size,
             RgbaImage::new(self.state.rooms_size[0], self.state.rooms_size[1] * 1),
