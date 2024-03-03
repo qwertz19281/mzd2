@@ -210,6 +210,12 @@ impl Map {
                 anyhow::bail!("UUID COLLISION {}", r.uuid);
             }
         }
+        for (room_id,r) in &state.rooms {
+            if let Some(prev) = uuidmap.insert(r.resuuid, UUIDTarget::Resource(id, room_id)) {
+                uuidmap.insert(r.resuuid, prev);
+                anyhow::bail!("UUID COLLISION {}", r.uuid);
+            }
+        }
 
         // get the selected room ids from the UUIDs
         fn get_room_id(v: &Uuid, uuidmap: &mut UUIDMap, state: &MapState, typ: &str) -> Option<RoomId> {
