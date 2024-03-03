@@ -37,6 +37,8 @@ pub struct Room {
     pub selected_layer: usize,
     #[serde(with = "dirconn_serde")]
     pub dirconn: [[bool;2];3],
+    pub ctime: chrono::DateTime<chrono::Utc>,
+    pub mtime: chrono::DateTime<chrono::Utc>,
 }
 
 pub struct RoomLoaded {
@@ -49,7 +51,11 @@ impl Room {
     pub fn create_empty(coord: [u8;3], rooms_size: [u32;2], image: RgbaImage, initial_layers: usize, uuidmap: &mut UUIDMap, map_id: MapId, map_path: impl Into<PathBuf>) -> Self {
         assert!(rooms_size[0] % 16 == 0 && rooms_size[1] % 16 == 0);
         assert!(image.width() == rooms_size[0] && image.height() as usize == rooms_size[1] as usize * initial_layers as usize);
+
+        let current_time = chrono::Utc::now();
+
         let uuid = generate_uuid(uuidmap);
+
         let this = Self {
             loaded: Some(RoomLoaded {
                 image: DrawImage {
@@ -70,6 +76,8 @@ impl Room {
             selected_layer: 0,
             dirconn: Default::default(),
             desc_text: Default::default(),
+            ctime: current_time,
+            mtime: current_time,
         };
 
         uuidmap.insert(this.uuid, UUIDTarget::Room(map_id, RoomId::null()));

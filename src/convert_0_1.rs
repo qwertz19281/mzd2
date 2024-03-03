@@ -1,7 +1,8 @@
 use std::io::{Cursor, ErrorKind};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::Context;
+use chrono::{DateTime, Utc};
 use serde::Deserialize;
 use slotmap::{HopSlotMap, Key as _};
 
@@ -25,6 +26,8 @@ pub fn convert_0_1(args: Args) {
 }
 
 pub fn convert_map(map_path: PathBuf, uuidmap: &mut UUIDMap) -> anyhow::Result<()> {
+    let map_mtime = get_mtime_of_mzd_file(&map_path).context("Reading old map")?;
+
     let data = std::fs::read(&map_path).context("Reading old map")?;
     let old_state = serde_json::from_slice::<OldMapState>(&data).context("Deserializing old map")?;
     drop(data);
@@ -56,6 +59,8 @@ pub fn convert_map(map_path: PathBuf, uuidmap: &mut UUIDMap) -> anyhow::Result<(
 
         let old_tex_path = old_room.tex_file(&map_path);
 
+        let room_mtime = get_mtime_of_mzd_file(&old_tex_path).context("Cannot read metadata of tex file")?;
+
         let new_room = Room {
             loaded: None,
             uuid: generate_uuid(uuidmap),
@@ -68,6 +73,8 @@ pub fn convert_map(map_path: PathBuf, uuidmap: &mut UUIDMap) -> anyhow::Result<(
             selected_layer: old_room.selected_layer,
             dirconn: old_room.dirconn,
             desc_text: old_room.desc_text,
+            ctime: room_mtime,
+            mtime: room_mtime,
         };
 
         uuidmap.insert(new_room.uuid, UUIDTarget::Room(new_map_id, RoomId::null()));
@@ -121,6 +128,8 @@ pub fn convert_map(map_path: PathBuf, uuidmap: &mut UUIDMap) -> anyhow::Result<(
         _serde_dsel_room: new_dsel_room,
         _serde_ssel_room: new_ssel_room,
         _serde_template_room: new_template_room,
+        ctime: map_mtime,
+        mtime: map_mtime,
     };
 
     uuidmap.insert(new_map_state.uuid, UUIDTarget::Map(new_map_id));
@@ -197,4 +206,16 @@ impl OldRoom {
         tex_dir.push(format!("{:08}.png",self.file_id));
         tex_dir
     }
+}
+
+fn get_mtime_of_mzd_file(f: &Path) -> anyhow::Result<DateTime<Utc>> {
+    let meta = match f.metadata() {
+        Err(e) if e.kind() == ErrorKind::NotFound => return Ok(Utc::now()),
+        v => v
+    }?;
+    anyhow::ensure!(meta.is_file(), "Map file is not a file");
+    let mtime = filetime::FileTime::from_last_modification_time(&meta);
+    let unix_secs = mtime.unix_seconds();
+    let nanos = mtime.nanoseconds();
+    Ok(DateTime::<Utc>::from_timestamp(unix_secs, nanos).unwrap_or_else(Utc::now))
 }

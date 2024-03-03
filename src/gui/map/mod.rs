@@ -98,6 +98,8 @@ pub struct MapState {
     pub(crate) _serde_ssel_room: Option<Uuid>,
     #[serde(rename = "template_room")]
     pub(crate) _serde_template_room: Option<Uuid>,
+    pub ctime: chrono::DateTime<chrono::Utc>,
+    pub mtime: chrono::DateTime<chrono::Utc>,
 }
 
 #[derive(Deserialize,Serialize)]
@@ -138,9 +140,12 @@ impl Map {
             return;
         }
 
+        let current_time = chrono::Utc::now();
+
         for dirty_room in self.dirty_rooms.drain() {
             if let Some(room) = self.state.rooms.get_mut(dirty_room) {
                 if room.loaded.as_ref().is_some_and(|v| v.dirty_file) {
+                    room.mtime = current_time;
                     if let Err(e) = room.save_room_res(self.path.clone(), &mut cleanup_res, uuidmap, self.id, dirty_room) {
                         errors.push(e);
                     } else {
@@ -153,6 +158,8 @@ impl Map {
         if let Some(e) = errors.first() {
             gui_error(&format!("Failed to save img of {} rooms", errors.len()), e);
         }
+
+        self.state.mtime = current_time;
 
         let Some(_) = self.save_map2().unwrap_gui("Error saving map") else {return;};
 
@@ -308,14 +315,15 @@ impl Map {
     pub fn new(path: PathBuf, rooms_size: [u32;2], uuidmap: &mut UUIDMap) -> Self {
         assert!(rooms_size[0] % 16 == 0 && rooms_size[1] % 16 == 0);
 
+        let current_time = chrono::Utc::now();
+
         let title = match path.file_stem() {
             Some(name) => {
                 let name = name.to_string_lossy();
                 name.into_owned()
             },
             None => {
-                let moment = chrono::Local::now();
-                moment.to_rfc3339()
+                current_time.with_timezone(&chrono::Local).to_rfc3339()
             }
         };
         let this = Self {
@@ -343,6 +351,8 @@ impl Map {
                 _serde_dsel_room: None,
                 _serde_ssel_room: None,
                 _serde_template_room: None,
+                ctime: current_time,
+                mtime: current_time,
             },
             path,
             dirty_rooms: Default::default(),
