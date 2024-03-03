@@ -13,7 +13,7 @@ use crate::util::{MapId, gui_error};
 
 use super::room_ops::{render_picomap, RoomOp, OpAxis};
 use super::uuid::UUIDMap;
-use super::{RoomId, MapEditMode, Map, zoomf};
+use super::{next_ur_op_id, zoomf, Map, MapEditMode, RoomId};
 
 impl Map {
     fn ui_create_room(&mut self, coord: [u8;3], uuidmap: &mut UUIDMap) -> Option<RoomId> {
@@ -23,7 +23,7 @@ impl Map {
                 &RoomOp::Del(id) => id,
                 _ => panic!(),
             };
-            self.undo_buf.push_back(ur);
+            self.undo_buf.push_back((ur,next_ur_op_id()));
             self.after_room_op_apply_invalidation(false);
 
             Some(room_id)
@@ -40,7 +40,7 @@ impl Map {
 
     fn ui_apply_roomop(&mut self, op: RoomOp, uuidmap: &mut UUIDMap) {
         let ur = self.apply_room_op(op, uuidmap);
-        self.undo_buf.push_back(ur);
+        self.undo_buf.push_back((ur,next_ur_op_id()));
         self.after_room_op_apply_invalidation(false);
     }
 
@@ -89,6 +89,35 @@ impl Map {
         self.draw_state.draw_cancel();
         self.dsel_state.clear_selection();
         self.del_state.del_cancel();
+    }
+
+    fn attempt_remove_transient_room(&mut self, id: RoomId, uuidmap: &mut UUIDMap) {
+        // try to remove pending transient room
+        let Some(room) = self.state.rooms.get(id) else {return};
+        if !room.transient {return;}
+        if !self.undo_buf.is_empty() {
+            // if creation of this transient room was the last undoable action, we can undo it
+            let (op,_) = self.undo_buf.back().unwrap();
+            if matches!(op, RoomOp::Del(id)) {
+                let (op,_) = self.undo_buf.pop_back().unwrap();
+                let mut mesbuf = String::new();
+                if self.validate_apply(&op, &mut mesbuf) {
+                    let ur = self.apply_room_op(op, uuidmap);
+                    // the redo can only be omitted if there is nothing to redo
+                    if !self.redo_buf.is_empty() {
+                        self.redo_buf.push_back((ur,next_ur_op_id()));
+                    }
+                    self.after_room_op_apply_invalidation(true);
+                } else {
+                    gui_error("Cannot apply undo", mesbuf);
+                }
+            }
+        } else if self.undo_buf.is_empty() && self.redo_buf.is_empty() {
+            // else we can only silently remove if the is nothing to undo or redo
+            if let Some(r) = self.create_delete_room(id) {
+                self.apply_room_op(r, uuidmap);
+            }
+        }
     }
 
     pub fn ui_map(
@@ -184,14 +213,14 @@ impl Map {
                         !self.undo_buf.is_empty(),
                         egui::Button::new("Undo")
                     )
-                        .on_hover_text(self.undo_buf.back().map_or(String::default(), |op| op.describe(&self.state)));
+                        .on_hover_text(self.undo_buf.back().map_or(String::default(), |(op,_)| op.describe(&self.state)));
 
                     if resp.clicked() && !self.undo_buf.is_empty() {
-                        let op = self.undo_buf.pop_back().unwrap();
+                        let (op,_) = self.undo_buf.pop_back().unwrap();
                         let mut mesbuf = String::new();
                         if self.validate_apply(&op, &mut mesbuf) {
                             let ur = self.apply_room_op(op, &mut sam.uuidmap);
-                            self.redo_buf.push_back(ur);
+                            self.redo_buf.push_back((ur,next_ur_op_id()));
                             self.after_room_op_apply_invalidation(true);
                         } else {
                             gui_error("Cannot apply undo", mesbuf);
@@ -202,14 +231,14 @@ impl Map {
                         !self.redo_buf.is_empty(),
                         egui::Button::new("Redo")
                     )
-                        .on_hover_text(self.redo_buf.back().map_or(String::default(), |op| op.describe(&self.state)));
+                        .on_hover_text(self.redo_buf.back().map_or(String::default(), |(op,_)| op.describe(&self.state)));
 
                     if resp.clicked() && !self.redo_buf.is_empty() {
-                        let op = self.redo_buf.pop_back().unwrap();
+                        let (op,_) = self.redo_buf.pop_back().unwrap();
                         let mut mesbuf = String::new();
                         if self.validate_apply(&op, &mut mesbuf) {
                             let ur = self.apply_room_op(op, &mut sam.uuidmap);
-                            self.undo_buf.push_back(ur);
+                            self.undo_buf.push_back((ur,next_ur_op_id()));
                             self.after_room_op_apply_invalidation(true);
                         } else {
                             gui_error("Cannot apply redo", mesbuf);
@@ -302,6 +331,9 @@ impl Map {
                                 egui::TextEdit::multiline(&mut room.desc_text)
                                 .id_source(("RoomDescTB",v))
                             );
+                            if !room.desc_text.is_empty() {
+                                room.transient = false;
+                            }
                         }
                     },
                     _ => {

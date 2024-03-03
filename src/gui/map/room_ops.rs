@@ -190,6 +190,7 @@ impl Map {
         if old_pos != dest {
             self.room_matrix.remove(old_pos, true);
         }
+        room.transient = false;
         true
     }
 
@@ -208,14 +209,16 @@ impl Map {
             self.room_matrix.remove(old_coord.unwrap(), true);
         }
 
+        room.transient = false;
         (old_coord,prev_at_coord)
     }
 
-    fn insert_room_force(&mut self, room: Room, uuidmap: &mut UUIDMap) -> (RoomId,Option<RoomId>) {
+    fn insert_room_force(&mut self, mut room: Room, uuidmap: &mut UUIDMap) -> (RoomId,Option<RoomId>) {
         let coord = room.coord;
         let dirty_file = room.loaded.as_ref().is_some_and(|v| v.dirty_file);
         let room_uuid = room.uuid;
         let room_resuuld = room.resuuid;
+        room.transient = false;
         let room_id = self.state.rooms.insert(room);
         uuidmap.insert(room_uuid, UUIDTarget::Room(self.id, room_id));
         uuidmap.insert(room_resuuld, UUIDTarget::Resource(self.id, room_id));
@@ -249,10 +252,11 @@ impl Map {
 
     /// The removed room's coord is invalid!
     fn delete_room(&mut self, id: RoomId) -> Option<Room> {
-        if let Some(removed) = self.state.rooms.remove(id) {
+        if let Some(mut removed) = self.state.rooms.remove(id) {
             assert!(self.room_matrix.get(removed.coord) == Some(&id));
             self.room_matrix.remove(removed.coord, true);
             //TODO should we save the rooms here if dirty_file?
+            removed.transient = false;
             Some(removed)
         } else {
             None
@@ -332,6 +336,7 @@ impl Map {
                 let removed = self.room_matrix.remove(room.coord, false);
                 assert!(removed == Some(id));
                 room.coord = apply_sift(room.coord, n_sift, axis, dir);
+                room.transient = false;
                 room.op_evo = op_evo;
             }
         }
@@ -361,6 +366,7 @@ impl Map {
                 let removed = self.room_matrix.remove(room.coord, false);
                 assert!(removed == Some(id));
                 room.coord = apply_unsift(room.coord, n_sift, axis, dir);
+                room.transient = false;
                 room.op_evo = op_evo;
             }
         }
@@ -510,6 +516,7 @@ impl Map {
             assert!(removed == Some(id));
 
             room.coord = apply_sift(room.coord, o.n_sift, o.axis, o.dir);
+            room.transient = false;
 
             let dconn = room.dirconn;
 

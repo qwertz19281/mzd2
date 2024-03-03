@@ -39,6 +39,8 @@ pub struct Room {
     pub dirconn: [[bool;2];3],
     pub ctime: chrono::DateTime<chrono::Utc>,
     pub mtime: chrono::DateTime<chrono::Utc>,
+    #[serde(default)] // TODO remove default in final disk_format_0.2
+    pub transient: bool,
 }
 
 pub struct RoomLoaded {
@@ -78,6 +80,7 @@ impl Room {
             desc_text: Default::default(),
             ctime: current_time,
             mtime: current_time,
+            transient: false,
         };
 
         uuidmap.insert(this.uuid, UUIDTarget::Room(map_id, RoomId::null()));

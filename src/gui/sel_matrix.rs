@@ -474,6 +474,7 @@ impl SelEntryWrite for DIGMatrixAccessMut<'_,'_> {
                 let Some(room) = self.rooms.get_mut(room_id) else {continue};
                 let Some(loaded) = &mut room.loaded else {continue};
                 loaded.dirty_file = true;
+                room.transient = false;
 
                 return self.rooms.get_mut(room_id).unwrap().loaded.as_mut().unwrap().sel_matrix.layers[self.layer].get_mut([x-roff[0],y-roff[1]]);
             }
@@ -493,6 +494,7 @@ impl SelEntryWrite for DIGMatrixAccessMut<'_,'_> {
             loaded.sel_matrix.layers[self.layer].fill(o1, o2);
 
             loaded.dirty_file = true;
+            room.transient = false;
         }
     }
 
@@ -508,6 +510,7 @@ impl SelEntryWrite for DIGMatrixAccessMut<'_,'_> {
                 loaded.sel_matrix.layers[self.layer].set_and_fix(pos.sub(roff), v);
 
                 loaded.dirty_file = true;
+                room.transient = false;
 
                 break;
             }

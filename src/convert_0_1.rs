@@ -75,6 +75,7 @@ pub fn convert_map(map_path: PathBuf, uuidmap: &mut UUIDMap) -> anyhow::Result<(
             desc_text: old_room.desc_text,
             ctime: room_mtime,
             mtime: room_mtime,
+            transient: false,
         };
 
         uuidmap.insert(new_room.uuid, UUIDTarget::Room(new_map_id, RoomId::null()));

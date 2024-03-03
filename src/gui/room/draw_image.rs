@@ -247,6 +247,7 @@ impl DrawImageGroup {
             );
 
             loaded.dirty_file = true;
+            room.transient = false;
             dirty_map.0.insert(room_id);
             dirty_map.1.pop(&room_id);
 

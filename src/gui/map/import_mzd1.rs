@@ -5,6 +5,7 @@ use image::GenericImageView;
 use regex::Regex;
 
 use crate::gui::init::CURRENT_WINDOW_HANDLE;
+use crate::gui::map::next_ur_op_id;
 use crate::gui::map::room_ops::{RoomOp, try_6_sides};
 use crate::gui::sel_matrix::{SelEntryWrite, SelEntry};
 use crate::gui::util::ArrUtl;
@@ -138,7 +139,7 @@ impl Map {
 
         if undo_ops.is_empty() {return Ok(());}
 
-        self.undo_buf.push_back(RoomOp::Multi(undo_ops));
+        self.undo_buf.push_back((RoomOp::Multi(undo_ops),next_ur_op_id()));
 
         self.after_room_op_apply_invalidation(false);
 
