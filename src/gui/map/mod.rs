@@ -93,11 +93,11 @@ pub struct MapState {
     pub ds_replace: bool,
     pub dsel_whole: bool,
     #[serde(rename = "dsel_room")]
-    _serde_dsel_room: Option<Uuid>,
+    pub(crate) _serde_dsel_room: Option<Uuid>,
     #[serde(rename = "ssel_room")]
-    _serde_ssel_room: Option<Uuid>,
+    pub(crate) _serde_ssel_room: Option<Uuid>,
     #[serde(rename = "template_room")]
-    _serde_template_room: Option<Uuid>,
+    pub(crate) _serde_template_room: Option<Uuid>,
 }
 
 #[derive(Deserialize,Serialize)]

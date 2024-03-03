@@ -1,4 +1,5 @@
 use std::cell::Cell;
+use std::path::PathBuf;
 
 use raw_window_handle::{RawWindowHandle, HasRawWindowHandle};
 
@@ -12,7 +13,7 @@ use super::top_panel::{TopPanel, top_panel_ui};
 use super::window_states::map::{Maps, maps_ui};
 use super::window_states::tileset::{Tilesets, tilesets_ui};
 
-pub fn launch_gui() {
+pub fn launch_gui(args: crate::cli::Args) {
     let options = eframe::NativeOptions {
         initial_window_size: Some(egui::vec2(1080.0, 600.0)),
         ..Default::default()
@@ -24,7 +25,7 @@ pub fn launch_gui() {
         "mzd 2.0",
         options,
         Box::new(|cc| {
-            Box::new(SharedApp::new())
+            Box::new(SharedApp::new(args.load_paths))
         }),
     ).unwrap();
 }
@@ -35,6 +36,7 @@ pub struct SharedApp {
     pub tilesets: Tilesets,
     pub warpon: Option<(MapId,RoomId,(u32,u32))>,
     pub palette: Palette,
+    pub init_load_paths: Vec<PathBuf>,
     pub sam: SAM,
 }
 
@@ -45,7 +47,7 @@ pub struct SAM {
 }
 
 impl SharedApp {
-    fn new() -> Self {
+    fn new(init_load_paths: Vec<PathBuf>) -> Self {
         Self {
             top_panel: TopPanel::new(),
             maps: Maps::new(),
@@ -57,6 +59,7 @@ impl SharedApp {
                 mut_queue: vec![],
                 uuidmap: Default::default(),
             },
+            init_load_paths,
         }
     }
 }
@@ -72,8 +75,12 @@ impl eframe::App for SharedApp {
         }
 
         
-        for v in std::mem::replace(&mut self.sam.mut_queue, vec![]) {
+        for v in std::mem::take(&mut self.sam.mut_queue) {
             v(self);
+        }
+
+        for path in std::mem::take(&mut self.init_load_paths) {
+            self.try_load_from_path(path, ctx);
         }
 
         self.handle_filedrop(ctx, frame);

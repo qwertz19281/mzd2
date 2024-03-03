@@ -16,16 +16,19 @@ impl SharedApp {
 
         for file in dropped {
             if let Some(path) = file.path {
-                if path.to_string_lossy().ends_with(".mzdmap") {
-                    // TODO load map
-                    self.try_load_map(path.clone());
-                    self.top_panel.last_map_path.get_or_insert(path);
-                    ctx.request_repaint();
-                } else if let Ok(img) = image::open(&path) {
-                    self.try_load_tileset(path, img.to_rgba8());
-                    ctx.request_repaint();
-                }
+                self.try_load_from_path(path, ctx);
             }
+        }
+    }
+
+    pub fn try_load_from_path(&mut self, path: PathBuf, ctx: &egui::Context) {
+        if path.to_string_lossy().ends_with(".mzdmap") {
+            self.try_load_map(path.clone());
+            self.top_panel.last_map_path.get_or_insert(path);
+            ctx.request_repaint();
+        } else if let Ok(img) = image::open(&path) {
+            self.try_load_tileset(path, img.to_rgba8());
+            ctx.request_repaint();
         }
     }
 
