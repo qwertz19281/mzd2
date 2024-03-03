@@ -388,7 +388,13 @@ impl Map {
             }
         }
         fn unload_room_img(s: &mut Map, room: RoomId) {
-            if s.ssel_room == Some(room) || s.dsel_room == Some(room) || s.template_room == Some(room) {return;}
+            if s.ssel_room == Some(room)
+                || s.dsel_room == Some(room)
+                || s.template_room == Some(room)
+                || s.editsel.rooms.iter().any(|v| v.0 == room)
+            {
+                return;
+            }
             if let Some(v) = s.state.rooms.get_mut(room) {
                 if !v.loaded.as_ref().is_some_and(|v| v.dirty_file) {
                     v.loaded = None;

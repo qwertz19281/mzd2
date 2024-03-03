@@ -340,6 +340,14 @@ impl DrawImageGroup {
         }
     }
 
+    pub fn ensure_loaded(&self, rooms: &mut RoomMap, map_path: &Path, rooms_size: [u32;2]) {
+        for &(room_id,_,_) in &self.rooms {
+            let Some(room) = rooms.get_mut(room_id) else {continue};
+
+            room.ensure_loaded(map_path, rooms_size);
+        }
+    }
+
     pub fn render(&self, rooms: &mut RoomMap, rooms_size: [u32;2], rsl: Option<usize>, mut dest: impl FnMut(egui::Shape), map_path: &Path, ctx: &egui::Context) {
         let Some(visible_layers) = self.rooms.get(0)
             .and_then(|&(r,_,_)| rooms.get(r) )

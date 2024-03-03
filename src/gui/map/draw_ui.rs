@@ -44,6 +44,12 @@ impl Map {
             ui.checkbox(&mut self.state.dsel_whole, "DSelWhole");
         });
 
+        self.editsel.ensure_loaded(
+            &mut self.state.rooms,
+            &self.path,
+            self.state.rooms_size,
+        );
+
         let mods = ui.input(|i| i.modifiers );
 
         let mut hack_render_mode = None;
