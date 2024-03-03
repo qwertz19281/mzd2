@@ -2,13 +2,14 @@ use std::path::PathBuf;
 
 use clap::Parser;
 
+use crate::convert_0_1::convert_0_1;
 use crate::gui::init::launch_gui;
 
 pub fn cli() {
     let args = Args::parse();
 
     if args.convert_0_1 {
-
+        convert_0_1(args);
     } else {
         launch_gui(args);
     }
