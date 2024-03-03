@@ -35,12 +35,12 @@ impl Map {
                     let selected = layer == room.selected_layer;
 
                     ui.horizontal(|ui| {
-                        let result = ui.add(egui::Button::new(if visible {"👁"} else {" "}).min_size(min_size));
+                        let result = ui.add(egui::Button::new(if visible != 0 {"👁"} else {" "}).min_size(min_size));
                         if result.hovered() {
                             hovered_layer = Some(layer);
                         }
                         if result.clicked() {
-                            op = Oper::SetVis(layer,!visible);
+                            op = Oper::SetVis(layer,visible == 0);
                         }
 
                         let result = ui.add(egui::Button::new(if selected {"✏"} else {" "}).min_size(min_size));
@@ -100,7 +100,7 @@ impl Map {
                     room.selected_layer = a+1;
                 }
             },
-            Oper::SetVis(a, v) => room.visible_layers[a] = v,
+            Oper::SetVis(a, v) => room.visible_layers[a] = v as u8,
             Oper::SetDraw(v) => room.selected_layer = v,
         }
 
@@ -130,7 +130,7 @@ impl Map {
                     }
                 },
                 Oper::Add(a) => {
-                    room.visible_layers.insert(a+1, true);
+                    room.visible_layers.insert(a+1, 1);
                     loaded.image.insert_layer(self.state.rooms_size, a+1);
                     loaded.sel_matrix.layers.insert(a+1, SelMatrix::new_empty(loaded.sel_matrix.dims));
                     if let Some(t) = &mut loaded.image.tex {

@@ -32,7 +32,7 @@ pub struct Room {
     pub locked: Option<String>,
     #[serde(skip)]
     pub loaded: Option<RoomLoaded>,
-    pub visible_layers: Vec<bool>,
+    pub visible_layers: Vec<u8>,
     pub selected_layer: usize,
     #[serde(with = "dirconn_serde")]
     pub dirconn: [[bool;2];3],
@@ -64,7 +64,7 @@ impl Room {
             coord,
             op_evo: 0,
             locked: None,
-            visible_layers: vec![true;initial_layers],
+            visible_layers: vec![1;initial_layers],
             selected_layer: 0,
             dirconn: Default::default(),
             desc_text: Default::default(),
@@ -109,7 +109,7 @@ impl Room {
         if self.loaded.is_none() && self.locked.is_none() {
             match self.load_room_res(map_path, rooms_size) {
                 Ok(l) => {
-                    self.visible_layers.resize(l.image.layers, true);
+                    self.visible_layers.resize(l.image.layers, 1);
                     self.loaded = Some(l);
                 },
                 Err(e) => {

@@ -362,7 +362,7 @@ impl DrawImageGroup {
             } else {
                 room.render(
                     roff,
-                    visible_layers.iter().enumerate().filter(|&(_,&v)| v ).map(|(i,_)| i ),
+                    visible_layers.iter().enumerate().filter(|&(_,&v)| v != 0 ).map(|(i,_)| i ),
                     None,
                     rooms_size,
                     |v| dest(v),

@@ -593,7 +593,7 @@ impl Map {
                             let vl = room.visible_layers.clone(); //TODO lifetime wranglery
                             room.render(
                                 [cx,cy].mul(self.state.rooms_size),
-                                vl.iter().enumerate().filter(|&(_,&v)| v ).map(|(i,_)| i ),
+                                vl.iter().enumerate().filter(|&(_,&v)| v != 0 ).map(|(i,_)| i ),
                                 Some(egui::Color32::from_rgba_unmultiplied(32, 176, 72, 1)),
                                 //Some(egui::Color32::from_rgba_unmultiplied(27, 33, 28, 255)),
                                 self.state.rooms_size,
