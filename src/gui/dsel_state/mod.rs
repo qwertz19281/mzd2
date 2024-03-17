@@ -149,6 +149,8 @@ impl DSelState {
             let draw_src_off = a.as_u32().mul8();
             let draw_dest_off = a.sub(min).as_u32().mul8();
 
+            let b = b.clampfix(a.as_i32(), (min.as_i32(),max.as_i32().add([1,1])) );
+
             sels.push((
                 a.sub(min),
                 b.clone(),

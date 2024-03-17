@@ -111,6 +111,12 @@ impl SelEntry {
             size: [v[2],v[3]],
         }
     }
+
+    pub fn clampfix(&self, pos_in_clamp_space: [i32;2], clamp_space: ([i32;2],[i32;2])) -> Self {
+        let vspt = self.to_sel_pt_fixedi(pos_in_clamp_space, clamp_space);
+        let vspt = vspt.to_sel_entryi(pos_in_clamp_space);
+        vspt
+    }
 }
 
 /// SelEntry is relative to that one SelEntry, while SelPt is "absolute" (relative to whole img)
@@ -123,6 +129,13 @@ pub struct SelPt {
 impl SelPt {
     /// self_off: the offset at which the SelPt is in the image, which needs to be subtracted
     pub fn to_sel_entry(&self, self_off: [u32;2]) -> SelEntry {
+        SelEntry {
+            start: self_off.as_i32().sub(self.start.as_i32()).debug_assert_positive().as_u8_clamped(),
+            size: self.size,
+        }
+    }
+
+    pub fn to_sel_entryi(&self, self_off: [i32;2]) -> SelEntry {
         SelEntry {
             start: self_off.as_i32().sub(self.start.as_i32()).debug_assert_positive().as_u8_clamped(),
             size: self.size,
