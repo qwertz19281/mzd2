@@ -74,6 +74,7 @@ impl eframe::App for SharedApp {
             self.sam.dpi_scale = dpi_hack(ctx, frame);
         }
 
+        ctx.set_pixels_per_point(1.);
         
         for v in std::mem::take(&mut self.sam.mut_queue) {
             v(self);
