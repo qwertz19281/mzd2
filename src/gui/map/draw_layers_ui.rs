@@ -19,6 +19,8 @@ impl Map {
         let room_id = self.editsel.rooms[0].0;
         let Some(room) = self.state.rooms.get_mut(room_id) else {return None};
 
+        let mods = ui.input(|i| i.modifiers );
+
         let n_layers = room.visible_layers.len();
 
         ui.scope(|ui| {
@@ -103,6 +105,14 @@ impl Map {
             Oper::SetVis(a, v) => room.visible_layers[a] = v as u8,
             Oper::SetDraw(v) => {
                 room.selected_layer = v;
+                if mods.ctrl | mods.shift {
+                    room.visible_layers[room.selected_layer] = 1;
+                    for v in &mut room.visible_layers[room.selected_layer+1..] {*v = 0;}
+                    for v in &mut room.visible_layers[..room.selected_layer] {*v = 1;}
+                }
+                if mods.ctrl {
+                    for v in &mut room.visible_layers[..room.selected_layer] {*v = 0;}
+                }
                 self.post_drawroom_switch();
             },
         }
