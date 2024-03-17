@@ -77,12 +77,17 @@ pub fn attached_to_path_stripdot(path: impl Into<PathBuf>, add: impl AsRef<OsStr
 
 pub trait ResultExt<T> {
     fn unwrap_gui(self, title: &str) -> Option<T>;
+    fn show_error_in_gui(self, title: &str) -> Self;
 }
 
 impl<T,E> ResultExt<T> for Result<T,E> where E: Display {
     fn unwrap_gui(self, title: &str) -> Option<T> {
+        self.show_error_in_gui(title).ok()
+    }
+
+    fn show_error_in_gui(self, title: &str) -> Self {
         match self {
-            Ok(v) => Some(v),
+            Ok(v) => Ok(v),
             Err(e) => {
                 rfd::MessageDialog::new()
                     .set_level(rfd::MessageLevel::Error)
@@ -90,7 +95,7 @@ impl<T,E> ResultExt<T> for Result<T,E> where E: Display {
                     .set_description(&format!("{}", e))
                     .set_parent(&CURRENT_WINDOW_HANDLE.with(|f| f.get().unwrap()))
                     .show();
-                None
+                Err(e)
             },
         }
     }

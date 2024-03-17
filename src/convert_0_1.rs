@@ -280,7 +280,7 @@ where
 }
 
 impl OldSelMatrixLayered {
-    fn convert_to_new(&self) -> SelMatrixLayered {
+    pub(crate) fn convert_to_new(&self) -> SelMatrixLayered {
         SelMatrixLayered {
             dims: self.dims,
             layers: self.layers.iter().map(|layer| {

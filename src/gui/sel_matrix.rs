@@ -1,15 +1,12 @@
-use serde::{Deserialize, Serialize};
-
 use super::map::{RoomMap, DirtyRooms, LruCache};
 use super::room::draw_image::{DrawImageGroup, DrawImage};
 use super::util::ArrUtl;
 
 const SEL_MATRIX_FILE_HEADER: &[u8] = b"#!80c2014a-5cfd-4b23-b767-f5b295edf15e\n";
 
-#[derive(Clone, Deserialize,Serialize)]
+#[derive(Clone)]
 pub struct SelMatrix {
     pub dims: [u32;2],
-    #[serde(with = "selentries_serde")]
     pub entries: Vec<SelEntry>,
 }
 
@@ -136,7 +133,7 @@ pub fn sel_entry_dims(full: [u32;2]) -> [u32;2] {
     full.div8()
 }
 
-#[derive(Clone, Deserialize)]
+#[derive(Clone)]
 pub struct SelMatrixLayered {
     pub dims: [u32;2],
     pub layers: Vec<SelMatrix>,
@@ -176,12 +173,16 @@ impl SelMatrixLayered {
         self.dims[0] == 0 || self.dims[1] == 0
     }
 
-    pub fn ser(&self, mut dest: impl std::io::Write) -> anyhow::Result<()> {
+    pub fn ser(&self, dest: impl std::io::Write) -> anyhow::Result<()> {
+        Self::ser_sm(self.dims, &self.layers, dest)
+    }
+
+    pub fn ser_sm(dims: [u32;2], layers: &[SelMatrix], mut dest: impl std::io::Write) -> anyhow::Result<()> {
         dest.write_all(SEL_MATRIX_FILE_HEADER)?;
-        dest.write_all(&self.dims[0].to_le_bytes())?;
-        dest.write_all(&self.dims[1].to_le_bytes())?;
-        dest.write_all(&(self.layers.len() as u64).to_le_bytes())?;
-        for layer in &self.layers {
+        dest.write_all(&dims[0].to_le_bytes())?;
+        dest.write_all(&dims[1].to_le_bytes())?;
+        dest.write_all(&(layers.len() as u64).to_le_bytes())?;
+        for layer in layers {
             for entry in &layer.entries {
                 dest.write_all(&entry.enc())?;
             }
@@ -263,45 +264,6 @@ pub fn deoverlap_layered(i: impl Iterator<Item=(usize,SelPt)>, matrix: &[SelMatr
     collect.sort_by_key(|&(layer,[x,y])| (layer,y,x) );
     collect.dedup();
     collect
-}
-
-mod selentries_serde {
-    use super::*;
-
-    pub(super) fn serialize<S>(se: &Vec<SelEntry>, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer
-    {
-        let mut sdest = vec![0;se.len()*8];
-        let mut sd1 = &mut sdest[..];
-        for s in se {
-            let sob = s.enc();
-            assert!(sd1.len() >= 8);
-            hex::encode_to_slice(sob, &mut sd1[..8]).unwrap();
-            sd1 = &mut sd1[8..];
-        }
-        let str = unsafe { String::from_utf8_unchecked(sdest) };
-        str.serialize(serializer)
-    }
-
-    pub(super) fn deserialize<'de,D>(deserializer: D) -> Result<Vec<SelEntry>, D::Error>
-    where
-        D: serde::Deserializer<'de>
-    {
-        let str = String::deserialize(deserializer)?;
-
-        let mut entries = Vec::with_capacity(str.len()/8);
-
-        assert!(str.len()%8 == 0);
-
-        for s in str.as_bytes().chunks_exact(8) {
-            let mut sob = [0;4];
-            hex::decode_to_slice(s, &mut sob).unwrap();
-            entries.push(SelEntry::dec(&sob));
-        }
-
-        Ok(entries)
-    }
 }
 
 fn effective_bounds2i((aoff,aoff2): ([i32;2],[i32;2]), (boff,boff2): ([i32;2],[i32;2])) -> ([i32;2],[i32;2]) {

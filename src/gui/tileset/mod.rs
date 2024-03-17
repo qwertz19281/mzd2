@@ -20,9 +20,11 @@ use super::palette::{Palette, PaletteItem};
 use super::room::draw_image::DrawImage;
 use super::rector;
 use super::init::{SharedApp, SAM};
-use super::sel_matrix::{SelMatrix, sel_entry_dims};
+use super::sel_matrix::{sel_entry_dims, SelMatrix, SelMatrixLayered};
 use super::texture::{RECT_0_0_1_1, TextureCell};
 use super::util::{alloc_painter_rel_ds, ArrUtl, draw_grid, DragOp};
+
+mod convert_0_1;
 
 pub struct Tileset {
     pub id: TilesetId,
@@ -38,15 +40,16 @@ pub struct Tileset {
     pub cse_state: CSEState,
     pub dirty_img: bool,
     pub key_manager_state: Option<KMKey>,
+    pub sel_matrix: SelMatrix,
 }
 
 #[derive(Deserialize,Serialize)]
 pub struct TilesetState {
+    pub mzd_format: u64,
     pub title: String,
     pub zoom: u32,
     pub voff: [f32;2],
     pub validate_size: [u32;2],
-    pub sel_matrix: SelMatrix,
     //pub draw_mode: DrawOp,
     pub draw_draw_mode: DrawMode,
     pub draw_sel: DSelMode,
@@ -82,7 +85,7 @@ impl Tileset {
             if self.edit_path.is_none() {
                 if ui.button("Make editable").double_clicked() {
                     if self.quant != 1 {
-                        self.state.sel_matrix.intervalize([self.quant,self.quant]);
+                        self.sel_matrix.intervalize([self.quant,self.quant]);
                     }
                     self.ui_save(false);
                 }
@@ -154,7 +157,7 @@ impl Tileset {
                             DragOp::Tick(Some(p)) =>
                                 self.draw_state.draw_mouse_down(p.into(), palet, self.state.draw_draw_mode, false, self.state.ds_replace),
                             DragOp::End(_) => {
-                                self.draw_state.draw_mouse_up(&mut (&mut self.loaded_image, &mut self.state.sel_matrix));
+                                self.draw_state.draw_mouse_up(&mut (&mut self.loaded_image, &mut self.sel_matrix));
                                 self.dirty_img = true;
                             },
                             DragOp::Abort => self.draw_state.draw_cancel(),
@@ -169,7 +172,7 @@ impl Tileset {
                             DragOp::Start(p) =>
                                 self.del_state.del_mouse_down(
                                     p.into(),
-                                    &self.state.sel_matrix,
+                                    &self.sel_matrix,
                                     self.state.draw_draw_mode,
                                     true,
                                     false,
@@ -177,14 +180,14 @@ impl Tileset {
                             DragOp::Tick(Some(p)) =>
                                 self.del_state.del_mouse_down(
                                     p.into(),
-                                    &self.state.sel_matrix,
+                                    &self.sel_matrix,
                                     self.state.draw_draw_mode,
                                     false,
                                     false,
                                 ),
                             DragOp::End(_) => {
                                 self.del_state.del_mouse_up(
-                                    &mut (&mut self.loaded_image, &mut self.state.sel_matrix),
+                                    &mut (&mut self.loaded_image, &mut self.sel_matrix),
                                 );
                                 self.dirty_img = true;
                             },
@@ -200,7 +203,7 @@ impl Tileset {
                         DragOp::Start(p) => {
                             self.dsel_state.dsel_mouse_down(
                                 p.into(),
-                                &self.state.sel_matrix,
+                                &self.sel_matrix,
                                 self.state.draw_sel,
                                 !mods.shift,
                                 mods.ctrl,
@@ -211,7 +214,7 @@ impl Tileset {
                         DragOp::Tick(Some(p)) => {
                             self.dsel_state.dsel_mouse_down(
                                 p.into(),
-                                &self.state.sel_matrix,
+                                &self.sel_matrix,
                                 self.state.draw_sel,
                                 !mods.shift,
                                 mods.ctrl,
@@ -236,7 +239,7 @@ impl Tileset {
                     match reg.drag_decode(PointerButton::Primary, ui) {
                         DragOp::Start(p) => self.cse_state.cse_mouse_down(p.into(), true),
                         DragOp::Tick(Some(p)) => self.cse_state.cse_mouse_down(p.into(), false),
-                        DragOp::End(p) => self.cse_state.cse_mouse_up(p.into(), &mut self.state.sel_matrix),
+                        DragOp::End(p) => self.cse_state.cse_mouse_up(p.into(), &mut self.sel_matrix),
                         DragOp::Abort => self.dsel_state.dsel_cancel(),
                         _ => {},
                     }
@@ -278,14 +281,14 @@ impl Tileset {
                 Some(HackRenderMode::Sel) | None =>
                     self.dsel_state.dsel_render(
                         h.into(),
-                        &self.state.sel_matrix,
+                        &self.sel_matrix,
                         self.state.dsel_whole,
                         |v| shapes.push(v)
                     ),
                 Some(HackRenderMode::Del) => 
                     self.del_state.del_render(
                         h.into(),
-                        &self.state.sel_matrix,
+                        &self.sel_matrix,
                         self.state.dsel_whole,
                         |v| shapes.push(v)
                     ),
@@ -312,7 +315,16 @@ impl Tileset {
 
         let Some(ser) = serde_json::to_vec(&self.state).unwrap_gui("Error saving tileset metadata") else {return false};
 
-        std::fs::write(edit_path, ser).unwrap_gui("Error saving tileset metadata").is_some()
+        let mut sml_buf = Vec::with_capacity(1024*1024);
+        if
+            SelMatrixLayered::ser_sm(self.sel_matrix.dims, std::slice::from_ref(&self.sel_matrix), &mut Cursor::new(&mut sml_buf))
+                .unwrap_gui("Error saving tileset metadata").is_none()
+        {
+            return false;
+        }
+
+        std::fs::write(edit_path, ser).unwrap_gui("Error saving tileset metadata").is_some() &&
+        std::fs::write(attached_to_path(&self.path, ".mzdtileset.sel"), sml_buf).unwrap_gui("Error saving tileset metadata").is_some()
     }
 
     fn save_image(&mut self) -> anyhow::Result<()> {
@@ -328,27 +340,48 @@ impl Tileset {
         Self::load2(path, image.to_rgba8())
     }
 
+    fn try_load_selmatrix(tpath: &PathBuf, expected_size: [u32;2]) -> anyhow::Result<SelMatrix> {
+        let data = std::fs::read(&tpath)?;
+        let mut sml = SelMatrixLayered::deser(&data[..], expected_size)?;
+        anyhow::ensure!(sml.layers.len() == 1);
+        Ok(sml.layers.swap_remove(0))
+    }
+
+    fn try_deser_state(epath: &PathBuf, tpath: &PathBuf) -> anyhow::Result<TilesetState> {
+        let data = std::fs::read(&epath)?;
+        if let Ok(v) = serde_json::from_slice::<TilesetState>(&data) {
+            return Ok(v);
+        }
+        convert_0_1::try_convert_tileset(epath, tpath)?;
+        let data = std::fs::read(&epath)?;
+        let v = serde_json::from_slice::<TilesetState>(&data)?;
+        Ok(v)
+    }
+
     pub fn load2(path: PathBuf, image: RgbaImage) -> anyhow::Result<Self> {
         let img_size = [image.width() as u32, image.height() as u32];
 
         let epath = attached_to_path(&path, ".mzdtileset");
+        let spath = attached_to_path(&path, ".mzdtileset.sel");
         let mut edit_path = None;
         let mut state;
 
+        let mut selmatrix = None;
+
         if epath.is_file() {
-            let data = std::fs::read(&epath)?;
-            state = serde_json::from_slice::<TilesetState>(&data)?;
+            state = Self::try_deser_state(&epath, &spath)?;
             state.zoom = state.zoom.max(1).min(4);
+            selmatrix = Self::try_load_selmatrix(&spath, state.validate_size.div8()).ok();
             if state.validate_size != img_size {
-                state.sel_matrix = SelMatrix::new_emptyfilled(sel_entry_dims(img_size));
+                selmatrix = None;
             }
             edit_path = Some(epath);
         } else {
             state = TilesetState {
+                mzd_format: 2,
                 title: path.file_name().unwrap().to_string_lossy().into_owned(),
                 zoom: 1,
                 validate_size: img_size,
-                sel_matrix: SelMatrix::new_emptyfilled(sel_entry_dims(img_size)),
                 voff: [0.;2],
                 //draw_mode: DrawOp::Draw,
                 draw_draw_mode: DrawMode::Rect,
@@ -376,6 +409,7 @@ impl Tileset {
             cse_state: CSEState::new(),
             dirty_img: false,
             key_manager_state: None,
+            sel_matrix: selmatrix.unwrap_or_else(|| SelMatrix::new_emptyfilled(sel_entry_dims(img_size))),
         };
 
         Ok(ts)
