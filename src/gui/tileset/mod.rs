@@ -62,12 +62,12 @@ impl Tileset {
         let draw_allowed = self.edit_path.as_deref().is_some_and(|p| p.extension() == Some(OsStr::new("png")));
 
         ui.horizontal(|ui| {
-            if ui.button(if self.dirty_img {"SAVE"} else {"Save"}).clicked() {
+            if ui.button(if false {"SAVE"} else {"Save"}).clicked() {
                 if self.edit_path.is_some() {
                     self.ui_save(draw_allowed && self.edit_mode);
                 }
             }
-            if ui.button(if self.dirty_img {"SAVE&Close"} else {"Save&Close"}).clicked() {
+            if ui.button(if false {"SAVE&Close"} else {"Save&Close"}).clicked() {
                 if self.edit_path.is_some() {
                     self.ui_save(draw_allowed && self.edit_mode);
                 }
