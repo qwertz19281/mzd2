@@ -289,6 +289,14 @@ impl OldSelMatrixLayered {
                     dims: layer.dims,
                     entries: layer.entries.iter().map(|entry| {
                         let start = entry.start.as_i16();
+                        // if start[0] > 0 || start[1] > 0 {
+                        //     eprintln!("START REPLACE {:?}", entry);
+                        //     return SelEntry { start: [0,0], size: [1,1] }
+                        // }
+                        // if -start[0] >= entry.size[0] as i16 || -start[1] >= entry.size[1] as i16 {
+                        //     panic!("SIZE REPLACE {:?}", entry);
+                        //     return SelEntry { start: [0,0], size: [1,1] }
+                        // }
                         SelEntry {
                             start: [-start[0],-start[1]].debug_assert_range(0..=255).as_u8(),
                             size: entry.size,

@@ -6,6 +6,7 @@ use serde::Deserialize;
 use crate::convert_0_1::{OldSelMatrix, OldSelMatrixLayered};
 use crate::gui::draw_state::DrawMode;
 use crate::gui::dsel_state::DSelMode;
+use crate::gui::sel_matrix::SelMatrix;
 use crate::util::ResultExt;
 
 use super::TilesetState;
@@ -23,16 +24,13 @@ pub struct OldTilesetState {
     pub dsel_whole: bool,
 }
 
-pub(super) fn try_convert_tileset(epath: &PathBuf, tpath: &PathBuf) -> anyhow::Result<()> {
+pub(super) fn try_convert_tileset(epath: &PathBuf, tpath: &PathBuf) -> anyhow::Result<(TilesetState,SelMatrix)> {
     let data = std::fs::read(&epath)?;
     let old_state = serde_json::from_slice::<OldTilesetState>(&data)?;
 
     let sel_matrix_dims = old_state.sel_matrix.dims;
     let old_sml = OldSelMatrixLayered { dims: sel_matrix_dims, layers: vec![old_state.sel_matrix] };
-    let new_sml = old_sml.convert_to_new();
-    
-    let mut sml_buf = Vec::with_capacity(1024*1024);
-    new_sml.ser(&mut Cursor::new(&mut sml_buf)).show_error_in_gui("Cannot convert tileset")?;
+    let mut new_sml = old_sml.convert_to_new();
 
     let new_state = TilesetState {
         mzd_format: 2,
@@ -46,10 +44,5 @@ pub(super) fn try_convert_tileset(epath: &PathBuf, tpath: &PathBuf) -> anyhow::R
         dsel_whole: old_state.dsel_whole,
     };
 
-    let ser_buf = serde_json::to_vec(&new_state).show_error_in_gui("Cannot convert tileset")?;
-
-    std::fs::write(epath, ser_buf).show_error_in_gui("Cannot convert tileset")?;
-    std::fs::write(tpath, sml_buf).show_error_in_gui("Cannot convert tileset")?;
-
-    Ok(())
+    Ok((new_state,new_sml.layers.swap_remove(0)))
 }

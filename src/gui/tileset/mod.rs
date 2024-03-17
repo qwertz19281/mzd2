@@ -347,15 +347,25 @@ impl Tileset {
         Ok(sml.layers.swap_remove(0))
     }
 
-    fn try_deser_state(epath: &PathBuf, tpath: &PathBuf) -> anyhow::Result<TilesetState> {
+    fn try_deser_state(epath: &PathBuf, tpath: &PathBuf, dirty: &mut bool, selm: &mut Option<SelMatrix>) -> anyhow::Result<TilesetState> {
         let data = std::fs::read(&epath)?;
-        if let Ok(v) = serde_json::from_slice::<TilesetState>(&data) {
-            return Ok(v);
+        match serde_json::from_slice::<TilesetState>(&data) {
+            Ok(v) => {
+                if let Some(s) = Self::try_load_selmatrix(&tpath, v.validate_size.div8()).unwrap_gui("Failed to load seltrix") {
+                    *selm = Some(s);
+                }
+                Ok(v)
+            },
+            Err(e) => {
+                if let Ok((v,s)) = convert_0_1::try_convert_tileset(epath, tpath) {
+                    *dirty = true;
+                    *selm = Some(s);
+                    return Ok(v);
+                } else {
+                    Err(e.into())
+                }
+            }
         }
-        convert_0_1::try_convert_tileset(epath, tpath)?;
-        let data = std::fs::read(&epath)?;
-        let v = serde_json::from_slice::<TilesetState>(&data)?;
-        Ok(v)
     }
 
     pub fn load2(path: PathBuf, image: RgbaImage) -> anyhow::Result<Self> {
@@ -368,10 +378,11 @@ impl Tileset {
 
         let mut selmatrix = None;
 
+        let mut dirty = false;
+
         if epath.is_file() {
-            state = Self::try_deser_state(&epath, &spath)?;
+            state = Self::try_deser_state(&epath, &spath, &mut dirty, &mut selmatrix)?;
             state.zoom = state.zoom.max(1).min(4);
-            selmatrix = Self::try_load_selmatrix(&spath, state.validate_size.div8()).ok();
             if state.validate_size != img_size {
                 selmatrix = None;
             }
@@ -407,7 +418,7 @@ impl Tileset {
             dsel_state: DSelState::new(),
             del_state: DelState::new(),
             cse_state: CSEState::new(),
-            dirty_img: false,
+            dirty_img: dirty,
             key_manager_state: None,
             sel_matrix: selmatrix.unwrap_or_else(|| SelMatrix::new_emptyfilled(sel_entry_dims(img_size))),
         };

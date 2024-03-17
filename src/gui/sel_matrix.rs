@@ -94,17 +94,18 @@ impl SelEntry {
         (self.size[0] == 0) | (self.size[1] == 0)
     }
 
-    fn enc(&self) -> [u8;4] {
+    fn enc(&self) -> [u8;8] {
         [
             self.start[0],
             self.start[1],
             self.size[0],
             self.size[1],
+            0,0,0,0,
         ]
     }
 
     fn dec(v: &[u8]) -> Self {
-        assert!(v.len() >= 4);
+        assert!(v.len() >= 8);
         Self {
             start: [v[0],v[1]],
             size: [v[2],v[3]],
@@ -213,7 +214,7 @@ impl SelMatrixLayered {
         let mut dest = Self::new(size, len);
         for layer in &mut dest.layers {
             for entry in &mut layer.entries {
-                let mut dec = [0u8;4];
+                let mut dec = [0u8;8];
                 src.read_exact(&mut dec)?;
                 *entry = SelEntry::dec(&dec);
             }
