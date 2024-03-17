@@ -12,8 +12,9 @@ use crate::gui::dsel_state::DSelMode;
 use crate::gui::map::{MapEditMode, MapState, RoomId, RoomMap};
 use crate::gui::room::draw_image::DrawImage;
 use crate::gui::room::Room;
-use crate::gui::sel_matrix::SelMatrixLayered;
+use crate::gui::sel_matrix::{SelEntry, SelMatrix, SelMatrixLayered};
 use crate::gui::tags::TagState;
+use crate::gui::util::ArrUtl;
 use crate::util::{attached_to_path, seltrix_resource_dir, seltrix_resource_path, tex_resource_dir, tex_resource_path, MapId};
 use crate::util::uuid::{generate_res_uuid, generate_uuid, UUIDMap, UUIDTarget};
 
@@ -81,6 +82,8 @@ pub fn convert_map(map_path: PathBuf, uuidmap: &mut UUIDMap) -> anyhow::Result<(
         uuidmap.insert(new_room.uuid, UUIDTarget::Room(new_map_id, RoomId::null()));
         uuidmap.insert(new_room.resuuid, UUIDTarget::Resource(new_map_id, RoomId::null()));
 
+        let sel_matrix = old_room.sel_matrix.convert_to_new();
+
         let new_tex_path = tex_resource_path(&map_path, &new_room.resuuid);
         let new_sel_path = seltrix_resource_path(&map_path, &new_room.resuuid);
 
@@ -91,7 +94,7 @@ pub fn convert_map(map_path: PathBuf, uuidmap: &mut UUIDMap) -> anyhow::Result<(
         }
 
         let mut buf = Vec::with_capacity(1024*1024);
-        old_room.sel_matrix.ser(&mut Cursor::new(&mut buf)).context("Serializing seltrix of room")?;
+        sel_matrix.ser(&mut Cursor::new(&mut buf)).context("Serializing seltrix of room")?;
         std::fs::write(new_sel_path, buf).context("Writing seltrix")?;
 
         if old_state.dsel_room == Some(old_room_id) {
@@ -194,7 +197,7 @@ pub struct OldRoom {
     #[serde(skip)]
     pub op_evo: u64,
     pub locked: Option<String>,
-    pub sel_matrix: SelMatrixLayered,
+    pub sel_matrix: OldSelMatrixLayered,
     pub visible_layers: Vec<bool>,
     pub selected_layer: usize,
     #[serde(default)]
@@ -219,4 +222,80 @@ fn get_mtime_of_mzd_file(f: &Path) -> anyhow::Result<DateTime<Utc>> {
     let unix_secs = mtime.unix_seconds();
     let nanos = mtime.nanoseconds();
     Ok(DateTime::<Utc>::from_timestamp(unix_secs, nanos).unwrap_or_else(Utc::now))
+}
+
+#[derive(Clone, Deserialize)]
+pub struct OldSelMatrix {
+    pub dims: [u32;2],
+    #[serde(deserialize_with = "deser_oldselentry")]
+    pub entries: Vec<OldSelEntry>,
+}
+
+#[derive(Clone, Debug)]
+pub struct OldSelEntry {
+    pub start: [i8;2],
+    pub size: [u8;2],
+}
+
+impl OldSelEntry {
+    fn dec(v: &[u8]) -> Self {
+        assert!(v.len() >= 4);
+        Self {
+            start: [
+                unsafe {
+                    std::mem::transmute(v[0])
+                },
+                unsafe {
+                    std::mem::transmute(v[1])
+                },
+            ],
+            size: [v[2],v[3]],
+        }
+    }
+}
+
+#[derive(Clone, Deserialize)]
+pub struct OldSelMatrixLayered {
+    pub dims: [u32;2],
+    pub layers: Vec<OldSelMatrix>,
+}
+
+fn deser_oldselentry<'de,D>(deserializer: D) -> Result<Vec<OldSelEntry>, D::Error>
+where
+    D: serde::Deserializer<'de>
+{
+    let str = String::deserialize(deserializer)?;
+
+    let mut entries = Vec::with_capacity(str.len()/8);
+
+    assert!(str.len()%8 == 0);
+
+    for s in str.as_bytes().chunks_exact(8) {
+        let mut sob = [0;4];
+        hex::decode_to_slice(s, &mut sob).unwrap();
+        entries.push(OldSelEntry::dec(&sob));
+    }
+
+    Ok(entries)
+}
+
+impl OldSelMatrixLayered {
+    fn convert_to_new(&self) -> SelMatrixLayered {
+        SelMatrixLayered {
+            dims: self.dims,
+            layers: self.layers.iter().map(|layer| {
+                assert_eq!(layer.dims, self.dims);
+                SelMatrix {
+                    dims: layer.dims,
+                    entries: layer.entries.iter().map(|entry| {
+                        let start = entry.start.as_i16();
+                        SelEntry {
+                            start: [-start[0],-start[1]].debug_assert_range(0..=255).as_u8(),
+                            size: entry.size,
+                        }
+                    }).collect(),
+                }
+            }).collect(),
+        }
+    }
 }

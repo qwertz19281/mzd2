@@ -16,7 +16,9 @@ pub struct SelMatrix {
 /// SelEntry is relative to that one SelEntry, while SelPt is "absolute" (relative to whole img)
 #[derive(Clone, Debug)]
 pub struct SelEntry {
-    pub start: [i8;2],
+    /// The offset of this point to the top-left of the selgroup
+    pub start: [u8;2],
+    /// The size of the selgroup (self.start >= 0 && self.start < self.size)
     pub size: [u8;2],
     //tile_hash: u32,
 }
@@ -59,10 +61,10 @@ impl SelMatrix {
             for x in 0 .. dims[0] {
                 if let Some(se) = self.get_mut([x,y]) {
                     if se.start == [0,0] && se.size == [1,1] {
-                        let [qx,qy] = [x,y].quant(interval.as_u32());
+                        let qstart = [x,y].quant(interval.as_u32());
 
-                        se.start = [(qx as i32 - x as i32) as i8, ( qy as i32 - y as i32) as i8];
-                        se.size = interval.as_u32().vmin(dims.sub([qx,qy])).as_u8_clamped();
+                        se.start = [x,y].as_i32().sub(qstart.as_i32()).debug_assert_positive().as_u8_clamped();
+                        se.size = interval.as_u32().vmin(dims.sub(qstart)).as_u8_clamped();
                     }
                 }
             }
@@ -73,21 +75,20 @@ impl SelMatrix {
 impl SelEntry {
     // off in eighth-pixel
     pub fn to_sel_pt(&self, at_off: [u32;2]) -> SelPt {
-        let oo = [at_off[0] as i32, at_off[1] as i32];
         SelPt {
-            start: self.start.as_i32().add(oo).as_u16(),
+            start: at_off.as_i32().sub(self.start.as_i32()).debug_assert_range(0..=65535).as_u16_clamped(),
             size: self.size,
         }
     }
 
     pub fn to_sel_pt_fixedi(&self, at_off: [i32;2], bound_limits: ([i32;2],[i32;2])) -> SelPt {
-        let p0 = self.start.as_i32().add(at_off);
+        let p0 = at_off.sub(self.start.as_i32());
         let p1 = p0.add(self.size.as_i32());
 
         let (p0,p1) = effective_bounds2i((p0,p1), bound_limits);
 
         SelPt {
-            start: p0.as_u16(),
+            start: p0.debug_assert_range(0..=65535).as_u16_clamped(),
             size: p1.sub(p0).as_u8_clamped(),
         }
     }
@@ -98,12 +99,8 @@ impl SelEntry {
 
     fn enc(&self) -> [u8;4] {
         [
-            unsafe {
-                std::mem::transmute(self.start[0])
-            },
-            unsafe {
-                std::mem::transmute(self.start[1])
-            },
+            self.start[0],
+            self.start[1],
             self.size[0],
             self.size[1],
         ]
@@ -112,14 +109,7 @@ impl SelEntry {
     fn dec(v: &[u8]) -> Self {
         assert!(v.len() >= 4);
         Self {
-            start: [
-                unsafe {
-                    std::mem::transmute(v[0])
-                },
-                unsafe {
-                    std::mem::transmute(v[1])
-                },
-            ],
+            start: [v[0],v[1]],
             size: [v[2],v[3]],
         }
     }
@@ -135,16 +125,15 @@ pub struct SelPt {
 impl SelPt {
     /// self_off: the offset at which the SelPt is in the image, which needs to be subtracted
     pub fn to_sel_entry(&self, self_off: [u32;2]) -> SelEntry {
-        let oo = [self_off[0] as i32, self_off[1] as i32];
         SelEntry {
-            start: [(self.start[0] as i32 - oo[0]) as i8, (self.start[1] as i32 - oo[1]) as i8],
+            start: self_off.as_i32().sub(self.start.as_i32()).debug_assert_positive().as_u8_clamped(),
             size: self.size,
         }
     }
 }
 
 pub fn sel_entry_dims(full: [u32;2]) -> [u32;2] {
-    [full[0] / 8, full[1] / 8]
+    full.div8()
 }
 
 #[derive(Clone, Deserialize)]
@@ -396,8 +385,8 @@ impl SelEntryWrite for SelMatrix {
         for y in y0 .. y1 {
             for x in x0 .. x1 {
                 if let Some(se) = self.get_mut([x,y]) {
-                    se.start = [(x0 as i32 - x as i32) as i8, ( y0 as i32 - y as i32) as i8]; //TODO handle tile sizes >256 (fail or panic)
-                    se.size = [(x1 - x0) as u8, (y1 - y0) as u8];
+                    se.start = [x,y].as_i32().sub([x0,y0].as_i32()).as_u8_clamped(); //TODO handle tile sizes >256 (fail or panic)
+                    se.size = [x1,y1].as_i32().sub([x0,y0].as_i32()).as_u8_clamped();
                 }
             }
         }

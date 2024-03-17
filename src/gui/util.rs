@@ -242,6 +242,7 @@ pub trait ArrUtl: Clone {
     fn as_u8(self) -> [u8;2];
     fn as_u8_clamped(self) -> [u8;2];
     fn as_u16(self) -> [u16;2];
+    fn as_u16_clamped(self) -> [u16;2];
     fn as_u32(self) -> [u32;2];
     fn as_u64(self) -> [u64;2];
     fn as_usize(self) -> [usize;2];
@@ -253,6 +254,10 @@ pub trait ArrUtl: Clone {
     fn as_isize(self) -> [isize;2];
     fn as_f32(self) -> [f32;2];
     fn as_f64(self) -> [f64;2];
+    fn debug_assert_range(self, range: std::ops::RangeInclusive<Self::Unit>) -> Self;
+    fn assert_range(self, range: std::ops::RangeInclusive<Self::Unit>) -> Self;
+
+    fn debug_assert_positive(self) -> Self;
 }
 
 pub trait NumUtl: Clone {
@@ -328,6 +333,13 @@ macro_rules! marco_arrutl {
                     ]
                 }
 
+                fn as_u16_clamped(self) -> [u16;2] {
+                    [
+                        (self[0] as i64).clamp(0,65535) as u16,
+                        (self[1] as i64).clamp(0,65535) as u16,
+                    ]
+                }
+
                 fn as_u8(self) -> [u8;2] {
                     [self[0] as _, self[1] as _]
                 }
@@ -363,6 +375,21 @@ macro_rules! marco_arrutl {
                 }
                 fn as_f64(self) -> [f64;2] {
                     [self[0] as _, self[1] as _]
+                }
+
+                fn debug_assert_positive(self) -> Self {
+                    debug_assert!(self[0] >= 0u8 as _ && self[1] >= 0u8 as _, "Coord must be non-negative");
+                    self
+                }
+
+                fn debug_assert_range(self, range: std::ops::RangeInclusive<Self::Unit>) -> Self {
+                    debug_assert!(self[0] >= *range.start() && self[0] <= *range.end() && self[1] >= *range.start() && self[1] <= *range.end(), "Coord must be in range: {} ..= {}", range.start(), range.end());
+                    self
+                }
+
+                fn assert_range(self, range: std::ops::RangeInclusive<Self::Unit>) -> Self {
+                    assert!(self[0] >= *range.start() && self[0] <= *range.end() && self[1] >= *range.start() && self[1] <= *range.end(), "Coord must be in range: {} ..= {}", range.start(), range.end());
+                    self
                 }
             }
         )*
