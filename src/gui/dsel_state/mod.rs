@@ -110,14 +110,14 @@ impl DSelState {
 
     pub fn dsel_cancel(&mut self) {
         self.active = None;
-        self.selected.clear();
+        self.selected_staging.clear();
         self.prev_tik = None;
     }
 
     pub fn clear_selection(&mut self) {
         // self.src_id = SrcID::None;
         self.dsel_cancel();
-        self.selected_staging.clear();
+        self.selected.clear();
         self.sel_area = ([65535,65535],[0,0]);
     }
 

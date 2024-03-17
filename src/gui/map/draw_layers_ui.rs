@@ -101,7 +101,10 @@ impl Map {
                 }
             },
             Oper::SetVis(a, v) => room.visible_layers[a] = v as u8,
-            Oper::SetDraw(v) => room.selected_layer = v,
+            Oper::SetDraw(v) => {
+                room.selected_layer = v;
+                self.post_drawroom_switch();
+            },
         }
 
         for (room_id,_,_) in &self.editsel.rooms {

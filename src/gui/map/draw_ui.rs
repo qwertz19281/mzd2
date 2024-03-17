@@ -52,6 +52,10 @@ impl Map {
 
         let mods = ui.input(|i| i.modifiers );
 
+        let kp_plus = ui.input(|i| i.key_down(egui::Key::PlusEquals));
+        let kp_minus = ui.input(|i| i.key_down(egui::Key::Minus));
+        let sel_stage = kp_plus | kp_minus;
+
         let mut hack_render_mode = None;
         
         if self.editsel.region_size[0] != 0 && self.editsel.region_size[1] != 0 && !self.editsel.rooms.is_empty() {
@@ -154,10 +158,10 @@ impl Map {
                                         p.into(),
                                         &mm,
                                         self.state.draw_sel,
-                                        !mods.shift,
-                                        mods.ctrl,
+                                        kp_plus | !sel_stage,
+                                        sel_stage,
                                         true,
-                                        self.state.dsel_whole,
+                                        self.state.dsel_whole ^ mods.shift,
                                     )
                                 },
                                 DragOp::Tick(Some(p)) => {
@@ -165,10 +169,10 @@ impl Map {
                                         p.into(),
                                         &mm,
                                         self.state.draw_sel,
-                                        !mods.shift,
-                                        mods.ctrl,
+                                        kp_plus | !sel_stage,
+                                        sel_stage,
                                         false,
-                                        self.state.dsel_whole,
+                                        self.state.dsel_whole ^ mods.shift,
                                     )
                                 },
                                 DragOp::End(p) => {
@@ -234,7 +238,7 @@ impl Map {
                                     &self.state.rooms,
                                     self.state.rooms_size,
                                 ),
-                                self.state.dsel_whole,
+                                self.state.dsel_whole ^ mods.shift,
                                 |v| shapes.push(v)
                             ),
                         Some(HackRenderMode::Del) => 
@@ -245,7 +249,7 @@ impl Map {
                                     &self.state.rooms,
                                     self.state.rooms_size,
                                 ),
-                                self.state.dsel_whole,
+                                self.state.dsel_whole ^ mods.shift,
                                 |v| shapes.push(v)
                             ),
                     }

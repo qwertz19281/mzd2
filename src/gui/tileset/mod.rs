@@ -62,12 +62,12 @@ impl Tileset {
         let draw_allowed = self.edit_path.as_deref().is_some_and(|p| p.extension() == Some(OsStr::new("png")));
 
         ui.horizontal(|ui| {
-            if ui.button("Save").clicked() {
+            if ui.button(if self.dirty_img {"SAVE"} else {"Save"}).clicked() {
                 if self.edit_path.is_some() {
                     self.ui_save(draw_allowed && self.edit_mode);
                 }
             }
-            if ui.button("Save&Close").clicked() {
+            if ui.button(if self.dirty_img {"SAVE&Close"} else {"Save&Close"}).clicked() {
                 if self.edit_path.is_some() {
                     self.ui_save(draw_allowed && self.edit_mode);
                 }
@@ -135,23 +135,27 @@ impl Tileset {
 
         let mods = ui.input(|i| i.modifiers );
 
+        let kp_plus = ui.input(|i| i.key_down(egui::Key::PlusEquals));
+        let kp_minus = ui.input(|i| i.key_down(egui::Key::Minus));
+        let sel_stage = kp_plus | kp_minus;
+
         let mut hack_render_mode = None;
 
         let pressable_keys = &[
-            KMKey::nomods(PointerButton::Primary),
-            KMKey::nomods(PointerButton::Secondary),
-            KMKey::with_ctrl(PointerButton::Middle, false),
-            KMKey::with_ctrl(PointerButton::Middle, true),
+            KMKey::with_ctrl(PointerButton::Primary, false),
+            KMKey::with_ctrl(PointerButton::Secondary, false),
+            KMKey::with_ctrl(PointerButton::Primary, true),
+            KMKey::with_ctrl(PointerButton::Secondary, true),
         ];
 
         reg.key_manager(pressable_keys, &mut self.key_manager_state, ui, |key,dop| {
             match key {
-                key if key == KMKey::nomods(PointerButton::Primary) => {
+                key if key == KMKey::with_ctrl(PointerButton::Primary, true) => {
                     hack_render_mode = Some(HackRenderMode::Draw);
                     if draw_allowed && self.edit_mode {
                         hack_render_mode = Some(HackRenderMode::Draw);
                         let palet = &palette.paletted[palette.selected as usize];
-                        match reg.drag_decode(PointerButton::Primary, ui) {
+                        match dop {
                             DragOp::Start(p) =>
                                 self.draw_state.draw_mouse_down(p.into(), palet, self.state.draw_draw_mode, true, self.state.ds_replace),
                             DragOp::Tick(Some(p)) =>
@@ -165,7 +169,7 @@ impl Tileset {
                         }
                     }
                 },
-                key if key == KMKey::nomods(PointerButton::Secondary) => {
+                key if key == KMKey::with_ctrl(PointerButton::Secondary, true) => {
                     hack_render_mode = Some(HackRenderMode::Del);
                     if draw_allowed && self.edit_mode {
                         match dop {
@@ -196,7 +200,7 @@ impl Tileset {
                         }
                     }
                 },
-                key if key == KMKey::with_ctrl(PointerButton::Middle, false) => {
+                key if key == KMKey::with_ctrl(PointerButton::Primary, false) => {
                     hack_render_mode = Some(HackRenderMode::Sel);
                     let palet = &mut palette.paletted[palette.selected as usize];
                     match dop {
@@ -205,10 +209,10 @@ impl Tileset {
                                 p.into(),
                                 &self.sel_matrix,
                                 self.state.draw_sel,
-                                !mods.shift,
-                                mods.ctrl,
+                                kp_plus | !sel_stage,
+                                sel_stage,
                                 true,
-                                self.state.dsel_whole,
+                                self.state.dsel_whole ^ mods.shift,
                             )
                         },
                         DragOp::Tick(Some(p)) => {
@@ -216,10 +220,10 @@ impl Tileset {
                                 p.into(),
                                 &self.sel_matrix,
                                 self.state.draw_sel,
-                                !mods.shift,
-                                mods.ctrl,
+                                kp_plus | !sel_stage,
+                                sel_stage,
                                 false,
-                                self.state.dsel_whole,
+                                self.state.dsel_whole ^ mods.shift,
                             )
                         },
                         DragOp::End(p) => {
@@ -234,9 +238,9 @@ impl Tileset {
                         _ => {},
                     }
                 },
-                key if key == KMKey::with_ctrl(PointerButton::Middle, true) => {
+                key if key == KMKey::with_ctrl(PointerButton::Secondary, false) => {
                     hack_render_mode = Some(HackRenderMode::CSE);
-                    match reg.drag_decode(PointerButton::Primary, ui) {
+                    match dop {
                         DragOp::Start(p) => self.cse_state.cse_mouse_down(p.into(), true),
                         DragOp::Tick(Some(p)) => self.cse_state.cse_mouse_down(p.into(), false),
                         DragOp::End(p) => self.cse_state.cse_mouse_up(p.into(), &mut self.sel_matrix),
@@ -282,14 +286,14 @@ impl Tileset {
                     self.dsel_state.dsel_render(
                         h.into(),
                         &self.sel_matrix,
-                        self.state.dsel_whole,
+                        self.state.dsel_whole ^ mods.shift,
                         |v| shapes.push(v)
                     ),
                 Some(HackRenderMode::Del) => 
                     self.del_state.del_render(
                         h.into(),
                         &self.sel_matrix,
-                        self.state.dsel_whole,
+                        self.state.dsel_whole ^ mods.shift,
                         |v| shapes.push(v)
                     ),
             }
@@ -386,7 +390,7 @@ impl Tileset {
             if state.validate_size != img_size {
                 selmatrix = None;
             }
-            edit_path = Some(epath);
+            edit_path = Some(path.clone());
         } else {
             state = TilesetState {
                 mzd_format: 2,
