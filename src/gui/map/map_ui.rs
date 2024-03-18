@@ -442,7 +442,7 @@ impl Map {
                 ]);
 
                 if let Some(h) = picomap.hover_pos_rel() {
-                    if mods.ctrl && picomap.response.dragged_by(egui::PointerButton::Secondary) {
+                    if picomap.response.dragged_by(egui::PointerButton::Secondary) {
                         self.move_viewpos_centred(<[f32;2]>::from(h).as_u8_clamped());
                     }
                 }
