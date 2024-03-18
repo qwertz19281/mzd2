@@ -230,7 +230,7 @@ impl Map {
                     match hack_render_mode {
                         Some(HackRenderMode::Draw) => self.draw_state.draw_hover_at_pos(h.into(), &palette.paletted[palette.selected as usize], |v| shapes.push(v) ),
                         Some(HackRenderMode::CSE) => self.cse_state.cse_render(h.into(), |v| shapes.push(v) ),
-                        Some(HackRenderMode::Sel) | None => //TODO doesn't show shit in None
+                        Some(HackRenderMode::Sel) => //TODO doesn't show shit in None
                             self.dsel_state.dsel_render(
                                 h.into(),
                                 &self.editsel.selmatrix(
@@ -252,6 +252,19 @@ impl Map {
                                 self.state.dsel_whole ^ mods.shift,
                                 |v| shapes.push(v)
                             ),
+                        None => {
+                            self.draw_state.draw_hover_at_pos(h.into(), &palette.paletted[palette.selected as usize], |v| shapes.push(v) );
+                            self.dsel_state.dsel_render(
+                                h.into(),
+                                &self.editsel.selmatrix(
+                                    draw_selected_layer,
+                                    &self.state.rooms,
+                                    self.state.rooms_size,
+                                ),
+                                self.state.dsel_whole ^ mods.shift,
+                                |v| shapes.push(v)
+                            );
+                        },
                     }
                 }
 

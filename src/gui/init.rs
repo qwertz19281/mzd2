@@ -75,7 +75,7 @@ impl eframe::App for SharedApp {
         }
 
         ctx.set_pixels_per_point(1.);
-        
+
         for v in std::mem::take(&mut self.sam.mut_queue) {
             v(self);
         }

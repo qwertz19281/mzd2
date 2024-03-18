@@ -282,7 +282,7 @@ impl Tileset {
             match hack_render_mode {
                 Some(HackRenderMode::Draw) => self.draw_state.draw_hover_at_pos(h.into(), &palette.paletted[palette.selected as usize], |v| shapes.push(v) ),
                 Some(HackRenderMode::CSE) => self.cse_state.cse_render(h.into(), |v| shapes.push(v) ),
-                Some(HackRenderMode::Sel) | None =>
+                Some(HackRenderMode::Sel) =>
                     self.dsel_state.dsel_render(
                         h.into(),
                         &self.sel_matrix,
@@ -296,6 +296,17 @@ impl Tileset {
                         self.state.dsel_whole ^ mods.shift,
                         |v| shapes.push(v)
                     ),
+                None =>
+                    if mods.ctrl {
+                        self.draw_state.draw_hover_at_pos(h.into(), &palette.paletted[palette.selected as usize], |v| shapes.push(v) );
+                    } else {
+                        self.dsel_state.dsel_render(
+                            h.into(),
+                            &self.sel_matrix,
+                            self.state.dsel_whole ^ mods.shift,
+                            |v| shapes.push(v)
+                        );
+                    },
             }
         }
 

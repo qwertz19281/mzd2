@@ -95,10 +95,10 @@ impl DrawState {
 
             let stroke = egui::Stroke::new(1.5, Color32::BLUE);
 
-            dest(egui::Shape::rect_stroke(rect, Rounding::ZERO, stroke));
-
             if let Some(tex) = &src.texture {
                 dest(egui::Shape::Mesh(basic_tex_shape_c(tex.id(), rect, blend)));
+            } else {
+                dest(egui::Shape::rect_stroke(rect, Rounding::ZERO, stroke));
             }
         }
     }
