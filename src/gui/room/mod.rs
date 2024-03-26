@@ -34,7 +34,7 @@ pub struct Room {
     pub locked: Option<String>,
     #[serde(skip)]
     pub loaded: Option<RoomLoaded>,
-    pub visible_layers: Vec<u8>,
+    pub visible_layers: Vec<(u8,String)>,
     pub selected_layer: usize,
     #[serde(with = "dirconn_serde")]
     pub dirconn: [[bool;2];3],
@@ -81,7 +81,7 @@ impl Room {
             coord,
             op_evo: 0,
             locked: None,
-            visible_layers: vec![1;initial_layers],
+            visible_layers: vec![(1,"".to_owned());initial_layers],
             selected_layer: 0,
             dirconn: Default::default(),
             desc_text: Default::default(),
@@ -129,7 +129,7 @@ impl Room {
         if self.loaded.is_none() && self.locked.is_none() {
             match self.load_room_res(map_path, rooms_size) {
                 Ok(l) => {
-                    self.visible_layers.resize(l.image.layers, 1);
+                    self.visible_layers.resize(l.image.layers, (1,"".to_owned()));
                     self.loaded = Some(l);
                 },
                 Err(e) => {
@@ -327,13 +327,13 @@ mod dirconn_serde {
 pub struct RoomLoadedSnapshot {
     image_data: Vec<u8>,
     layers: usize,
-    visible_layers: Vec<u8>,
+    visible_layers: Vec<(u8,String)>,
     selected_layer: usize,
     sel_matrix: SelMatrixLayered,
 }
 
 impl RoomLoaded {
-    fn snapshot(&self, visible_layers: &[u8], selected_layer: usize) -> anyhow::Result<RoomLoadedSnapshot> {
+    fn snapshot(&self, visible_layers: &[(u8,String)], selected_layer: usize) -> anyhow::Result<RoomLoadedSnapshot> {
         let image_data = encode_cache_qoi(&self.image.img)?;
         Ok(RoomLoadedSnapshot {
             image_data,
@@ -344,7 +344,7 @@ impl RoomLoaded {
         })
     }
 
-    fn load_snapshot(&mut self, snap: RoomLoadedSnapshot, visible_layers: &mut Vec<u8>, selected_layer: &mut usize) -> anyhow::Result<()> {
+    fn load_snapshot(&mut self, snap: RoomLoadedSnapshot, visible_layers: &mut Vec<(u8,String)>, selected_layer: &mut usize) -> anyhow::Result<()> {
         self.image.img = decode_cache_qoi(&snap.image_data)?;
         if let Some(v) = &mut self.image.tex {
             v.dirty();
@@ -357,7 +357,7 @@ impl RoomLoaded {
         Ok(())
     }
 
-    pub fn pre_img_draw(&mut self, visible_layers: &[u8], selected_layer: usize) {
+    pub fn pre_img_draw(&mut self, visible_layers: &[(u8,String)], selected_layer: usize) {
         self.dirty_file = true;
         if self.ur_snapshot_required {
             self.ur_snapshot_required = false;
@@ -370,7 +370,7 @@ impl RoomLoaded {
         }
     }
 
-    pub fn undo(&mut self, visible_layers: &mut Vec<u8>, selected_layer: &mut usize) {
+    pub fn undo(&mut self, visible_layers: &mut Vec<(u8,String)>, selected_layer: &mut usize) {
         if self.undo_buf.is_empty() {return;}
         if let Some(current) = self.snapshot(visible_layers, *selected_layer).unwrap_gui("Room UndoRedo snapshot error") {
             self.redo_buf.push_back(current);
@@ -379,7 +379,7 @@ impl RoomLoaded {
         }
     }
 
-    pub fn redo(&mut self, visible_layers: &mut Vec<u8>, selected_layer: &mut usize) {
+    pub fn redo(&mut self, visible_layers: &mut Vec<(u8,String)>, selected_layer: &mut usize) {
         if self.redo_buf.is_empty() {return;}
         if let Some(current) = self.snapshot(visible_layers, *selected_layer).unwrap_gui("Room UndoRedo snapshot error") {
             self.undo_buf.push_back(current);

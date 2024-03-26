@@ -72,7 +72,7 @@ pub fn convert_map(map_path: PathBuf, uuidmap: &mut UUIDMap) -> anyhow::Result<(
             coord: old_room.coord,
             op_evo: 0,
             locked: None,
-            visible_layers: old_room.visible_layers.into_iter().map(|v| v as u8).collect(),
+            visible_layers: old_room.visible_layers.into_iter().map(|v| (v as u8,"".to_owned())).collect(),
             selected_layer: old_room.selected_layer,
             dirconn: old_room.dirconn,
             desc_text: old_room.desc_text,

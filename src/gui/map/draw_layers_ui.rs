@@ -1,4 +1,4 @@
-use egui::FontId;
+use egui::{FontId, TextEdit};
 
 use crate::gui::init::SAM;
 use crate::gui::sel_matrix::SelMatrix;
@@ -33,16 +33,16 @@ impl Map {
             };
 
             ui.vertical(|ui| {
-                for (layer,&visible) in room.visible_layers.iter().enumerate() {
+                for (layer,(visible,text)) in room.visible_layers.iter_mut().enumerate() {
                     let selected = layer == room.selected_layer;
 
                     ui.horizontal(|ui| {
-                        let result = ui.add(egui::Button::new(if visible != 0 {"👁"} else {" "}).min_size(min_size));
+                        let result = ui.add(egui::Button::new(if *visible != 0 {"👁"} else {" "}).min_size(min_size));
                         if result.hovered() {
                             hovered_layer = Some(layer);
                         }
                         if result.clicked() {
-                            op = Oper::SetVis(layer,visible == 0);
+                            op = Oper::SetVis(layer,*visible == 0);
                         }
 
                         let result = ui.add(egui::Button::new(if selected {"✏"} else {" "}).min_size(min_size));
@@ -82,6 +82,8 @@ impl Map {
                                 op = Oper::Del(layer);
                             }
                         }
+
+                        ui.add(TextEdit::singleline(text).desired_width(150. * sam.dpi_scale));
                     });
                 }
             });
@@ -123,16 +125,16 @@ impl Map {
                     room.selected_layer = a+1;
                 }
             },
-            Oper::SetVis(a, v) => room.visible_layers[a] = v as u8,
+            Oper::SetVis(a, v) => room.visible_layers[a].0 = v as u8,
             Oper::SetDraw(v) => {
                 room.selected_layer = v;
                 if mods.ctrl | mods.shift {
-                    room.visible_layers[room.selected_layer] = 1;
-                    for v in &mut room.visible_layers[room.selected_layer+1..] {*v = 0;}
-                    for v in &mut room.visible_layers[..room.selected_layer] {*v = 1;}
+                    room.visible_layers[room.selected_layer].0 = 1;
+                    for v in &mut room.visible_layers[room.selected_layer+1..] {v.0 = 0;}
+                    for v in &mut room.visible_layers[..room.selected_layer] {v.0 = 1;}
                 }
                 if mods.ctrl {
-                    for v in &mut room.visible_layers[..room.selected_layer] {*v = 0;}
+                    for v in &mut room.visible_layers[..room.selected_layer] {v.0 = 0;}
                 }
                 self.post_drawroom_switch();
             },
@@ -158,7 +160,7 @@ impl Map {
                     loaded.sel_matrix.layers.swap(a, b);
                 },
                 Oper::Add(a) => {
-                    room.visible_layers.insert(a+1, 1);
+                    room.visible_layers.insert(a+1, (1,"".to_owned()));
                     loaded.image.insert_layer(self.state.rooms_size, a+1);
                     loaded.sel_matrix.layers.insert(a+1, SelMatrix::new_empty(loaded.sel_matrix.dims));
                 },
