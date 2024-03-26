@@ -100,8 +100,8 @@ impl Map {
                     .map(|r| r.selected_layer ) else {return};
 
                 let pressable_keys = &[
-                    KMKey::nomods(PointerButton::Primary),
-                    KMKey::nomods(PointerButton::Secondary),
+                    KMKey::ignmods(PointerButton::Primary),
+                    KMKey::ignmods(PointerButton::Secondary),
                     KMKey::with_ctrl(PointerButton::Middle, false),
                     KMKey::with_ctrl(PointerButton::Middle, true),
                 ];
