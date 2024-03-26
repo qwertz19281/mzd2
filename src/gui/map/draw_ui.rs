@@ -238,11 +238,15 @@ impl Map {
 
                 let mut shapes = vec![];
 
-                let grid_stroke = egui::Stroke::new(1., Color32::BLACK);
-                draw_grid([8,8], ([0.,0.], self.state.rooms_size.as_f32()), grid_stroke, 0., |s| shapes.push(s) );
+                let draw_grid = |shapes: &mut Vec<_>| {
+                    let grid_stroke = egui::Stroke::new(1., Color32::BLACK);
+                    draw_grid([8,8], ([0.,0.], self.state.rooms_size.as_f32()), grid_stroke, 0., |s| shapes.push(s) );
 
-                let grid_stroke = egui::Stroke::new(1., Color32::WHITE);
-                draw_grid([16,16], ([0.,0.], self.state.rooms_size.as_f32()), grid_stroke, 0., |s| shapes.push(s) );
+                    let grid_stroke = egui::Stroke::new(1., Color32::WHITE);
+                    draw_grid([16,16], ([0.,0.], self.state.rooms_size.as_f32()), grid_stroke, 0., |s| shapes.push(s) );
+                };
+
+                if !mods.shift {draw_grid(&mut shapes);}
 
                 self.editsel.render(
                     &mut self.state.rooms,
@@ -252,6 +256,8 @@ impl Map {
                     &self.path,
                     ui.ctx(),
                 );
+
+                if mods.shift {draw_grid(&mut shapes);}
 
                 if let Some(h) = reg.hover_pos_rel() {
                     match hack_render_mode {
