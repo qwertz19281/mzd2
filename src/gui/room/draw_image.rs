@@ -217,6 +217,8 @@ impl DrawImageGroup {
     // full-scale bounds unit
     fn draw(&self, rooms: &mut RoomMap, src: &RgbaImage, off: [u32;2], size: [u32;2], layer: usize, src_off: [u32;2], rooms_size: [u32;2], dirty_map: (&mut DirtyRooms,&mut LruCache), replace: bool) {
         assert!(rooms_size[0] % 8 == 0 && rooms_size[1] % 8 == 0);
+        debug_assert!(off[0] % 8 == 0 && off[1] % 8 == 0);
+        debug_assert!(src_off[0] % 8 == 0 && src_off[1] % 8 == 0);
         //TODO Room::ensure_loaded
         for &(room_id,_,roff) in &self.rooms {
             let Some(room) = rooms.get_mut(room_id) else {continue};
@@ -310,6 +312,8 @@ impl DrawImageGroup {
 
     fn read(&self, rooms: &RoomMap, dest: &mut RgbaImage, off: [u32;2], layer: usize, size: [u32;2], dest_off: [u32;2], rooms_size: [u32;2], replace: bool) {
         assert!(rooms_size[0] % 8 == 0 && rooms_size[1] % 8 == 0);
+        debug_assert!(off[0] % 8 == 0 && off[1] % 8 == 0);
+        debug_assert!(dest_off[0] % 8 == 0 && dest_off[1] % 8 == 0);
         //TODO Room::ensure_loaded
         for &(room_id,_,roff) in &self.rooms {
             let Some(room) = rooms.get(room_id) else {continue};
@@ -581,6 +585,9 @@ impl ImgRead for DrawImage {
         // assert!(rooms_size[0] == self.width());
         // assert!(rooms_size[1] * layer as u32 <= self.height());
         // assert!()
+        debug_assert!(off[0] % 8 == 0 && off[1] % 8 == 0);
+        debug_assert!(size[0] % 8 == 0 && size[1] % 8 == 0);
+        debug_assert!(dest_off[0] % 8 == 0 && dest_off[1] % 8 == 0);
 
         imgcopy(
             dest,
@@ -630,6 +637,10 @@ impl ImgRead for DrawImage {
 
 impl ImgWrite for DrawImage {
     fn img_write(&mut self, off: [u32;2], size: [u32;2], src: &RgbaImage, src_off: [u32;2], replace: bool) {
+        debug_assert!(off[0] % 8 == 0 && off[1] % 8 == 0);
+        debug_assert!(size[0] % 8 == 0 && size[1] % 8 == 0);
+        debug_assert!(src_off[0] % 8 == 0 && src_off[1] % 8 == 0);
+
         imgcopy(
             &mut self.img,
             &*src.view(
@@ -754,6 +765,8 @@ where
     I: image::GenericImage,
     J: image::GenericImageView<Pixel = I::Pixel>,
 {
+    debug_assert!(x % 8 == 0 && y % 8 == 0 && top.width() % 8 == 0 && top.height() % 8 == 0);
+
     if replace {
         image::imageops::replace(bottom, top, x, y)
     } else {
