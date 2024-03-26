@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use std::io::Cursor;
 use std::path::PathBuf;
 
@@ -9,7 +10,7 @@ use uuid::Uuid;
 
 use crate::gui::texture::TextureCell;
 use crate::util::uuid::{generate_res_uuid, generate_uuid, UUIDMap, UUIDTarget};
-use crate::util::{gui_error, seltrix_resource_path, tex_resource_path, write_png, MapId};
+use crate::util::{decode_cache_qoi, encode_cache_qoi, gui_error, seltrix_resource_path, tex_resource_path, write_png, MapId, ResultExt};
 
 use self::draw_image::DrawImage;
 
@@ -47,6 +48,9 @@ pub struct RoomLoaded {
     pub image: DrawImage,
     pub dirty_file: bool,
     pub sel_matrix: SelMatrixLayered,
+    pub ur_snapshot_required: bool,
+    pub undo_buf: VecDeque<RoomLoadedSnapshot>,
+    pub redo_buf: VecDeque<RoomLoadedSnapshot>,
 }
 
 impl Room {
@@ -67,6 +71,9 @@ impl Room {
                 },
                 sel_matrix: SelMatrixLayered::new(sel_entry_dims(rooms_size),initial_layers),
                 dirty_file: true,
+                ur_snapshot_required: true,
+                redo_buf: Default::default(),
+                undo_buf: Default::default(),
             }),
             uuid,
             resuuid: generate_res_uuid(uuidmap, map_path),
@@ -186,6 +193,9 @@ impl Room {
             image,
             dirty_file: false,
             sel_matrix,
+            ur_snapshot_required: true,
+            redo_buf: Default::default(),
+            undo_buf: Default::default(),
         };
 
         Ok(loaded)
@@ -246,6 +256,7 @@ impl Room {
         let Some(loaded) = self.loaded.as_mut() else {return};
         let Some(src_loaded) = src.loaded.as_ref() else {return};
         loaded.dirty_file = true;
+        loaded.ur_snapshot_required = true;
         loaded.image.tex = None;
         loaded.image.layers = src_loaded.image.layers;
         loaded.image.img = src_loaded.image.img.clone();
@@ -309,5 +320,71 @@ mod dirconn_serde {
         }
 
         Ok(dest)
+    }
+}
+
+#[derive(Clone, PartialEq)]
+pub struct RoomLoadedSnapshot {
+    image_data: Vec<u8>,
+    layers: usize,
+    visible_layers: Vec<u8>,
+    selected_layer: usize,
+    sel_matrix: SelMatrixLayered,
+}
+
+impl RoomLoaded {
+    fn snapshot(&self, visible_layers: &[u8], selected_layer: usize) -> anyhow::Result<RoomLoadedSnapshot> {
+        let image_data = encode_cache_qoi(&self.image.img)?;
+        Ok(RoomLoadedSnapshot {
+            image_data,
+            layers: self.image.layers,
+            visible_layers: visible_layers.to_owned(),
+            selected_layer,
+            sel_matrix: self.sel_matrix.clone(),
+        })
+    }
+
+    fn load_snapshot(&mut self, snap: RoomLoadedSnapshot, visible_layers: &mut Vec<u8>, selected_layer: &mut usize) -> anyhow::Result<()> {
+        self.image.img = decode_cache_qoi(&snap.image_data)?;
+        if let Some(v) = &mut self.image.tex {
+            v.dirty();
+        }
+        self.image.layers = snap.layers;
+        visible_layers.clear();
+        visible_layers.extend_from_slice(&snap.visible_layers);
+        *selected_layer = snap.selected_layer;
+        self.sel_matrix = snap.sel_matrix;
+        Ok(())
+    }
+
+    pub fn pre_img_draw(&mut self, visible_layers: &[u8], selected_layer: usize) {
+        self.dirty_file = true;
+        if self.ur_snapshot_required {
+            self.ur_snapshot_required = false;
+            if let Some(v) = self.snapshot(visible_layers, selected_layer).unwrap_gui("Room UndoRedo snapshot error") {
+                self.redo_buf.clear();
+                if self.undo_buf.back() != Some(&v) {
+                    self.undo_buf.push_back(v);
+                }
+            }
+        }
+    }
+
+    pub fn undo(&mut self, visible_layers: &mut Vec<u8>, selected_layer: &mut usize) {
+        if self.undo_buf.is_empty() {return;}
+        if let Some(current) = self.snapshot(visible_layers, *selected_layer).unwrap_gui("Room UndoRedo snapshot error") {
+            self.redo_buf.push_back(current);
+            let undo = self.undo_buf.pop_back().unwrap();
+            self.load_snapshot(undo, visible_layers, selected_layer).unwrap_gui("Room apply undo error");
+        }
+    }
+
+    pub fn redo(&mut self, visible_layers: &mut Vec<u8>, selected_layer: &mut usize) {
+        if self.redo_buf.is_empty() {return;}
+        if let Some(current) = self.snapshot(visible_layers, *selected_layer).unwrap_gui("Room UndoRedo snapshot error") {
+            self.undo_buf.push_back(current);
+            let redo = self.redo_buf.pop_back().unwrap();
+            self.load_snapshot(redo, visible_layers, selected_layer).unwrap_gui("Room apply redo error");
+        }
     }
 }

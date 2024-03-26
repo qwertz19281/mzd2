@@ -412,7 +412,7 @@ impl Map {
                 return;
             }
             if let Some(v) = s.state.rooms.get_mut(room) {
-                if !v.loaded.as_ref().is_some_and(|v| v.dirty_file) {
+                if v.loaded.as_ref().is_some_and(|v| !v.dirty_file && v.undo_buf.is_empty() && v.redo_buf.is_empty() ) {
                     v.loaded = None;
                 }
             }

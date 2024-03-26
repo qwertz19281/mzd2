@@ -8,6 +8,7 @@ use image::RgbaImage;
 use crate::gui::room::Room;
 use crate::map::coord_store::CoordStore;
 use crate::util::next_op_gen_evo;
+use crate::SRc;
 
 use super::uuid::{UUIDMap, UUIDTarget};
 use super::{RoomId, Map, MapState};
@@ -682,7 +683,7 @@ pub struct ShiftSmartCollected {
     pub(super) away_lock: bool,
     pub(super) no_new_connect: bool,
     pub(super) allow_siftshrink: bool,
-    pub(super) rooms: Arc<[RoomId]>,
+    pub(super) rooms: SRc<[RoomId]>,
     pub(super) op_evo: u64,
 }
 

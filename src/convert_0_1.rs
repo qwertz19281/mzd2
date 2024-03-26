@@ -1,5 +1,6 @@
 use std::io::{Cursor, ErrorKind};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use anyhow::Context;
 use chrono::{DateTime, Utc};
@@ -17,6 +18,7 @@ use crate::gui::tags::TagState;
 use crate::gui::util::ArrUtl;
 use crate::util::{attached_to_path, seltrix_resource_dir, seltrix_resource_path, tex_resource_dir, tex_resource_path, MapId};
 use crate::util::uuid::{generate_res_uuid, generate_uuid, UUIDMap, UUIDTarget};
+use crate::SRc;
 
 pub fn convert_0_1(args: Args) {
     let mut uuidmap = Default::default();
@@ -287,7 +289,7 @@ impl OldSelMatrixLayered {
                 assert_eq!(layer.dims, self.dims);
                 SelMatrix {
                     dims: layer.dims,
-                    entries: layer.entries.iter().map(|entry| {
+                    entries: SRc::new(layer.entries.iter().map(|entry| {
                         let start = entry.start.as_i16();
                         // if start[0] > 0 || start[1] > 0 {
                         //     eprintln!("START REPLACE {:?}", entry);
@@ -301,7 +303,7 @@ impl OldSelMatrixLayered {
                             start: [-start[0],-start[1]].debug_assert_range(0..=255).as_u8(),
                             size: entry.size,
                         }
-                    }).collect(),
+                    }).collect()),
                 }
             }).collect(),
         }

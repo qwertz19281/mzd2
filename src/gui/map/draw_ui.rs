@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use egui::{Color32, PointerButton};
 
 use crate::gui::draw_state::DrawMode;
@@ -10,6 +8,7 @@ use crate::gui::palette::{Palette, PaletteItem};
 use crate::gui::texture::RECT_0_0_1_1;
 use crate::gui::util::{alloc_painter_rel, ArrUtl, DragOp, draw_grid, dragslider_up};
 use crate::util::MapId;
+use crate::SRc;
 
 use super::{DrawOp, HackRenderMode, Map, RoomId};
 
@@ -29,6 +28,32 @@ impl Map {
         ui.horizontal(|ui| {
             ui.label("Zoom: ");
             dragslider_up(&mut self.state.draw_zoom, 0.03125, 1..=2, 1, ui);
+            ui.label("|");
+            if self.editsel.rooms.len() == 1 && Some(self.editsel.rooms[0].0) == self.dsel_room {
+                if let Some(room) = self.state.rooms.get_mut(self.dsel_room.unwrap()) {
+                    if let Some(loaded) = room.loaded.as_mut() {
+                        let resp = ui.add_enabled(
+                            !loaded.undo_buf.is_empty(),
+                            egui::Button::new("Undo")
+                        )
+                            .on_hover_text(format!("{} undos", loaded.undo_buf.len()));
+
+                        if resp.clicked() {
+                            loaded.undo(&mut room.visible_layers, &mut room.selected_layer);
+                        }
+
+                        let resp = ui.add_enabled(
+                            !loaded.redo_buf.is_empty(),
+                            egui::Button::new("Redo")
+                        )
+                            .on_hover_text(format!("{} redos", loaded.redo_buf.len()));
+
+                        if resp.clicked() {
+                            loaded.redo(&mut room.visible_layers, &mut room.selected_layer);
+                        }
+                    }
+                }
+            }
         });
 
         ui.horizontal(|ui| {
@@ -179,7 +204,7 @@ impl Map {
                                     let ss = self.dsel_state.dsel_mouse_up(p.into(), &mm);
                                     *palet = PaletteItem {
                                         texture: None, //TODO
-                                        src: Arc::new(ss),
+                                        src: SRc::new(ss),
                                         uv: RECT_0_0_1_1,
                                     }
                                 },
@@ -208,6 +233,8 @@ impl Map {
                         _ => {},
                     }
                 });
+
+                self.editsel.finalize_drawop(&mut self.state.rooms);
 
                 let mut shapes = vec![];
 

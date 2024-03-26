@@ -618,7 +618,7 @@ impl Map {
                             let Some(room) = self.state.rooms.get_mut(room_id) else {return};
 
                             self.texlru.put(room_id, self.texlru_gen);
-                            if room.loaded.as_ref().is_some_and(|v| !v.dirty_file) {
+                            if room.loaded.as_ref().is_some_and(|v| !v.dirty_file && v.undo_buf.is_empty() && v.redo_buf.is_empty() ) {
                                 self.imglru.put(room_id, self.texlru_gen);
                             }
 
@@ -696,7 +696,7 @@ impl Map {
         for (room_id,_,_) in &self.editsel.rooms {
             let Some(room) = self.state.rooms.get(*room_id) else {continue;};
             self.texlru.put(*room_id, self.texlru_gen);
-            if room.loaded.as_ref().is_some_and(|v| !v.dirty_file) {
+            if room.loaded.as_ref().is_some_and(|v| !v.dirty_file && v.undo_buf.is_empty() && v.redo_buf.is_empty() ) {
                 self.imglru.put(*room_id, self.texlru_gen);
             }
         }

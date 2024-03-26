@@ -3,6 +3,8 @@ use std::sync::Arc;
 use egui::{TextureHandle, TextureOptions, Rounding};
 use image::RgbaImage;
 
+use crate::SRc;
+
 use super::init::SharedApp;
 use super::sel_matrix::SelEntry;
 use super::util::alloc_painter_rel;
@@ -17,7 +19,7 @@ pub struct Palette {
 impl Palette {
     pub fn new() -> Self {
         Self {
-            paletted: (0..10).map(|_| PaletteItem { texture: None, uv: RECT_0_0_1_1, src: Arc::new(SelImg::empty()) }).collect(),
+            paletted: (0..10).map(|_| PaletteItem { texture: None, uv: RECT_0_0_1_1, src: SRc::new(SelImg::empty()) }).collect(),
             selected: 0
         }
     }
@@ -26,7 +28,7 @@ impl Palette {
 #[derive(Clone)]
 pub struct PaletteItem {
     pub texture: Option<TextureHandle>,
-    pub src: Arc<SelImg>,
+    pub src: SRc<SelImg>,
     pub uv: egui::Rect,
 }
 

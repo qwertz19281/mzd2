@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::gui::util::dragslider_up;
 use crate::util::{TilesetId, attached_to_path, ResultExt, gui_error, write_png};
+use crate::SRc;
 
 use super::draw_state::{DrawMode, DrawState};
 use super::dsel_state::cse::CSEState;
@@ -230,7 +231,7 @@ impl Tileset {
                             let ss = self.dsel_state.dsel_mouse_up(p.into(), &self.loaded_image);
                             *palet = PaletteItem {
                                 texture: None, //TODO
-                                src: Arc::new(ss),
+                                src: SRc::new(ss),
                                 uv: RECT_0_0_1_1,
                             }
                         },

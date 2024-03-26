@@ -1,17 +1,19 @@
+use crate::SRc;
+
 use super::map::{RoomMap, DirtyRooms, LruCache};
 use super::room::draw_image::{DrawImageGroup, DrawImage};
 use super::util::ArrUtl;
 
 const SEL_MATRIX_FILE_HEADER: &[u8] = b"#!80c2014a-5cfd-4b23-b767-f5b295edf15e\n";
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct SelMatrix {
     pub dims: [u32;2],
-    pub entries: Vec<SelEntry>,
+    pub entries: SRc<Vec<SelEntry>>,
 }
 
 /// SelEntry is relative to that one SelEntry, while SelPt is "absolute" (relative to whole img)
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct SelEntry {
     /// The offset of this point to the top-left of the selgroup
     pub start: [u8;2],
@@ -33,7 +35,7 @@ impl SelMatrix {
 
         Self {
             dims: [w,h],
-            entries,
+            entries: SRc::new(entries),
         }
     }
 
@@ -48,7 +50,7 @@ impl SelMatrix {
 
         Self {
             dims: [w,h],
-            entries,
+            entries: SRc::new(entries),
         }
     }
 
@@ -147,7 +149,7 @@ pub fn sel_entry_dims(full: [u32;2]) -> [u32;2] {
     full.div8()
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct SelMatrixLayered {
     pub dims: [u32;2],
     pub layers: Vec<SelMatrix>,
@@ -197,7 +199,7 @@ impl SelMatrixLayered {
         dest.write_all(&dims[1].to_le_bytes())?;
         dest.write_all(&(layers.len() as u64).to_le_bytes())?;
         for layer in layers {
-            for entry in &layer.entries {
+            for entry in &*layer.entries {
                 dest.write_all(&entry.enc())?;
             }
         }
@@ -226,7 +228,7 @@ impl SelMatrixLayered {
         // }
         let mut dest = Self::new(size, len);
         for layer in &mut dest.layers {
-            for entry in &mut layer.entries {
+            for entry in SRc::make_mut(&mut layer.entries) {
                 let mut dec = [0u8;8];
                 src.read_exact(&mut dec)?;
                 *entry = SelEntry::dec(&dec);
@@ -353,7 +355,7 @@ impl SelEntryWrite for SelMatrix {
         let [w,h] = self.dims;
         //let (x,y) = (x / 8, y / 8);
         if x >= w || y >= h {return None;}
-        self.entries.get_mut(y as usize * w as usize + x as usize)
+        SRc::make_mut(&mut self.entries).get_mut(y as usize * w as usize + x as usize)
     }
 
     fn fill(&mut self, [x0,y0]: [u32;2], [x1,y1]: [u32;2]) {
@@ -438,7 +440,7 @@ impl SelEntryWrite for DIGMatrixAccessMut<'_,'_> {
             if x >= roff[0] && x < roff[0]+rooms_size[0] && y >= roff[1] && y < roff[1]+rooms_size[1] {
                 let Some(room) = self.rooms.get_mut(room_id) else {continue};
                 let Some(loaded) = &mut room.loaded else {continue};
-                loaded.dirty_file = true;
+                loaded.pre_img_draw(&room.visible_layers, room.selected_layer);
                 room.transient = false;
 
                 return self.rooms.get_mut(room_id).unwrap().loaded.as_mut().unwrap().sel_matrix.layers[self.layer].get_mut([x-roff[0],y-roff[1]]);
@@ -458,7 +460,7 @@ impl SelEntryWrite for DIGMatrixAccessMut<'_,'_> {
 
             loaded.sel_matrix.layers[self.layer].fill(o1, o2);
 
-            loaded.dirty_file = true;
+            loaded.pre_img_draw(&room.visible_layers, room.selected_layer);
             room.transient = false;
         }
     }
@@ -474,7 +476,7 @@ impl SelEntryWrite for DIGMatrixAccessMut<'_,'_> {
 
                 loaded.sel_matrix.layers[self.layer].set_and_fix(pos.sub(roff), v);
 
-                loaded.dirty_file = true;
+                loaded.pre_img_draw(&room.visible_layers, room.selected_layer);
                 room.transient = false;
 
                 break;

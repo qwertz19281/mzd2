@@ -248,7 +248,7 @@ impl DrawImageGroup {
                 replace,
             );
 
-            loaded.dirty_file = true;
+            loaded.pre_img_draw(&room.visible_layers, room.selected_layer);
             room.transient = false;
             dirty_map.0.insert(room_id);
             dirty_map.1.pop(&room_id);
@@ -292,7 +292,7 @@ impl DrawImageGroup {
                 }
             }
 
-            loaded.dirty_file = true;
+            loaded.pre_img_draw(&room.visible_layers, room.selected_layer);
             dirty_map.0.insert(room_id);
             dirty_map.1.pop(&room_id);
 
@@ -444,6 +444,14 @@ impl DrawImageGroup {
             rooms,
             rooms_size,
             dirty_map,
+        }
+    }
+
+    pub fn finalize_drawop(&mut self, rooms: &mut RoomMap) {
+        for &(room_id,_,_) in &self.rooms {
+            let Some(room) = rooms.get_mut(room_id) else {continue};
+            let Some(loaded) = room.loaded.as_mut() else {continue};
+            loaded.ur_snapshot_required = true;
         }
     }
 }
