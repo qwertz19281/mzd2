@@ -43,3 +43,7 @@ inherits = "dev"
 opt-level = 3
 codegen-units = 1
 lto = true
+
+[profile.release]
+codegen-units = 1
+lto = true
