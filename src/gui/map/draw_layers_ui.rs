@@ -87,6 +87,27 @@ impl Map {
             });
         });
 
+        for (room_id,_,_) in &self.editsel.rooms {
+            let Some(room) = self.state.rooms.get_mut(*room_id) else {return None};
+            let Some(loaded) = &mut room.loaded else {return None};
+
+            match op {
+                Oper::Add(_) | Oper::Del(_) | Oper::Swap(_,_) => {
+                    loaded.pre_img_draw(&room.visible_layers, room.selected_layer);
+                    loaded.dirty_file = true;
+                    room.transient = false;
+                    self.dirty_rooms.insert(*room_id);
+                    self.imglru.pop(room_id);
+                    if let Some(t) = &mut loaded.image.tex {
+                        t.dirty();
+                    }
+                }
+                _ => {},
+            }
+        }
+
+        let Some(room) = self.state.rooms.get_mut(room_id) else {return None};
+
         match op {
             Oper::Noop => {},
             Oper::Del(_) => {},
@@ -128,30 +149,18 @@ impl Map {
                 Oper::Noop => {},
                 Oper::Del(a) => {
                     room.visible_layers.remove(a);
-                    room.transient = false;
                     loaded.image.remove_layer(self.state.rooms_size, a);
                     loaded.sel_matrix.layers.remove(a);
-                    if let Some(t) = &mut loaded.image.tex {
-                        t.dirty();
-                    }
                 },
                 Oper::Swap(a, b) => {
                     room.visible_layers.swap(a, b);
-                    room.transient = false;
                     loaded.image.swap_layers(self.state.rooms_size, a, b);
                     loaded.sel_matrix.layers.swap(a, b);
-                    if let Some(t) = &mut loaded.image.tex {
-                        t.dirty();
-                    }
                 },
                 Oper::Add(a) => {
                     room.visible_layers.insert(a+1, 1);
-                    room.transient = false;
                     loaded.image.insert_layer(self.state.rooms_size, a+1);
                     loaded.sel_matrix.layers.insert(a+1, SelMatrix::new_empty(loaded.sel_matrix.dims));
-                    if let Some(t) = &mut loaded.image.tex {
-                        t.dirty();
-                    }
                 },
                 Oper::SetVis(_, _) => {},
                 Oper::SetDraw(_) => {},

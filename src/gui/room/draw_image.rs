@@ -235,6 +235,8 @@ impl DrawImageGroup {
 
             let (opi_0,opi_1) = (op_0.sub(roff),op_1.sub(roff));
 
+            loaded.pre_img_draw(&room.visible_layers, room.selected_layer);
+
             imgcopy(
                 &mut loaded.image.img,
                 &*src.view(
@@ -248,7 +250,6 @@ impl DrawImageGroup {
                 replace,
             );
 
-            loaded.pre_img_draw(&room.visible_layers, room.selected_layer);
             room.transient = false;
             dirty_map.0.insert(room_id);
             dirty_map.1.pop(&room_id);
@@ -285,6 +286,8 @@ impl DrawImageGroup {
 
             let (opi_0,opi_1) = (op_0.sub(roff),op_1.sub(roff));
 
+            loaded.pre_img_draw(&room.visible_layers, room.selected_layer);
+
             for y in opi_0[1] .. opi_1[1] {
                 for x in opi_0[0] .. opi_1[0] {
                     let y = y + (layer as u32 * rooms_size[1] as u32);
@@ -292,7 +295,6 @@ impl DrawImageGroup {
                 }
             }
 
-            loaded.pre_img_draw(&room.visible_layers, room.selected_layer);
             dirty_map.0.insert(room_id);
             dirty_map.1.pop(&room_id);
 

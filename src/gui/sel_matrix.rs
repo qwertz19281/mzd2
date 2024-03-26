@@ -442,6 +442,8 @@ impl SelEntryWrite for DIGMatrixAccessMut<'_,'_> {
                 let Some(loaded) = &mut room.loaded else {continue};
                 loaded.pre_img_draw(&room.visible_layers, room.selected_layer);
                 room.transient = false;
+                self.dirty_map.0.insert(room_id);
+                self.dirty_map.1.pop(&room_id);
 
                 return self.rooms.get_mut(room_id).unwrap().loaded.as_mut().unwrap().sel_matrix.layers[self.layer].get_mut([x-roff[0],y-roff[1]]);
             }
@@ -458,10 +460,13 @@ impl SelEntryWrite for DIGMatrixAccessMut<'_,'_> {
             let Some(room) = self.rooms.get_mut(room_id) else {continue};
             let Some(loaded) = &mut room.loaded else {continue};
 
+            loaded.pre_img_draw(&room.visible_layers, room.selected_layer);
+
             loaded.sel_matrix.layers[self.layer].fill(o1, o2);
 
-            loaded.pre_img_draw(&room.visible_layers, room.selected_layer);
             room.transient = false;
+            self.dirty_map.0.insert(room_id);
+            self.dirty_map.1.pop(&room_id);
         }
     }
 
@@ -474,10 +479,13 @@ impl SelEntryWrite for DIGMatrixAccessMut<'_,'_> {
                 let Some(room) = self.rooms.get_mut(room_id) else {continue};
                 let Some(loaded) = &mut room.loaded else {continue};
 
+                loaded.pre_img_draw(&room.visible_layers, room.selected_layer);
+
                 loaded.sel_matrix.layers[self.layer].set_and_fix(pos.sub(roff), v);
 
-                loaded.pre_img_draw(&room.visible_layers, room.selected_layer);
                 room.transient = false;
+                self.dirty_map.0.insert(room_id);
+                self.dirty_map.1.pop(&room_id);
 
                 break;
             }
