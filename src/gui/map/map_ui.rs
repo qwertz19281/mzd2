@@ -276,6 +276,7 @@ impl Map {
                                     if let Some(new_id) = self.ui_create_room(v, &mut sam.uuidmap) {
                                         let [a,b] = self.state.rooms.get_disjoint_mut([new_id,self.template_room.unwrap()]).unwrap();
                                         a.clone_from(b, &self.path, self.state.rooms_size);
+                                        self.dirty_rooms.insert(new_id);
                                         self.dsel_room = Some(new_id);
                                         self.state.dsel_coord = Some(v);
                                         self.editsel = DrawImageGroup::single(new_id, v, self.state.rooms_size);
