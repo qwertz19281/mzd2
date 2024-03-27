@@ -77,7 +77,7 @@ impl Map {
 
         let mods = ui.input(|i| i.modifiers );
 
-        let kp_plus = ui.input(|i| i.key_down(egui::Key::PlusEquals));
+        let kp_plus = ui.input(|i| i.key_down(egui::Key::Plus));
         let kp_minus = ui.input(|i| i.key_down(egui::Key::Minus));
         let sel_stage = kp_plus | kp_minus;
 
