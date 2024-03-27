@@ -13,7 +13,7 @@ pub mod uuid;
 #[repr(transparent)]
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
 pub struct TilesetId {
-    i: egui::Id,
+    pub(crate) i: egui::Id,
 }
 
 static ID_GEN_SRC: AtomicI64 = AtomicI64::new(64);
@@ -37,8 +37,8 @@ impl TilesetId {
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
 pub struct MapId {
-    i_map: egui::Id,
-    i_draw: egui::Id,
+    pub(crate) i_map: egui::Id,
+    pub(crate) i_draw: egui::Id,
 }
 
 impl MapId {

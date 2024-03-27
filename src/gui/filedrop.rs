@@ -6,6 +6,7 @@ use image::RgbaImage;
 
 use crate::util::*;
 
+use super::dock::DockTab;
 use super::init::SharedApp;
 use super::map::Map;
 use super::tileset::Tileset;
@@ -35,12 +36,14 @@ impl SharedApp {
     fn try_load_map(&mut self, path: PathBuf) {
         let Some(map) = Map::load_map(path, &mut self.sam.uuidmap).unwrap_gui("Failed to load map") else {return};
 
+        self.dock.add_tabs.push(DockTab::Map(map.id));
         self.maps.open_maps.insert(map.id, map);
     }
 
     fn try_load_tileset(&mut self, path: PathBuf, img: RgbaImage) {
         let Some(ts) = Tileset::load2(path, img).unwrap_gui("Failed to load tileset") else {return};
 
+        self.dock.add_tabs.push(DockTab::Tileset(ts.id));
         self.tilesets.open_tilesets.insert(ts.id, ts);
     }
 }

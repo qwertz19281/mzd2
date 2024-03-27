@@ -5,6 +5,7 @@ use egui::Vec2;
 use self::init::SharedApp;
 
 pub mod init;
+pub mod dock;
 pub mod top_panel;
 pub mod window_states;
 pub mod tileset;

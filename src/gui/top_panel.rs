@@ -1,6 +1,7 @@
 use std::ffi::OsStr;
 use std::path::PathBuf;
 
+use super::dock::DockTab;
 use super::init::SharedApp;
 use super::map::Map;
 use super::tileset::Tileset;
@@ -72,6 +73,7 @@ fn new_map(state: &mut SharedApp) {
 
     let map = Map::new(path, state.top_panel.create_map_size, &mut state.sam.uuidmap);
 
+    state.dock.add_tabs.push(DockTab::Map(map.id));
     state.maps.open_maps.insert(map.id, map);
 }
 
@@ -95,5 +97,6 @@ fn new_tileset(state: &mut SharedApp) {
 
     let tileset = Tileset::new(path, state.top_panel.create_tileset_size, state.top_panel.create_tileset_quant);
 
+    state.dock.add_tabs.push(DockTab::Tileset(tileset.id));
     state.tilesets.open_tilesets.insert(tileset.id, tileset);
 }

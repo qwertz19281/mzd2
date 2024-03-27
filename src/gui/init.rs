@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::util::uuid::UUIDMap;
 use crate::util::MapId;
 
+use super::dock::Docky;
 use super::{MutQueue, dpi_hack};
 use super::map::RoomId;
 use super::palette::{Palette, palette_ui};
@@ -42,6 +43,7 @@ pub struct SharedApp {
     pub palette: Palette,
     pub init_load_paths: Vec<PathBuf>,
     pub sam: SAM,
+    pub dock: Docky,
 }
 
 pub struct SAM {
@@ -54,6 +56,7 @@ impl SharedApp {
     fn new(init_load_paths: Vec<PathBuf>) -> Self {
         Self {
             top_panel: TopPanel::new(),
+            dock: Docky::new(),
             maps: Maps::new(),
             tilesets: Tilesets::new(),
             warpon: None,
@@ -102,14 +105,16 @@ impl eframe::App for SharedApp {
 
             egui::TopBottomPanel::top("main_top_panel")
                 .show(ctx, |ui| top_panel_ui(self, ui) );
-            egui::Window::new("Palette")
-                .resizable(false)
-                .default_pos(egui::Pos2 { x: 0., y: 65536. })
-                //.anchor(egui::Align2::LEFT_BOTTOM, egui::Vec2::default())
-                //.movable(true)
-                .show(ctx, |ui| palette_ui(self, ui));
-            maps_ui(self, ctx);
-            tilesets_ui(self, ctx);
+            // egui::Window::new("Palette")
+            //     .resizable(false)
+            //     .default_pos(egui::Pos2 { x: 0., y: 65536. })
+            //     //.anchor(egui::Align2::LEFT_BOTTOM, egui::Vec2::default())
+            //     //.movable(true)
+            //     .show(ctx, |ui| palette_ui(self, ui));
+            // maps_ui(self, ctx);
+            // tilesets_ui(self, ctx);
+
+            egui::CentralPanel::default().show(ctx,|ui| self.dock_ui(ui));
 
             for v in std::mem::replace(&mut self.sam.mut_queue, vec![]) {
                 v(self);
