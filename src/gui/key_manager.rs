@@ -81,7 +81,7 @@ impl PainterRel {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum AKey {
     Kbd(egui::Key),
     Mouse(egui::PointerButton),
@@ -99,7 +99,7 @@ impl From<egui::PointerButton> for AKey {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct KMKey {
     pub(crate) key: AKey,
     pub(crate) mods: Modifiers,

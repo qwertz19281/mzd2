@@ -5,7 +5,6 @@ use std::path::PathBuf;
 
 use egui::TextureOptions;
 use egui::epaint::ahash::{HashSet, AHasher};
-use scoped_tls_hkt::scoped_thread_local;
 use serde::{Serialize, Deserialize};
 use slotmap::{HopSlotMap, SlotMap};
 use ::uuid::Uuid;
@@ -102,7 +101,7 @@ pub struct MapState {
     pub mtime: chrono::DateTime<chrono::Utc>,
 }
 
-#[derive(Deserialize,Serialize)]
+#[derive(Deserialize)]
 pub struct MapDeserProbe {
     pub mzd_format: u64,
     pub uuid: Uuid,

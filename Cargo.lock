@@ -1877,7 +1877,6 @@ dependencies = [
  "hex",
  "image",
  "lru",
- "rand",
  "raw-window-handle",
  "regex",
  "rfd",
