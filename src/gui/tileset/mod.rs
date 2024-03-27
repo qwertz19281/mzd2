@@ -122,6 +122,8 @@ impl Tileset {
 
         // drag needs to be handled first, before the ops that require the off
         if let Some(_) = reg.hover_pos_rel() {
+            palette.do_keyboard_numbers(ui);
+            
             if reg.response.dragged_by(egui::PointerButton::Middle) {
                 let delta = reg.response.drag_delta() / self.state.zoom as f32;
                 let new_view_pos = self.state.voff.sub(delta.into());

@@ -23,6 +23,26 @@ impl Palette {
             selected: 0
         }
     }
+
+    pub fn do_keyboard_numbers(&mut self, ui: &mut egui::Ui) {
+        let pressed_idx = ui.input(|v| {
+            if v.key_pressed(egui::Key::Num1) {return Some(0);}
+            if v.key_pressed(egui::Key::Num2) {return Some(1);}
+            if v.key_pressed(egui::Key::Num3) {return Some(2);}
+            if v.key_pressed(egui::Key::Num4) {return Some(3);}
+            if v.key_pressed(egui::Key::Num5) {return Some(4);}
+            if v.key_pressed(egui::Key::Num6) {return Some(5);}
+            if v.key_pressed(egui::Key::Num7) {return Some(6);}
+            if v.key_pressed(egui::Key::Num8) {return Some(7);}
+            if v.key_pressed(egui::Key::Num9) {return Some(8);}
+            if v.key_pressed(egui::Key::Num0) {return Some(9);}
+            None
+        });
+
+        if let Some(i) = pressed_idx {
+            self.selected = i;
+        }
+    }
 }
 
 #[derive(Clone)]

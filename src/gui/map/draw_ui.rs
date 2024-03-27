@@ -98,6 +98,8 @@ impl Map {
                 let mut hide_layers_all = false;
 
                 if let Some(hov) = reg.hover_pos_rel() {
+                    palette.do_keyboard_numbers(ui);
+
                     if let Some(room) = self.editsel.rooms.get(0).and_then(|(r,_,_)| self.state.rooms.get_mut(*r) ) {
                         hide_layers_above = room.editor_hide_layers_above;
                         let mut moved = false;
