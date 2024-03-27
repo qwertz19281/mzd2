@@ -32,7 +32,7 @@ pub struct Tileset {
     pub state: TilesetState,
     pub path: PathBuf,
     pub loaded_image: DrawImage,
-    pub edit_path: Option<PathBuf>,
+    pub edit_path: bool,
     pub edit_mode: bool,
     pub quant: u8,
     pub draw_state: DrawState,
@@ -60,16 +60,16 @@ pub struct TilesetState {
 
 impl Tileset {
     pub fn ui(&mut self, palette: &mut Palette, ui: &mut egui::Ui, sam: &mut SAM) {
-        let draw_allowed = self.edit_path.as_deref().is_some_and(|p| p.extension() == Some(OsStr::new("png")));
+        let draw_allowed = self.edit_path && self.path.extension() == Some(OsStr::new("png"));
 
         ui.horizontal(|ui| {
             if ui.button(if false {"SAVE"} else {"Save"}).clicked() {
-                if self.edit_path.is_some() {
+                if self.edit_path {
                     self.ui_save(draw_allowed && self.edit_mode);
                 }
             }
             if ui.button(if false {"SAVE&Close"} else {"Save&Close"}).clicked() {
-                if self.edit_path.is_some() {
+                if self.edit_path {
                     self.ui_save(draw_allowed && self.edit_mode);
                 }
                 let id = self.id;
@@ -83,7 +83,7 @@ impl Tileset {
         });
         ui.horizontal(|ui| {
             dragslider_up(&mut self.state.zoom, 0.03125, 1..=2, 1, ui);
-            if self.edit_path.is_none() {
+            if !self.edit_path {
                 if ui.button("Make editable").double_clicked() {
                     if self.quant != 1 {
                         self.sel_matrix.intervalize([self.quant,self.quant]);
@@ -327,7 +327,8 @@ impl Tileset {
     }
 
     pub fn save_editstate(&mut self) -> bool {
-        let edit_path = self.edit_path.get_or_insert_with(|| attached_to_path(&self.path, ".mzdtileset") );
+        self.edit_path = true;
+        let edit_path = attached_to_path(&self.path, ".mzdtileset");
 
         let Some(ser) = serde_json::to_vec(&self.state).unwrap_gui("Error saving tileset metadata") else {return false};
 
@@ -389,7 +390,7 @@ impl Tileset {
 
         let epath = attached_to_path(&path, ".mzdtileset");
         let spath = attached_to_path(&path, ".mzdtileset.sel");
-        let mut edit_path = None;
+        let mut edit_path = false;
         let mut state;
 
         let mut selmatrix = None;
@@ -402,7 +403,7 @@ impl Tileset {
             if state.validate_size != img_size {
                 selmatrix = None;
             }
-            edit_path = Some(path.clone());
+            edit_path = true;
         } else {
             state = TilesetState {
                 mzd_format: 2,
@@ -440,6 +441,41 @@ impl Tileset {
         };
 
         Ok(ts)
+    }
+
+    pub fn new(path: PathBuf, size: [u32;2], quant: u8) -> Self {
+        let mut sel_matrix = SelMatrix::new_emptyfilled(sel_entry_dims(size));
+        sel_matrix.intervalize([quant,quant]);
+        Self {
+            id: TilesetId::new(),
+            state: TilesetState {
+                mzd_format: 2,
+                title: path.file_name().unwrap().to_string_lossy().into_owned(),
+                zoom: 1,
+                validate_size: size,
+                voff: [0.;2],
+                draw_draw_mode: DrawMode::Rect,
+                draw_sel: DSelMode::Rect,
+                ds_replace: false,
+                dsel_whole: true,
+            },
+            path,
+            loaded_image: DrawImage {
+                img: RgbaImage::new(size[0],size[1]),
+                tex: None,
+                layers: 1,
+            },
+            edit_path: true,
+            edit_mode: true,
+            quant: 1,
+            draw_state: DrawState::new(),
+            dsel_state: DSelState::new(),
+            del_state: DelState::new(),
+            cse_state: CSEState::new(),
+            dirty_img: true,
+            key_manager_state: None,
+            sel_matrix,
+        }
     }
 
     fn set_view_pos(&mut self, view_pos: [f32;2], viewport_size: [f32;2]) {
