@@ -40,7 +40,7 @@ pub struct Room {
     pub dirconn: [[bool;2];3],
     pub ctime: chrono::DateTime<chrono::Utc>,
     pub mtime: chrono::DateTime<chrono::Utc>,
-    #[serde(default)] // TODO remove default in final disk_format_0.2
+    #[serde(skip)] // TODO remove default in final disk_format_0.2
     pub transient: bool,
     #[serde(default)]
     pub editor_hide_layers_above: bool,
@@ -205,7 +205,7 @@ impl Room {
     }
 
     pub fn save_room_res(&mut self, map_path: impl Into<PathBuf>, cleanup_old: &mut Vec<PathBuf>, uuidmap: &mut UUIDMap, map_id: MapId, room_id: RoomId) -> anyhow::Result<()> {
-        if !self.can_edit() {return Ok(());}
+        if !self.can_edit() || self.transient {return Ok(());}
         
         let map_path = map_path.into();
 

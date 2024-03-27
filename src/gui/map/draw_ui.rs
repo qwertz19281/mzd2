@@ -1,18 +1,98 @@
 use egui::{Color32, Key, PointerButton};
+use image::RgbaImage;
 
 use crate::gui::draw_state::DrawMode;
 use crate::gui::dsel_state::DSelMode;
 use crate::gui::init::SAM;
 use crate::gui::key_manager::KMKey;
 use crate::gui::palette::{Palette, PaletteItem};
+use crate::gui::room::draw_image::DrawImageGroup;
+use crate::gui::room::Room;
 use crate::gui::texture::RECT_0_0_1_1;
 use crate::gui::util::{alloc_painter_rel, dpad, dpad_icons, dpadc, dragslider_up, draw_grid, ArrUtl, DragOp};
 use crate::util::MapId;
 use crate::SRc;
 
-use super::{DrawOp, HackRenderMode, Map, RoomId};
+use super::room_ops::RoomOp;
+use super::uuid::UUIDMap;
+use super::{next_ur_op_id, DrawOp, HackRenderMode, Map, RoomId};
 
 impl Map {
+    pub fn create_dummy_room(&mut self, coord: [u8;3], template: RoomId, uuidmap: &mut UUIDMap) {
+        self.drop_dummy_room(uuidmap);
+
+        if self.room_matrix.get(coord).is_some() {return;}
+        
+        let mut room = Room::create_empty(
+            coord,
+            self.state.rooms_size,
+            RgbaImage::new(self.state.rooms_size[0], self.state.rooms_size[1] * 1),
+            1,
+            uuidmap,
+            self.id,
+            &self.path,
+        );
+        room.transient = true;
+        room.loaded.as_mut().unwrap().dirty_file = false;
+
+        if let Some(t) = self.state.rooms.get(template) {
+            room.clone_from(t, &self.path, self.state.rooms_size);
+        }
+
+        let id = self.state.rooms.insert(room);
+
+        self.state.rooms[id].update_uuidmap(id, uuidmap, self.id);
+
+        self.dummy_room = Some(id);
+    }
+
+    pub fn drop_dummy_room(&mut self, uuidmap: &mut UUIDMap) {
+        if let Some(v) = self.dummy_room {
+            if !self.state.rooms.get(v).is_some_and(|v| !v.transient) {
+                if let Some(room) = self.state.rooms.remove(v) {
+                    uuidmap.remove(&room.uuid);
+                    uuidmap.remove(&room.resuuid);
+                }
+            }
+        }
+    }
+
+    fn dummyroomscope_start(&mut self) {
+        if self.dummy_room.is_some_and(|v| self.state.rooms.contains_key(v) ) && self.dsel_room.is_none() && self.editsel.rooms.is_empty() {
+            self.dsel_room = self.dummy_room;
+            let room = &self.state.rooms[self.dummy_room.unwrap()];
+            debug_assert!(room.transient);
+            self.editsel = DrawImageGroup::single(self.dummy_room.unwrap(),room.coord,self.state.rooms_size);
+        }
+    }
+
+    fn dummyroomscope_end(&mut self) {
+        if let Some(id) = self.dummy_room {
+            if self.state.rooms.get(id).is_some_and(|v| !v.transient) {
+                // dummy room got real
+                let coord = self.state.rooms[id].coord;
+                self.dummy_room = None;
+                if self.room_matrix.get(coord).is_none() {
+                    self.state.rooms.get_mut(id).unwrap().transient = false;
+                    self.room_matrix.insert(coord,id);
+                    self.undo_buf.push_back((RoomOp::Del(id),next_ur_op_id()));
+                    self.after_room_op_apply_invalidation(false);
+                }
+            }
+        }
+
+        if let Some(v) = self.dsel_room {
+            if let Some(room) = self.state.rooms.get(v) {
+                if room.transient {
+                    self.dsel_room = None;
+                }
+            } else {
+                self.dsel_room = None;
+            }
+        }
+        self.editsel.rooms.retain(|(id,_,_)| self.state.rooms.get(*id).map_or(false, |v| !v.transient ));
+    }
+
     pub fn ui_draw(
         &mut self,
         warp_setter: &mut Option<(MapId,RoomId,(u32,u32))>,
@@ -54,6 +134,16 @@ impl Map {
                     }
                 }
             }
+            self.dummyroomscope_start();
+            if self.editsel.rooms.len() == 1 && Some(self.editsel.rooms[0].0) == self.dsel_room {
+                if let Some(room) = self.state.rooms.get_mut(self.dsel_room.unwrap()) {
+                    if room.transient {
+                        if ui.button("Create this room").clicked() {
+                            room.transient = false;
+                        }
+                    }
+                }
+            }
         });
 
         ui.horizontal(|ui| {
@@ -82,7 +172,9 @@ impl Map {
         let sel_stage = kp_plus | kp_minus;
 
         let mut hack_render_mode = None;
-        
+
+        let mut quickmove = None;
+
         if self.editsel.region_size[0] != 0 && self.editsel.region_size[1] != 0 && !self.editsel.rooms.is_empty() {
             ui.horizontal(|ui| {
                 let size_v = self.editsel.region_size.as_f32().into();
@@ -151,7 +243,7 @@ impl Map {
                                 ui,
                                 |_,clicked,axis,dir| {
                                     if !clicked {return;}
-                                    // TODO
+                                    quickmove = Some((axis,dir));
                                 },
                             );
 
@@ -165,7 +257,7 @@ impl Map {
                                 "Room Conns",
                                 20. * sam.dpi_scale, 32. * sam.dpi_scale, sam.dpi_scale,
                                 icons,
-                                true,
+                                !self.state.rooms.get(self.dsel_room.unwrap()).unwrap().transient,
                                 ui,
                                 |_,clicked,axis,dir| {
                                     if !clicked {return;}
@@ -181,7 +273,7 @@ impl Map {
                 
                 let Some(draw_selected_layer) = self.editsel.rooms.get(0)
                     .and_then(|(r,_,_)| self.state.rooms.get(*r) )
-                    .map(|r| r.selected_layer ) else {return};
+                    .map(|r| r.selected_layer ) else {self.dummyroomscope_end(); return};
 
                 let pressable_keys = &[
                     KMKey::ignmods(PointerButton::Primary),
@@ -390,5 +482,6 @@ impl Map {
                 reg.extend_rel_fixtex(shapes);
             });
         }
+        self.dummyroomscope_end();
     }
 }

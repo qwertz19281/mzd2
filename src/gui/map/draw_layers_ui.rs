@@ -138,7 +138,9 @@ impl Map {
                 if mods.ctrl {
                     for v in &mut room.visible_layers[..room.selected_layer] {v.0 = 0;}
                 }
-                self.post_drawroom_switch();
+                self.draw_state.draw_cancel();
+                self.dsel_state.clear_selection();
+                self.del_state.del_cancel();
             },
         }
 

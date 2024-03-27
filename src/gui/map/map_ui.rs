@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use egui::{Sense, Vec2, Color32, Rounding, PointerButton};
+use slotmap::Key;
 
 use crate::gui::map::room_ops::describe_direction;
 use crate::gui::room::draw_image::DrawImageGroup;
@@ -85,7 +86,8 @@ impl Map {
         ]);
     }
 
-    pub(crate) fn post_drawroom_switch(&mut self) {
+    pub(crate) fn post_drawroom_switch(&mut self, uuidmap: &mut UUIDMap) {
+        self.drop_dummy_room(uuidmap);
         self.draw_state.draw_cancel();
         self.dsel_state.clear_selection();
         self.del_state.del_cancel();
@@ -253,7 +255,7 @@ impl Map {
                                 if ui.button("Delete Room").double_clicked() {
                                     self.dsel_room = None;
                                     self.editsel = DrawImageGroup::unsel(self.state.rooms_size);
-                                    self.post_drawroom_switch();
+                                    self.post_drawroom_switch(&mut sam.uuidmap);
                                     self.ui_delete_room(v, &mut sam.uuidmap);
                                 }
                                 if ui.button("As Template").clicked() {
@@ -265,7 +267,7 @@ impl Map {
                                         self.dsel_room = Some(new_id);
                                         self.state.dsel_coord = Some(v);
                                         self.editsel = DrawImageGroup::single(new_id, v, self.state.rooms_size);
-                                        self.post_drawroom_switch();
+                                        self.post_drawroom_switch(&mut sam.uuidmap);
                                     }
                                 }
                                 let resp = ui.add_enabled(
@@ -280,7 +282,7 @@ impl Map {
                                         self.dsel_room = Some(new_id);
                                         self.state.dsel_coord = Some(v);
                                         self.editsel = DrawImageGroup::single(new_id, v, self.state.rooms_size);
-                                        self.post_drawroom_switch();
+                                        self.post_drawroom_switch(&mut sam.uuidmap);
                                     }
                                 }
                             }
@@ -312,7 +314,7 @@ impl Map {
                                         self.ssel_room = Some(new_id);
                                         self.state.ssel_coord = Some(v);
                                         self.editsel = DrawImageGroup::single(new_id, v, self.state.rooms_size);
-                                        self.post_drawroom_switch();
+                                        self.post_drawroom_switch(&mut sam.uuidmap);
                                     }
                                 }
                             }
@@ -503,11 +505,14 @@ impl Map {
                                 } else {
                                     self.editsel = DrawImageGroup::unsel(self.state.rooms_size);
                                 }
-                                self.post_drawroom_switch();
+                                self.post_drawroom_switch(&mut sam.uuidmap);
+                                if self.dsel_room.is_none() {
+                                    self.create_dummy_room(click_coord, RoomId::null(), &mut sam.uuidmap);
+                                }
                             } else {
                                 if let Some(room) = self.room_matrix.get(click_coord) {
                                     if self.editsel.try_attach(*room, self.state.rooms_size, &self.state.rooms) {
-                                        self.post_drawroom_switch();
+                                        self.post_drawroom_switch(&mut sam.uuidmap);
                                     }
                                 }
                             }

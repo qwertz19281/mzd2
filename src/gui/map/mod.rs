@@ -64,6 +64,7 @@ pub struct Map {
     pub dsel_room: Option<RoomId>,
     pub ssel_room: Option<RoomId>,
     pub template_room: Option<RoomId>,
+    pub dummy_room: Option<RoomId>,
 }
 
 pub type RoomMap = HopSlotMap<RoomId,Room>;
@@ -143,7 +144,7 @@ impl Map {
 
         for dirty_room in self.dirty_rooms.drain() {
             if let Some(room) = self.state.rooms.get_mut(dirty_room) {
-                if room.loaded.as_ref().is_some_and(|v| v.dirty_file) {
+                if room.loaded.as_ref().is_some_and(|v| v.dirty_file) && !room.transient {
                     room.mtime = current_time;
                     if let Err(e) = room.save_room_res(self.path.clone(), &mut cleanup_res, uuidmap, self.id, dirty_room) {
                         errors.push(e);
@@ -263,6 +264,7 @@ impl Map {
             dsel_room,
             ssel_room,
             template_room,
+            dummy_room: None,
         };
 
         map.set_view_pos(map.state.view_pos);
@@ -383,6 +385,7 @@ impl Map {
             dsel_room: None,
             ssel_room: None,
             template_room: None,
+            dummy_room: None,
         };
 
         uuidmap.insert(this.state.uuid, UUIDTarget::Map(this.id));
@@ -501,7 +504,9 @@ mod roommap_serde {
     where
         S: serde::Serializer
     {
-        let iter = v.iter().map(|(_,r)| (r.uuid,r) );
+        let iter = v.iter()
+            .filter(|(_,r)| !r.transient )
+            .map(|(_,r)| (r.uuid,r) );
         serializer.collect_map(iter)
     }
 
