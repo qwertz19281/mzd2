@@ -481,6 +481,7 @@ impl Map {
             if let Some(hover_abs) = super_map.hover_pos_rel() {
                 if
                     matches!(self.state.edit_mode, MapEditMode::RoomSel) &&
+                    self.ssel_room.is_none() &&
                     mods.ctrl && mods.shift &&
                     ui.input(|i| i.key_released(egui::Key::I) && !i.key_down(egui::Key::Escape) )
                 {

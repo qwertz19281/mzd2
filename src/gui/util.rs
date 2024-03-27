@@ -583,6 +583,36 @@ pub fn dpad(
     ui: &mut egui::Ui,
     mut fun: impl FnMut(&mut egui::Ui,bool,OpAxis,bool),
 ) {
+    let icons = if inv_icons {
+        ["→","←","↓","↑","-","+"]
+    } else {
+        ["←","→","↑","↓","+","-"]
+    };
+
+    dpadc(desc, text_size, base_size, dpi, icons, visible, ui, fun)
+}
+
+pub fn dpad_icons<'a>(mut dir_icon: impl FnMut(OpAxis,bool) -> &'a str) -> [&'a str;6] {
+    [
+        dir_icon(OpAxis::X,false),
+        dir_icon(OpAxis::X,true),
+        dir_icon(OpAxis::Y,false),
+        dir_icon(OpAxis::Y,true),
+        dir_icon(OpAxis::Z,true),
+        dir_icon(OpAxis::Z,false),
+    ]
+}
+
+pub fn dpadc(
+    desc: impl ToString,
+    text_size: f32,
+    base_size: f32,
+    dpi: f32,
+    icons: [&str;6],
+    visible: bool,
+    ui: &mut egui::Ui,
+    mut fun: impl FnMut(&mut egui::Ui,bool,OpAxis,bool),
+) {
     let pa = alloc_painter_rel(
         ui,
         Vec2 { x: base_size * 3., y: text_size + base_size * 2. },
@@ -712,12 +742,6 @@ pub fn dpad(
             )
         }
     }
-
-    let icons = if inv_icons {
-        ["→","←","↓","↑","-","+"]
-    } else {
-        ["←","→","↑","↓","+","-"]
-    };
 
     let border2 = border;
 

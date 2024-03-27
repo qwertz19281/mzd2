@@ -6,7 +6,7 @@ use crate::gui::init::SAM;
 use crate::gui::key_manager::KMKey;
 use crate::gui::palette::{Palette, PaletteItem};
 use crate::gui::texture::RECT_0_0_1_1;
-use crate::gui::util::{alloc_painter_rel, ArrUtl, DragOp, draw_grid, dragslider_up};
+use crate::gui::util::{alloc_painter_rel, dpad, dpad_icons, dpadc, dragslider_up, draw_grid, ArrUtl, DragOp};
 use crate::util::MapId;
 use crate::SRc;
 
@@ -94,7 +94,47 @@ impl Map {
                     self.state.draw_zoom as f32,
                 );
 
-                let hover_single_layer = self.ui_layer_draw(ui, sam);
+                let hover_single_layer = ui.vertical(|ui|{
+                    let hover_single_layer = self.ui_layer_draw(ui, sam);
+
+                    ui.vertical(|ui| {
+                        if self.dsel_room.is_some() && self.state.rooms.contains_key(self.dsel_room.unwrap()) {
+                            dpad(
+                                "Quick Nav",
+                                20. * sam.dpi_scale, 32. * sam.dpi_scale, sam.dpi_scale,
+                                false,
+                                true,
+                                ui,
+                                |_,clicked,axis,dir| {
+                                    if !clicked {return;}
+                                    // TODO
+                                },
+                            );
+
+                            let id = self.dsel_room.unwrap();
+    
+                            let icons = dpad_icons(|axis,dir|
+                                if self.get_room_connected(id, axis, dir) {"C"} else {""}
+                            );
+                            
+                            dpadc(
+                                "Room Conns",
+                                20. * sam.dpi_scale, 32. * sam.dpi_scale, sam.dpi_scale,
+                                icons,
+                                true,
+                                ui,
+                                |_,clicked,axis,dir| {
+                                    if !clicked {return;}
+                                    let conn = self.get_room_connected(id, axis, dir);
+                                    self.set_room_connect(id, axis, dir, !conn);
+                                },
+                            );
+                        }
+                    });
+
+                    hover_single_layer
+                }).inner;
+                
                 let Some(draw_selected_layer) = self.editsel.rooms.get(0)
                     .and_then(|(r,_,_)| self.state.rooms.get(*r) )
                     .map(|r| r.selected_layer ) else {return};

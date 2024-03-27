@@ -544,6 +544,43 @@ impl Map {
             self.room_matrix.insert(room.coord, id);
         }
     }
+
+    pub fn set_room_connect(&mut self, room_id: RoomId, ax: OpAxis, dir: bool, v: bool) {
+        let set_dir = |room: &mut Room,ax: OpAxis,dir: bool| {
+            room.dirconn[ax.axis_idx()][dir as usize] = v;
+        };
+
+        let Some(room) = self.state.rooms.get_mut(room_id) else {return};
+
+        set_dir(room,ax,dir);
+
+        try_side(room.coord, ax, dir, |c2,_,_| {
+            if let Some(&id) = self.room_matrix.get(c2) {
+                if let Some(room) = self.state.rooms.get_mut(id) {
+                    set_dir(room,ax,!dir);
+                }
+            }
+        });
+    }
+
+    pub fn get_room_connected(&self, room_id: RoomId, ax: OpAxis, dir: bool) -> bool {
+        let conn = |room: &Room,ax: OpAxis,dir: bool| {
+            room.dirconn[ax.axis_idx()][dir as usize]
+        };
+
+        let Some(room) = self.state.rooms.get(room_id) else {return false};
+
+        if !conn(room,ax,dir) {return false;}
+
+        try_side(room.coord, ax, dir, |c2,_,_| {
+            if let Some(&id) = self.room_matrix.get(c2) {
+                if let Some(room) = self.state.rooms.get(id) {
+                    return conn(room,ax,!dir);
+                }
+            }
+            true
+        }).unwrap_or(false)
+    }
 }
 
 pub fn render_picomap(current_level: u8, room_matrix: &CoordStore<RoomId>) -> ColorImage {
