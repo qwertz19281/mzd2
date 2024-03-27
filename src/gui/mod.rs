@@ -102,13 +102,14 @@ pub fn dpi_hack(ctx: &egui::Context, frame: &mut eframe::Frame) -> f32 {
             s.interact_size *= scale;
             s.item_spacing *= scale;
             marge(&mut s.menu_margin, scale);
-            s.scroll_bar_inner_margin *= scale;
-            s.scroll_bar_outer_margin *= scale;
-            s.scroll_bar_width *= scale;
-            s.scroll_handle_min_length *= scale;
+            s.scroll.bar_inner_margin *= scale;
+            s.scroll.bar_outer_margin *= scale;
+            s.scroll.bar_width *= scale;
+            s.scroll.handle_min_length *= scale;
+            s.scroll.floating_width *= scale;
+            s.scroll.floating_allocated_width *= scale;
             s.slider_width *= scale;
             s.text_edit_width *= scale;
-            s.tooltip_width *= scale;
             s.tooltip_width *= scale;
             marge(&mut s.window_margin, scale);
         }

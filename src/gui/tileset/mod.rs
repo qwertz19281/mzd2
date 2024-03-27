@@ -497,5 +497,5 @@ const MIN_WINDOW: Vec2 = Vec2 { x: 64., y: 64. };
 
 const TS_TEX_OPTS: TextureOptions = TextureOptions {
     magnification: egui::TextureFilter::Nearest,
-    minification: egui::TextureFilter::Linear,
+    minification: egui::TextureFilter::Nearest,
 };

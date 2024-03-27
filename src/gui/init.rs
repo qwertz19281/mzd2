@@ -15,7 +15,9 @@ use super::window_states::tileset::{Tilesets, tilesets_ui};
 
 pub fn launch_gui(args: crate::cli::Args) {
     let options = eframe::NativeOptions {
-        initial_window_size: Some(egui::vec2(1080.0, 600.0)),
+        viewport: egui::ViewportBuilder::default()
+            .with_inner_size([1080.0, 600.0])
+            .with_drag_and_drop(true),
         ..Default::default()
     };
 
@@ -74,6 +76,10 @@ impl eframe::App for SharedApp {
             self.sam.dpi_scale = dpi_hack(ctx, frame);
         }
 
+        ctx.options_mut(|o| o.zoom_with_keyboard = false);
+
+        // egui 0.24+ breaks this with their new zoom factor instead of overriding to dpi,
+        // with a division, which is obviously not 100% precise, which can again mess up all our pixel-perfect rendering
         ctx.set_pixels_per_point(1.);
 
         for v in std::mem::take(&mut self.sam.mut_queue) {
