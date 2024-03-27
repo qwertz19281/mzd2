@@ -1,4 +1,4 @@
-use egui::{Color32, PointerButton};
+use egui::{Color32, Key, PointerButton};
 
 use crate::gui::draw_state::DrawMode;
 use crate::gui::dsel_state::DSelMode;
@@ -93,6 +93,48 @@ impl Map {
                     egui::Sense::click_and_drag(),
                     self.state.draw_zoom as f32,
                 );
+
+                let mut hide_layers_above = false;
+                let mut hide_layers_all = false;
+
+                if let Some(hov) = reg.hover_pos_rel() {
+                    if let Some(room) = self.editsel.rooms.get(0).and_then(|(r,_,_)| self.state.rooms.get_mut(*r) ) {
+                        hide_layers_above = room.editor_hide_layers_above;
+                        let mut moved = false;
+                        if ui.input(|i| i.key_pressed(Key::R) ) {
+                            room.editor_hide_layers_above ^= true;
+                            moved = true;
+                        }
+                        if ui.input(|i| i.key_pressed(Key::W) ) {
+                            room.selected_layer = (room.selected_layer+1).min(room.visible_layers.len().saturating_sub(1));
+                            moved = true;
+                        }
+                        if ui.input(|i| i.key_pressed(Key::S) ) {
+                            room.selected_layer = room.selected_layer.saturating_sub(1);
+                            moved = true;
+                        }
+                        if ui.input(|i| i.key_down(Key::D) ) {
+                            hide_layers_all = true;
+                        }
+                        if ui.input(|i| i.key_down(Key::E) ) {
+                            hide_layers_above ^= true;
+                        }
+                        if !moved && ui.input(|i| i.key_pressed(Key::Q) ) {
+                            if let Some(loaded) = &mut room.loaded {
+                                let hov = <[f32;2]>::from(hov).as_u32().div8();
+                                let itre = room.visible_layers.iter().enumerate()
+                                    .filter(|(i,(sel,_))|
+                                        *sel != 0 &&
+                                        if hide_layers_above | hide_layers_all {*i <= room.selected_layer} else {true}
+                                    )
+                                    .map(|(i,_)| i);
+                                if let Some((traced,_)) = loaded.sel_matrix.get_traced(hov.into(), itre) {
+                                    room.selected_layer = traced;
+                                }
+                            }
+                        }
+                    }
+                }
 
                 let hover_single_layer = ui.vertical(|ui|{
                     let hover_single_layer = self.ui_layer_draw(ui, sam);
@@ -292,6 +334,8 @@ impl Map {
                     &mut self.state.rooms,
                     self.state.rooms_size,
                     hover_single_layer,
+                    hide_layers_above | hide_layers_all,
+                    hide_layers_all,
                     |shape| shapes.push(shape),
                     &self.path,
                     ui.ctx(),

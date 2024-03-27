@@ -293,10 +293,10 @@ macro_rules! marco_arrutl {
                     self.mul([8u8 as _,8u8 as _])
                 }
                 fn div8(self) -> Self {
-                    debug_assert!(
-                        self[0] as u64 % 8 == 0 &&
-                        self[1] as u64 % 8 == 0
-                    );
+                    // debug_assert!(
+                    //     self[0] as u64 % 8 == 0 &&
+                    //     self[1] as u64 % 8 == 0
+                    // );
                     self.div([8u8 as _,8u8 as _])
                 }
 

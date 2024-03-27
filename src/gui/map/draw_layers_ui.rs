@@ -1,4 +1,4 @@
-use egui::{FontId, TextEdit};
+use egui::{FontId, Key, TextEdit};
 
 use crate::gui::init::SAM;
 use crate::gui::sel_matrix::SelMatrix;
@@ -33,6 +33,8 @@ impl Map {
             };
 
             ui.vertical(|ui| {
+                ui.checkbox(&mut room.editor_hide_layers_above, "Editor hide layers above"); //should be transferred from prev room in quickmove dummy create
+
                 for (layer,(visible,text)) in room.visible_layers.iter_mut().enumerate() {
                     let selected = layer == room.selected_layer;
 

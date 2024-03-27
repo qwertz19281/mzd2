@@ -79,6 +79,7 @@ pub fn convert_map(map_path: PathBuf, uuidmap: &mut UUIDMap) -> anyhow::Result<(
             ctime: room_mtime,
             mtime: room_mtime,
             transient: false,
+            editor_hide_layers_above: false,
         };
 
         uuidmap.insert(new_room.uuid, UUIDTarget::Room(new_map_id, RoomId::null()));

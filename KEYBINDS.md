@@ -7,6 +7,14 @@
   - Press shift to invert DSelOnly (whether selecting should snap to seltrix)
 - Middle Mouse + Ctrl: CSE (define seltrix)
 
+# Drawing Layer keys
+
+- W Press: Selected layer up
+- S Press: Selected layer down
+- E Hold: Show/Hide layers above (toggle setting) 
+- D Hold: Hide other layers (all but current)
+- Q Press: Trace and set selected layer (can be use together with E)
+
 # Layers: Select Draw Layer
 
 - Ctrl: Make only this layer visible and all other invisible

@@ -355,7 +355,7 @@ impl DrawImageGroup {
         }
     }
 
-    pub fn render(&self, rooms: &mut RoomMap, rooms_size: [u32;2], rsl: Option<usize>, mut dest: impl FnMut(egui::Shape), map_path: &Path, ctx: &egui::Context) {
+    pub fn render(&self, rooms: &mut RoomMap, rooms_size: [u32;2], only_show_layer: Option<usize>, hide_above: bool, hide_below: bool, mut dest: impl FnMut(egui::Shape), map_path: &Path, ctx: &egui::Context) {
         let Some(visible_layers) = self.rooms.get(0)
             .and_then(|&(r,_,_)| rooms.get(r) )
             .map(|r| r.visible_layers.clone() )
@@ -364,7 +364,9 @@ impl DrawImageGroup {
         for &(room_id,_,roff) in &self.rooms {
             let Some(room) = rooms.get_mut(room_id) else {continue};
 
-            if let Some(vsl) = rsl {
+            let selected_layer = room.selected_layer;
+
+            if let Some(vsl) = only_show_layer {
                 room.render(
                     roff,
                     std::iter::once(vsl),
@@ -377,7 +379,11 @@ impl DrawImageGroup {
             } else {
                 room.render(
                     roff,
-                    visible_layers.iter().enumerate().filter(|&(_,(v,_))| *v != 0 ).map(|(i,_)| i ),
+                    visible_layers.iter().enumerate()
+                        .filter(|&(_,(v,_))| *v != 0 )
+                        .map(|(i,_)| i )
+                        .filter(|i| if hide_above {*i <= selected_layer} else {true})
+                        .filter(|i| if hide_below {*i >= selected_layer} else {true}),
                     None,
                     rooms_size,
                     |v| dest(v),

@@ -173,12 +173,11 @@ impl SelMatrixLayered {
         self.layers.insert(idx, layer);
     }
 
-    pub fn get_traced(&self, pos: [u32;2], on_layers: impl DoubleEndedIterator<Item=(usize,bool)>) -> Option<&SelEntry> {
-        for (layer_idx,layer) in on_layers.rev() {
-            if !layer {continue};
+    pub fn get_traced(&self, pos: [u32;2], on_layers: impl DoubleEndedIterator<Item=usize>) -> Option<(usize,&SelEntry)> {
+        for layer_idx in on_layers.rev() {
             if let Some(entry) = self.layers.get(layer_idx).and_then(|layer| layer.get(pos) ) {
                 if !entry.is_empty() {
-                    return Some(entry);
+                    return Some((layer_idx,entry));
                 }
             }
         }
