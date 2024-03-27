@@ -406,7 +406,7 @@ impl Map {
                 let picomap = alloc_painter_rel(
                     ui,
                     Vec2::new(256.,256.),
-                    Sense::click_and_drag(),
+                    Sense::drag(),
                     1.,
                 );
         

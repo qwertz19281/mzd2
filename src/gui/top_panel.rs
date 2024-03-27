@@ -1,10 +1,10 @@
 use std::ffi::OsStr;
 use std::path::PathBuf;
 
-use super::init::{SharedApp, CURRENT_WINDOW_HANDLE};
+use super::init::SharedApp;
 use super::map::Map;
 use super::tileset::Tileset;
-use super::util::{dragvalion_up, ArrUtl};
+use super::util::{dragvalion_up, ArrUtl, RfdUtil};
 
 pub struct TopPanel {
     create_map_size: [u32;2],
@@ -59,7 +59,7 @@ fn new_map(state: &mut SharedApp) {
     }
     let result = dialog
         .set_title("mzdmap save path")
-        .set_parent(&CURRENT_WINDOW_HANDLE.with(|f| f.get().unwrap()))
+        .try_set_parent()
         .save_file();
     
     let Some(mut path) = result else {return};
@@ -84,7 +84,7 @@ fn new_tileset(state: &mut SharedApp) {
     }
     let result = dialog
         .set_title("mzd tileset save path")
-        .set_parent(&CURRENT_WINDOW_HANDLE.with(|f| f.get().unwrap()))
+        .try_set_parent()
         .save_file();
     
     let Some(mut path) = result else {return};

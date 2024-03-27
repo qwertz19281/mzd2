@@ -481,6 +481,7 @@ fn create_picomap_texcell() -> TextureCell {
     TextureCell::new("map_picomap", TextureOptions {
         magnification: egui::TextureFilter::Nearest,
         minification: egui::TextureFilter::Nearest,
+        wrap_mode: egui::TextureWrapMode::Repeat,
     })
 }
 

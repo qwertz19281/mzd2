@@ -4,11 +4,10 @@ use anyhow::{ensure, anyhow, bail};
 use image::GenericImageView;
 use regex::Regex;
 
-use crate::gui::init::CURRENT_WINDOW_HANDLE;
 use crate::gui::map::next_ur_op_id;
 use crate::gui::map::room_ops::{RoomOp, try_6_sides};
 use crate::gui::sel_matrix::{SelEntryWrite, SelEntry};
-use crate::gui::util::ArrUtl;
+use crate::gui::util::{ArrUtl, RfdUtil};
 use crate::util::{gui_error, next_op_gen_evo};
 
 use super::uuid::UUIDMap;
@@ -21,7 +20,7 @@ impl Map {
         let dialog = rfd::FileDialog::new();
         let result = dialog
             .set_title("Import mzd1")
-            .set_parent(&CURRENT_WINDOW_HANDLE.with(|f| f.get().unwrap()))
+            .try_set_parent()
             .pick_folder();
         
         let Some(path) = result else {return false};

@@ -2,6 +2,7 @@ use std::ops::RangeInclusive;
 
 use egui::{Shape, Pos2, Rect, Vec2, Sense, PointerButton, Align2, FontId, Color32, Rounding};
 
+use super::init::EFRAME_FRAME;
 use super::map::room_ops::OpAxis;
 use super::{StupidInto, line2, rector};
 
@@ -817,7 +818,7 @@ pub fn dpadc(
 pub fn dragvalion_down<Num>(value: &mut Num, speed: impl Into<f64>, clamp_range: RangeInclusive<Num>, stepu: Num, ui: &mut egui::Ui) where Num: egui::emath::Numeric + NumUtl + Clone {
     let resp = ui.add(egui::DragValue::new(value).speed(speed).clamp_range(clamp_range.clone()));
     if resp.hovered() {
-        let delta = ui.input(|i| i.scroll_delta );
+        let delta = ui.input(|i| i.raw_scroll_delta );
         if delta.y < -0.9 {
             *value = value.clone().sat_add(stepu.clone(), clamp_range.clone());
             ui.ctx().request_repaint();
@@ -832,7 +833,7 @@ pub fn dragvalion_down<Num>(value: &mut Num, speed: impl Into<f64>, clamp_range:
 pub fn dragvalion_up<Num>(value: &mut Num, speed: impl Into<f64>, clamp_range: RangeInclusive<Num>, stepu: Num, ui: &mut egui::Ui) where Num: egui::emath::Numeric + NumUtl + Clone {
     let resp = ui.add(egui::DragValue::new(value).speed(speed).clamp_range(clamp_range.clone()));
     if resp.hovered() {
-        let delta = ui.input(|i| i.scroll_delta );
+        let delta = ui.input(|i| i.raw_scroll_delta );
         if delta.y < -0.9 {
             *value = value.clone().sat_sub(stepu.clone(), clamp_range.clone());
             ui.ctx().request_repaint();
@@ -847,7 +848,7 @@ pub fn dragvalion_up<Num>(value: &mut Num, speed: impl Into<f64>, clamp_range: R
 pub fn dragslider_down<Num>(value: &mut Num, speed: impl Into<f64>, clamp_range: RangeInclusive<Num>, stepu: Num, ui: &mut egui::Ui) where Num: egui::emath::Numeric + NumUtl + Clone {
     let resp = ui.add(egui::Slider::new(value, clamp_range.clone()).drag_value_speed(speed.into()));
     if resp.hovered() {
-        let delta = ui.input(|i| i.scroll_delta );
+        let delta = ui.input(|i| i.raw_scroll_delta );
         if delta.y < -0.9 {
             *value = value.clone().sat_add(stepu.clone(), clamp_range.clone());
             ui.ctx().request_repaint();
@@ -862,7 +863,7 @@ pub fn dragslider_down<Num>(value: &mut Num, speed: impl Into<f64>, clamp_range:
 pub fn dragslider_up<Num>(value: &mut Num, speed: impl Into<f64>, clamp_range: RangeInclusive<Num>, stepu: Num, ui: &mut egui::Ui) where Num: egui::emath::Numeric + NumUtl + Clone {
     let resp = ui.add(egui::Slider::new(value, clamp_range.clone()).drag_value_speed(speed.into()));
     if resp.hovered() {
-        let delta = ui.input(|i| i.scroll_delta );
+        let delta = ui.input(|i| i.raw_scroll_delta );
         if delta.y < -0.9 {
             *value = value.clone().sat_sub(stepu.clone(), clamp_range.clone());
             ui.ctx().request_repaint();
@@ -871,5 +872,31 @@ pub fn dragslider_up<Num>(value: &mut Num, speed: impl Into<f64>, clamp_range: R
             *value = value.clone().sat_add(stepu.clone(), clamp_range.clone());
             ui.ctx().request_repaint();
         }
+    }
+}
+
+pub trait RfdUtil {
+    fn try_set_parent(self) -> Self;
+}
+
+impl RfdUtil for rfd::FileDialog {
+    fn try_set_parent(self) -> Self {
+        if !EFRAME_FRAME.is_set() {
+            return self;
+        }
+        EFRAME_FRAME.with(|f|
+            self.set_parent(f)
+        )
+    }
+}
+
+impl RfdUtil for rfd::MessageDialog {
+    fn try_set_parent(self) -> Self {
+        if !EFRAME_FRAME.is_set() {
+            return self;
+        }
+        EFRAME_FRAME.with(|f|
+            self.set_parent(f)
+        )
     }
 }

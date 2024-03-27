@@ -73,7 +73,7 @@ pub fn palette_ui(state: &mut SharedApp, ui: &mut egui::Ui) {
 
     let mut reg = alloc_painter_rel(
         ui,
-        egui::vec2(full_w as f32, PALETTE_SHOW_DIMS as f32), egui::Sense::click_and_drag(),
+        egui::vec2(full_w as f32, PALETTE_SHOW_DIMS as f32), egui::Sense::click(),
         1.,
     );
 
@@ -197,4 +197,5 @@ impl SelImg {
 const PAL_TEX_OPTS: TextureOptions = TextureOptions {
     magnification: egui::TextureFilter::Linear,
     minification: egui::TextureFilter::Linear,
+    wrap_mode: egui::TextureWrapMode::ClampToEdge,
 };

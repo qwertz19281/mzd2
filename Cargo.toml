@@ -3,13 +3,13 @@ name = "mzd2"
 version = "0.2.0"
 license = "MIT OR Apache-2.0"
 edition = "2021"
-rust-version = "1.74"
+rust-version = "1.75"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-egui = "0.25"
-eframe = "0.25"
+egui = "0.26"
+eframe = "0.26"
 serde = { version = "1", features = ["derive"] }
 #rmp-serde = "1.1"
 serde_json = "1"
@@ -24,10 +24,10 @@ chrono = { version = "0.4", features = ["serde"] }
 hex = "0.4"
 lru = "0.12.1"
 regex = "1.8"
-rfd = "0.12"
-raw-window-handle = "0.5.2"
+rfd = "0.14"
+raw-window-handle = "0.6"
 uuid = { version = "1.7", features = ["v7", "serde"] }
-#scoped-tls-hkt = "0.1.4"
+scoped-tls-hkt = "0.1.4"
 clap = { version = "4.5", features = ["derive"] }
 filetime = "0.2"
 #rand = "0.8"

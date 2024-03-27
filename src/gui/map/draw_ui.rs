@@ -90,7 +90,7 @@ impl Map {
                 let reg = alloc_painter_rel(
                     ui,
                     size_v,
-                    egui::Sense::click_and_drag(),
+                    egui::Sense::drag(),
                     self.state.draw_zoom as f32,
                 );
 

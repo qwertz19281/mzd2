@@ -1,7 +1,9 @@
 use std::cell::Cell;
 use std::path::PathBuf;
 
-use raw_window_handle::{RawWindowHandle, HasRawWindowHandle};
+use egui::Vec2;
+use scoped_tls_hkt::scoped_thread_local;
+use serde::{Deserialize, Serialize};
 
 use crate::util::uuid::UUIDMap;
 use crate::util::MapId;
@@ -68,7 +70,6 @@ impl SharedApp {
 
 impl eframe::App for SharedApp {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        CURRENT_WINDOW_HANDLE.with(|f| f.set(Some(StupidRawWindowHandleWrapper(frame.raw_window_handle()))) );
         //eprintln!("PPI: {}", ctx.pixels_per_point());
         
         if self.sam.dpi_scale == 0. {
@@ -82,50 +83,41 @@ impl eframe::App for SharedApp {
         // with a division, which is obviously not 100% precise, which can again mess up all our pixel-perfect rendering
         ctx.set_pixels_per_point(1.);
 
-        for v in std::mem::take(&mut self.sam.mut_queue) {
-            v(self);
-        }
+        EFRAME_FRAME.set(frame, || {
+            for v in std::mem::take(&mut self.sam.mut_queue) {
+                v(self);
+            }
 
-        for path in std::mem::take(&mut self.init_load_paths) {
-            self.try_load_from_path(path, ctx);
-        }
+            for path in std::mem::take(&mut self.init_load_paths) {
+                self.try_load_from_path(path, ctx);
+            }
 
-        self.handle_filedrop(ctx, frame);
+            self.handle_filedrop(ctx);
 
-        if let Some(warpon) = self.warpon.as_mut() {
-            // TODO assert maps, remove if map or room doesn't exist anymore
-        }
+            if let Some(warpon) = self.warpon.as_mut() {
+                // TODO assert maps, remove if map or room doesn't exist anymore
+            }
 
-        //ctx.input(|i| eprintln!("MAX TEX SIDE {}", i.max_texture_side));
+            //ctx.input(|i| eprintln!("MAX TEX SIDE {}", i.max_texture_side));
 
-        egui::TopBottomPanel::top("main_top_panel")
-            .show(ctx, |ui| top_panel_ui(self, ui) );
-        egui::Window::new("Palette")
-            .resizable(false)
-            .default_pos(egui::Pos2 { x: 0., y: 65536. })
-            //.anchor(egui::Align2::LEFT_BOTTOM, egui::Vec2::default())
-            //.movable(true)
-            .show(ctx, |ui| palette_ui(self, ui));
-        maps_ui(self, ctx, frame);
-        tilesets_ui(self, ctx, frame);
+            egui::TopBottomPanel::top("main_top_panel")
+                .show(ctx, |ui| top_panel_ui(self, ui) );
+            egui::Window::new("Palette")
+                .resizable(false)
+                .default_pos(egui::Pos2 { x: 0., y: 65536. })
+                //.anchor(egui::Align2::LEFT_BOTTOM, egui::Vec2::default())
+                //.movable(true)
+                .show(ctx, |ui| palette_ui(self, ui));
+            maps_ui(self, ctx);
+            tilesets_ui(self, ctx);
 
-        for v in std::mem::replace(&mut self.sam.mut_queue, vec![]) {
-            v(self);
-        }
-
-        CURRENT_WINDOW_HANDLE.with(|f| f.set(None) );
+            for v in std::mem::replace(&mut self.sam.mut_queue, vec![]) {
+                v(self);
+            }
+        });
     }
 }
 
-thread_local! {
-    pub(crate) static CURRENT_WINDOW_HANDLE: Cell<Option<StupidRawWindowHandleWrapper>> = Cell::new(None);
-}
-
-#[derive(Clone, Copy)]
-pub struct StupidRawWindowHandleWrapper(RawWindowHandle);
-
-unsafe impl HasRawWindowHandle for StupidRawWindowHandleWrapper {
-    fn raw_window_handle(&self) -> RawWindowHandle {
-        self.0
-    }
+scoped_thread_local! {
+    pub(crate) static mut EFRAME_FRAME: eframe::Frame
 }

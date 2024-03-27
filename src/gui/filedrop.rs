@@ -11,7 +11,7 @@ use super::map::Map;
 use super::tileset::Tileset;
 
 impl SharedApp {
-    pub fn handle_filedrop(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+    pub fn handle_filedrop(&mut self, ctx: &egui::Context) {
         let dropped = ctx.input(|i| i.raw.dropped_files.clone() );
 
         for file in dropped {

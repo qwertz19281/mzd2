@@ -17,7 +17,7 @@ impl Maps {
     }
 }
 
-pub fn maps_ui(state: &mut SharedApp, ctx: &egui::Context, frame: &mut eframe::Frame) {
+pub fn maps_ui(state: &mut SharedApp, ctx: &egui::Context) {
     for (t_id,t) in &mut state.maps.open_maps {
         egui::Window::new(format!("Map - {}", &t.state.title))
             .id(t_id.egui_id_map())

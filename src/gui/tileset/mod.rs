@@ -114,7 +114,7 @@ impl Tileset {
         let mut reg = alloc_painter_rel_ds(
             ui,
             MIN_WINDOW ..= size_v,
-            egui::Sense::click_and_drag(),
+            egui::Sense::drag(),
             self.state.zoom as f32,
         );
 
@@ -498,4 +498,5 @@ const MIN_WINDOW: Vec2 = Vec2 { x: 64., y: 64. };
 const TS_TEX_OPTS: TextureOptions = TextureOptions {
     magnification: egui::TextureFilter::Nearest,
     minification: egui::TextureFilter::Nearest,
+    wrap_mode: egui::TextureWrapMode::Repeat,
 };

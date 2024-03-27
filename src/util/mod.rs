@@ -6,7 +6,7 @@ use std::sync::atomic::{AtomicI64, Ordering::Relaxed};
 use image::{DynamicImage, RgbaImage};
 use ::uuid::Uuid;
 
-use crate::gui::init::CURRENT_WINDOW_HANDLE;
+use crate::gui::util::RfdUtil;
 
 pub mod uuid;
 
@@ -94,7 +94,7 @@ impl<T,E> ResultExt<T> for Result<T,E> where E: Display {
                     .set_level(rfd::MessageLevel::Error)
                     .set_title(title)
                     .set_description(&format!("{}", e))
-                    .set_parent(&CURRENT_WINDOW_HANDLE.with(|f| f.get().unwrap()))
+                    .try_set_parent()
                     .show();
                 Err(e)
             },
@@ -107,7 +107,7 @@ pub fn gui_error(title: &str, error: impl std::fmt::Display) {
         .set_level(rfd::MessageLevel::Error)
         .set_title(title)
         .set_description(&format!("{}", error))
-        .set_parent(&CURRENT_WINDOW_HANDLE.with(|f| f.get().unwrap()))
+        .try_set_parent()
         .show();
 }
 
