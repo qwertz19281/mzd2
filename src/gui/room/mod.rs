@@ -99,6 +99,51 @@ impl Room {
         this
     }
 
+    /// Please call room.ensure_loaded before
+    pub fn create_clone(&self, coord: [u8;3], rooms_size: [u32;2], uuidmap: &mut UUIDMap, map_id: MapId, map_path: impl Into<PathBuf>) -> Option<Self> {
+        assert!(rooms_size[0] % 16 == 0 && rooms_size[1] % 16 == 0);
+
+        let current_time = chrono::Utc::now();
+
+        let uuid = generate_uuid(uuidmap);
+
+        let Some(old_loaded) = &self.loaded else {return None};
+
+        let this = Self {
+            loaded: Some(RoomLoaded {
+                image: DrawImage {
+                    img: old_loaded.image.img.clone(),
+                    tex: Some(TextureCell::new(format!("RoomTex{uuid}"), ROOM_TEX_OPTS)),
+                    layers: old_loaded.image.layers,
+                },
+                sel_matrix: old_loaded.sel_matrix.clone(),
+                dirty_file: true,
+                ur_snapshot_required: true,
+                redo_buf: Default::default(),
+                undo_buf: Default::default(),
+            }),
+            uuid,
+            resuuid: generate_res_uuid(uuidmap, map_path),
+            tags: self.tags.clone(),
+            coord,
+            op_evo: 0,
+            locked: None,
+            visible_layers: self.visible_layers.clone(),
+            selected_layer: self.selected_layer,
+            dirconn: Default::default(),
+            desc_text: self.desc_text.clone(),
+            ctime: current_time,
+            mtime: current_time,
+            transient: false,
+            editor_hide_layers_above: true,
+        };
+
+        uuidmap.insert(this.uuid, UUIDTarget::Room(map_id, RoomId::null()));
+        uuidmap.insert(this.resuuid, UUIDTarget::Resource(map_id, RoomId::null()));
+
+        Some(this)
+    }
+
     pub fn update_uuidmap(&self, room_id: RoomId, uuidmap: &mut UUIDMap, map_id: MapId) {
         uuidmap.insert(self.uuid, UUIDTarget::Room(map_id, room_id));
         uuidmap.insert(self.resuuid, UUIDTarget::Resource(map_id, room_id));

@@ -24,21 +24,28 @@ impl Map {
 
         if self.room_matrix.get(coord).is_some() {return;}
         
-        let mut room = Room::create_empty(
-            coord,
-            self.state.rooms_size,
-            RgbaImage::new(self.state.rooms_size[0], self.state.rooms_size[1] * 1),
-            1,
-            uuidmap,
-            self.id,
-            &self.path,
-        );
+        let mut room = if let Some(t) = self.state.rooms.get(template).filter(|r| r.loaded.is_some() ) {
+            t.create_clone(
+                coord,
+                self.state.rooms_size,
+                uuidmap,
+                self.id,
+                &self.path,
+            ).unwrap()
+        } else {
+            Room::create_empty(
+                coord,
+                self.state.rooms_size,
+                RgbaImage::new(self.state.rooms_size[0], self.state.rooms_size[1] * 1),
+                1,
+                uuidmap,
+                self.id,
+                &self.path,
+            )
+        };
+
         room.transient = true;
         room.loaded.as_mut().unwrap().dirty_file = false;
-
-        if let Some(t) = self.state.rooms.get(template) {
-            room.clone_from(t, &self.path, self.state.rooms_size);
-        }
 
         let id = self.state.rooms.insert(room);
 
