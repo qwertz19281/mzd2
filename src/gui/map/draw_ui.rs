@@ -149,6 +149,9 @@ impl Map {
             
         // }
 
+        let mut do_undo = false;
+        let mut do_redo = false;
+
         ui.horizontal(|ui| {
             ui.label("Zoom: ");
             dragslider_up(&mut self.state.draw_zoom, 0.03125, 1..=2, 1, ui);
@@ -162,9 +165,7 @@ impl Map {
                         )
                             .on_hover_text(format!("{} undos", loaded.undo_buf.len()));
 
-                        if resp.clicked() {
-                            loaded.undo(&mut room.visible_layers, &mut room.selected_layer);
-                        }
+                        do_undo |= resp.clicked();
 
                         let resp = ui.add_enabled(
                             !loaded.redo_buf.is_empty(),
@@ -172,9 +173,7 @@ impl Map {
                         )
                             .on_hover_text(format!("{} redos", loaded.redo_buf.len()));
 
-                        if resp.clicked() {
-                            loaded.redo(&mut room.visible_layers, &mut room.selected_layer);
-                        }
+                        do_redo |= resp.clicked();
                     }
                 }
             }
@@ -235,6 +234,13 @@ impl Map {
                 let mut hide_layers_all = false;
 
                 if let Some(hov) = reg.hover_pos_rel() {
+                    if mods.ctrl && ui.input(|i| i.key_pressed(Key::Z)) {
+                        do_undo = true;
+                    }
+                    if mods.ctrl && ui.input(|i| i.key_pressed(Key::Y)) {
+                        do_redo = true;
+                    }
+
                     palette.do_keyboard_numbers(ui);
 
                     if let Some(room) = self.editsel.rooms.get(0).and_then(|(r,_,_)| self.state.rooms.get_mut(*r) ) {
@@ -602,6 +608,19 @@ impl Map {
             if let Some(id) = self.dsel_room.filter(|id| self.state.rooms.contains_key(*id) ) {
                 let conn = self.get_room_connected(id, axis, dir);
                 self.set_room_connect(id, axis, dir, !conn);
+            }
+        }
+
+        if self.editsel.rooms.len() == 1 && Some(self.editsel.rooms[0].0) == self.dsel_room {
+            if let Some(room) = self.state.rooms.get_mut(self.dsel_room.unwrap()) {
+                if let Some(loaded) = room.loaded.as_mut() {
+                    if do_undo && !do_redo {
+                        loaded.undo(&mut room.visible_layers, &mut room.selected_layer);
+                    }
+                    if do_redo && !do_undo {
+                        loaded.redo(&mut room.visible_layers, &mut room.selected_layer);
+                    }
+                }
             }
         }
     }
