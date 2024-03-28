@@ -507,7 +507,7 @@ impl Map {
                                 }
                                 self.post_drawroom_switch(&mut sam.uuidmap);
                                 if self.dsel_room.is_none() {
-                                    self.create_dummy_room(click_coord, RoomId::null(), &mut sam.uuidmap);
+                                    self.create_dummy_room(click_coord, None, &mut sam.uuidmap);
                                 }
                             } else {
                                 if let Some(room) = self.room_matrix.get(click_coord) {

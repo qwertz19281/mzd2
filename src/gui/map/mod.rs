@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use egui::TextureOptions;
 use egui::epaint::ahash::{HashSet, AHasher};
 use serde::{Serialize, Deserialize};
-use slotmap::{HopSlotMap, SlotMap};
+use slotmap::{HopSlotMap, Key, SlotMap};
 use ::uuid::Uuid;
 
 use crate::gui::map::uuid::UUIDTarget;
@@ -33,6 +33,7 @@ pub mod map_ui;
 pub mod draw_ui;
 pub mod draw_layers_ui;
 pub mod import_mzd1;
+pub mod room_template_icon;
 
 pub type DirtyRooms = HashSet<RoomId>;
 pub type LruCache = lru::LruCache<RoomId,u64,BuildHasherDefault<AHasher>>;
@@ -65,6 +66,7 @@ pub struct Map {
     pub ssel_room: Option<RoomId>,
     pub template_room: Option<RoomId>,
     pub dummy_room: Option<RoomId>,
+    pub selected_quickroom_template: Option<usize>,
 }
 
 pub type RoomMap = HopSlotMap<RoomId,Room>;
@@ -100,6 +102,8 @@ pub struct MapState {
     pub(crate) _serde_template_room: Option<Uuid>,
     pub ctime: chrono::DateTime<chrono::Utc>,
     pub mtime: chrono::DateTime<chrono::Utc>,
+    #[serde(default)]
+    pub quickroom_template: Vec<Option<Room>>,
 }
 
 #[derive(Deserialize)]
@@ -151,6 +155,17 @@ impl Map {
                     } else {
                         room.loaded.as_mut().map(|v| v.dirty_file = false);
                     }
+                }
+            }
+        }
+
+        for room in self.state.quickroom_template.iter_mut().filter_map(Option::as_mut) {
+            if room.loaded.as_ref().is_some_and(|v| v.dirty_file) && !room.transient {
+                room.mtime = current_time;
+                if let Err(e) = room.save_room_res(self.path.clone(), &mut cleanup_res, uuidmap, self.id, RoomId::null()) {
+                    errors.push(e);
+                } else {
+                    room.loaded.as_mut().map(|v| v.dirty_file = false);
                 }
             }
         }
@@ -265,7 +280,12 @@ impl Map {
             ssel_room,
             template_room,
             dummy_room: None,
+            selected_quickroom_template: None,
         };
+
+        if map.state.quickroom_template.is_empty() {
+            map.state.quickroom_template.resize_with(4, || None);
+        }
 
         map.set_view_pos(map.state.view_pos);
 
@@ -360,6 +380,7 @@ impl Map {
                 _serde_template_room: None,
                 ctime: current_time,
                 mtime: current_time,
+                quickroom_template: std::iter::repeat_with(|| None).take(4).collect(),
             },
             path,
             dirty_rooms: Default::default(),
@@ -386,6 +407,7 @@ impl Map {
             ssel_room: None,
             template_room: None,
             dummy_room: None,
+            selected_quickroom_template: None,
         };
 
         uuidmap.insert(this.state.uuid, UUIDTarget::Map(this.id));

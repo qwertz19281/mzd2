@@ -14,17 +14,22 @@ use crate::gui::util::{alloc_painter_rel, dpad, dpad_icons, dpadc, dragslider_up
 use crate::util::MapId;
 use crate::SRc;
 
-use super::room_ops::{try_side, RoomOp};
+use super::room_ops::{try_side, OpAxis, RoomOp};
+use super::room_template_icon::templicon;
 use super::uuid::UUIDMap;
 use super::{next_ur_op_id, DrawOp, HackRenderMode, Map, RoomId};
 
 impl Map {
-    pub fn create_dummy_room(&mut self, coord: [u8;3], template: RoomId, uuidmap: &mut UUIDMap) {
+    pub fn create_dummy_room(&mut self, coord: [u8;3], template: Option<usize>, uuidmap: &mut UUIDMap) {
         self.drop_dummy_room(uuidmap);
 
         if self.room_matrix.get(coord).is_some() {return;}
         
-        let mut room = if let Some(t) = self.state.rooms.get(template).filter(|r| r.loaded.is_some() ) {
+        let mut room = if let Some(t) = template
+            .filter(|idx| self.state.quickroom_template.len() > *idx )
+            .and_then(|idx| self.state.quickroom_template[idx].as_ref() )
+            .filter(|r| r.loaded.is_some() )
+        {
             t.create_clone(
                 coord,
                 self.state.rooms_size,
@@ -99,6 +104,37 @@ impl Map {
             }
         }
         self.editsel.rooms.retain(|(id,_,_)| self.state.rooms.get(*id).map_or(false, |v| !v.transient ));
+    }
+
+    fn templateslot(&mut self, idx: usize, ui: &mut egui::Ui, sam: &mut SAM) {
+        let path = self.path.to_owned();
+        let is_selected = self.selected_quickroom_template == Some(idx);
+        let rooms_size = self.state.rooms_size;
+        let id = self.id;
+        templicon(
+            self,
+            |s| s.state.quickroom_template.get_mut(idx).and_then(Option::as_mut),
+            &path,
+            is_selected,
+            Some(|s: &mut Self| s.selected_quickroom_template = Some(idx)),
+            Some(|s: &mut Self| {
+                if let Some(r) = s.dsel_room.and_then(|id| s.state.rooms.get_mut(id) ).filter(|r| !r.transient && r.loaded.is_some() ) {
+                    let new_room = r.create_clone(
+                        [255,255,255],
+                        rooms_size,
+                        &mut sam.uuidmap,
+                        id,
+                        &path,
+                    ).unwrap();
+                    s.state.quickroom_template[idx] = Some(new_room);
+                    s.selected_quickroom_template = Some(idx);
+                }
+            }),
+            |s| s.selected_quickroom_template = None,
+            rooms_size,
+            sam.dpi_scale,
+            ui
+        );
     }
 
     pub fn ui_draw(
@@ -182,6 +218,7 @@ impl Map {
         let mut hack_render_mode = None;
 
         let mut quickmove = None;
+        let mut makeconn = None;
 
         if self.editsel.region_size[0] != 0 && self.editsel.region_size[1] != 0 && !self.editsel.rooms.is_empty() {
             ui.horizontal(|ui| {
@@ -242,37 +279,46 @@ impl Map {
                     let hover_single_layer = self.ui_layer_draw(ui, sam);
 
                     ui.vertical(|ui| {
-                        if self.dsel_room.is_some() && self.state.rooms.contains_key(self.dsel_room.unwrap()) {
-                            dpad(
-                                "Quick Nav",
-                                20. * sam.dpi_scale, 32. * sam.dpi_scale, sam.dpi_scale,
-                                false,
-                                true,
-                                ui,
-                                |_,clicked,axis,dir| {
-                                    if !clicked {return;}
-                                    quickmove = Some((axis,dir));
-                                },
-                            );
+                        if self.dsel_room.is_some() && self.state.rooms.contains_key(self.dsel_room.unwrap()) && self.state.quickroom_template.len() >= 4 {
+                            ui.horizontal(|ui| {
+                                dpad(
+                                    "Quick Nav",
+                                    20. * sam.dpi_scale, 32. * sam.dpi_scale, sam.dpi_scale,
+                                    false,
+                                    true,
+                                    ui,
+                                    |_,clicked,axis,dir| {
+                                        if !clicked {return;}
+                                        quickmove = Some((axis,dir));
+                                    },
+                                );
+
+                                self.templateslot(0, ui, sam);
+                                self.templateslot(1, ui, sam);
+                            });
 
                             let id = self.dsel_room.unwrap();
-    
+
                             let icons = dpad_icons(|axis,dir|
                                 if self.get_room_connected(id, axis, dir) {"C"} else {""}
                             );
-                            
-                            dpadc(
-                                "Room Conns",
-                                20. * sam.dpi_scale, 32. * sam.dpi_scale, sam.dpi_scale,
-                                icons,
-                                !self.state.rooms.get(self.dsel_room.unwrap()).unwrap().transient,
-                                ui,
-                                |_,clicked,axis,dir| {
-                                    if !clicked {return;}
-                                    let conn = self.get_room_connected(id, axis, dir);
-                                    self.set_room_connect(id, axis, dir, !conn);
-                                },
-                            );
+
+                            ui.horizontal(|ui| {
+                                dpadc(
+                                    "Room Conns",
+                                    20. * sam.dpi_scale, 32. * sam.dpi_scale, sam.dpi_scale,
+                                    icons,
+                                    !self.state.rooms.get(self.dsel_room.unwrap()).unwrap().transient,
+                                    ui,
+                                    |_,clicked,axis,dir| {
+                                        if !clicked {return;}
+                                        makeconn = Some((axis,dir));
+                                    },
+                                );
+
+                                self.templateslot(2, ui, sam);
+                                self.templateslot(3, ui, sam);
+                            });
                         }
                     });
 
@@ -487,10 +533,45 @@ impl Map {
                     }
                 }
 
+                if reg.hover_pos_rel().is_some() {
+                    let (l,r,u,d,s,h) = ui.input(|i| (
+                        i.key_pressed(Key::ArrowLeft),
+                        i.key_pressed(Key::ArrowRight),
+                        i.key_pressed(Key::ArrowUp),
+                        i.key_pressed(Key::ArrowDown),
+                        i.key_pressed(Key::PageUp),
+                        i.key_pressed(Key::PageDown),
+                    ));
+
+                    let dest = if mods.ctrl {
+                        &mut makeconn
+                    } else {
+                        &mut quickmove
+                    };
+
+                    if l && !r {
+                        *dest = Some((OpAxis::X,false));
+                    }
+                    if r && !l {
+                        *dest = Some((OpAxis::X,true));
+                    }
+                    if u && !d {
+                        *dest = Some((OpAxis::Y,false));
+                    }
+                    if d && !u {
+                        *dest = Some((OpAxis::Y,true));
+                    }
+                    if h && !s {
+                        *dest = Some((OpAxis::Z,false));
+                    }
+                    if s && !h {
+                        *dest = Some((OpAxis::Z,true));
+                    }
+                }
+
                 reg.extend_rel_fixtex(shapes);
             });
         }
-        self.dummyroomscope_end();
 
         if let Some((axis,dir)) = quickmove {
             if let Some(c) = self.state.dsel_coord {
@@ -508,10 +589,19 @@ impl Map {
                     }
                     self.dsel_room = None;
                     self.post_drawroom_switch(&mut sam.uuidmap);
-                    self.create_dummy_room(c2, RoomId::null(), &mut sam.uuidmap);
+                    self.create_dummy_room(c2, self.selected_quickroom_template, &mut sam.uuidmap);
                     self.editsel = DrawImageGroup::unsel(self.state.rooms_size);
                 });
                 ui.ctx().request_repaint();
+            }
+        }
+
+        self.dummyroomscope_end();
+
+        if let Some((axis,dir)) = makeconn.filter(|_| quickmove.is_none() ) {
+            if let Some(id) = self.dsel_room.filter(|id| self.state.rooms.contains_key(*id) ) {
+                let conn = self.get_room_connected(id, axis, dir);
+                self.set_room_connect(id, axis, dir, !conn);
             }
         }
     }
