@@ -3,7 +3,7 @@ use egui_dock::{DockArea, DockState, Node, NodeIndex, Split, SurfaceIndex, TabVi
 use crate::util::{MapId, TilesetId};
 
 use super::init::SharedApp;
-use super::palette::palette_ui;
+use super::palette::{lru_ui, palette_ui};
 
 pub struct Docky {
     state: Option<DockState<DockTab>>,
@@ -32,7 +32,8 @@ impl Docky {
 fn create_initial() -> DockState<DockTab> {
     let mut state = DockState::new(vec![DockTab::Draw]);
     let mut surf = state.main_surface_mut();
-    let [_,left] = surf.split_left(NodeIndex::root(), 0.5, vec![DockTab::Palette]);
+    let [orig,_] = surf.split_left(NodeIndex::root(), 0.5, vec![DockTab::Palette]);
+    surf.split_right(orig, 0.9, vec![DockTab::Lru]);
     //surf.split_above(left, 0.01, vec![]);
     state
 }
@@ -42,6 +43,7 @@ pub enum DockTab {
     Map(MapId),
     Tileset(TilesetId),
     Palette,
+    Lru,
     Draw,
 }
 
@@ -51,6 +53,7 @@ impl DockTab {
             DockTab::Map(_) => matches!(other,Self::Map(_)),
             DockTab::Tileset(_) => matches!(other,Self::Tileset(_)),
             DockTab::Palette => matches!(other,Self::Palette),
+            DockTab::Lru => matches!(other,Self::Lru),
             DockTab::Draw => matches!(other,Self::Draw),
         }
     }
@@ -138,6 +141,26 @@ impl SharedApp {
                         }
                     }
                     let (a,b,c) = state.find_tab(&DockTab::Draw).unwrap();
+                    if let Some(bp) = b.parent() {
+                        if let Some(tree) = state.get_surface_mut(a).and_then(|s| s.node_tree_mut() ) {
+                            if matches!(&tree[bp], Node::Horizontal{..}) {
+                                let what_tab = |bp_child| {
+                                    if let Node::Leaf { tabs, .. } = &tree[bp_child] {
+                                        for c in tabs {
+                                            if matches!(c,DockTab::Draw) {return 1;}
+                                            if matches!(c,DockTab::Lru) {return 2;}
+                                        }
+                                    }
+                                    0
+                                };
+                                let (l,r) = (what_tab(bp.left()),what_tab(bp.right()));
+                                if l != 0 && r != 0 && l != r {
+                                    state.split((a,bp), Split::Below, 0.55, Node::leaf_with(vec![add]));
+                                    break 'tri;
+                                }
+                            }
+                        }
+                    }
                     state.split((a,b), Split::Below, 0.55, Node::leaf_with(vec![add]));
                 }},
                 _ => {},
@@ -169,6 +192,7 @@ impl TabViewer for TabV<'_> {
                 }
             },
             DockTab::Palette => "Palette".into(),
+            DockTab::Lru => "Lru".into(),
             DockTab::Draw => "Draw".into(),
         }
     }
@@ -193,6 +217,7 @@ impl TabViewer for TabV<'_> {
                 );
             },
             DockTab::Palette => palette_ui(&mut self.0, ui),
+            DockTab::Lru => lru_ui(&mut self.0, ui),
             DockTab::Draw => if let Some(map) = self.0.dock.last_focused_map.and_then(|id| self.0.maps.open_maps.get_mut(&id)) {
                 map.ui_draw(
                     &mut self.0.warpon,
@@ -209,6 +234,7 @@ impl TabViewer for TabV<'_> {
             DockTab::Map(id) => id.i_map,
             DockTab::Tileset(id) => id.i,
             DockTab::Palette => egui::Id::new("Palette"),
+            DockTab::Lru => egui::Id::new("LruPalette"),
             DockTab::Draw => egui::Id::new("Draw"),
         }
     }
@@ -221,16 +247,18 @@ impl TabViewer for TabV<'_> {
         match tab {
             DockTab::Map(id) => !self.0.maps.open_maps.contains_key(id),
             DockTab::Tileset(id) => !self.0.tilesets.open_tilesets.contains_key(id),
-            DockTab::Palette => false,
-            DockTab::Draw => false,
+            _ => false,
         }
     }
 
-    fn allowed_in_windows(&self, _tab: &mut Self::Tab) -> bool {
+    fn allowed_in_windows(&self, _: &mut Self::Tab) -> bool {
         false
     }
 
-    fn scroll_bars(&self, _tab: &Self::Tab) -> [bool; 2] {
-        [false, false]
+    fn scroll_bars(&self, tab: &Self::Tab) -> [bool; 2] {
+        match tab {
+            DockTab::Lru => [false,true],
+            _ => [false,false]
+        }
     }
 }

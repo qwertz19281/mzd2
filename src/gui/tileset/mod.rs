@@ -205,7 +205,6 @@ impl Tileset {
                 },
                 key if key == KMKey::with_ctrl(PointerButton::Primary, false) => {
                     hack_render_mode = Some(HackRenderMode::Sel);
-                    let palet = &mut palette.paletted[palette.selected as usize];
                     match dop {
                         DragOp::Start(p) => {
                             self.dsel_state.dsel_mouse_down(
@@ -231,11 +230,10 @@ impl Tileset {
                         },
                         DragOp::End(p) => {
                             let ss = self.dsel_state.dsel_mouse_up(p.into(), &self.loaded_image);
-                            *palet = PaletteItem {
-                                texture: None, //TODO
+                            palette.replace_selected(PaletteItem {
                                 src: SRc::new(ss),
                                 uv: RECT_0_0_1_1,
-                            }
+                            });
                         },
                         DragOp::Abort => self.dsel_state.dsel_cancel(),
                         _ => {},
@@ -283,7 +281,7 @@ impl Tileset {
 
         if let Some(h) = reg.hover_pos_rel() {
             match hack_render_mode {
-                Some(HackRenderMode::Draw) => self.draw_state.draw_hover_at_pos(h.into(), &palette.paletted[palette.selected as usize], |v| shapes.push(v) ),
+                Some(HackRenderMode::Draw) => self.draw_state.draw_hover_at_pos(h.into(), &palette.paletted[palette.selected as usize], |v| shapes.push(v), ui.ctx()),
                 Some(HackRenderMode::CSE) => self.cse_state.cse_render(h.into(), |v| shapes.push(v) ),
                 Some(HackRenderMode::Sel) =>
                     self.dsel_state.dsel_render(
@@ -301,7 +299,7 @@ impl Tileset {
                     ),
                 None =>
                     if mods.ctrl {
-                        self.draw_state.draw_hover_at_pos(h.into(), &palette.paletted[palette.selected as usize], |v| shapes.push(v) );
+                        self.draw_state.draw_hover_at_pos(h.into(), &palette.paletted[palette.selected as usize], |v| shapes.push(v), ui.ctx());
                     } else {
                         self.dsel_state.dsel_render(
                             h.into(),

@@ -105,16 +105,11 @@ impl eframe::App for SharedApp {
 
             egui::TopBottomPanel::top("main_top_panel")
                 .show(ctx, |ui| top_panel_ui(self, ui) );
-            // egui::Window::new("Palette")
-            //     .resizable(false)
-            //     .default_pos(egui::Pos2 { x: 0., y: 65536. })
-            //     //.anchor(egui::Align2::LEFT_BOTTOM, egui::Vec2::default())
-            //     //.movable(true)
-            //     .show(ctx, |ui| palette_ui(self, ui));
-            // maps_ui(self, ctx);
-            // tilesets_ui(self, ctx);
 
-            egui::CentralPanel::default().show(ctx,|ui| self.dock_ui(ui));
+            egui::CentralPanel::default().show(ctx,|ui| {
+                //self.palette.do_keyboard_numbers(ui);
+                self.dock_ui(ui)
+            });
 
             for v in std::mem::replace(&mut self.sam.mut_queue, vec![]) {
                 v(self);

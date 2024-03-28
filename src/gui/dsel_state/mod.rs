@@ -169,10 +169,7 @@ impl DSelState {
 
         // eprintln!("{:?}",&sels);
 
-        SelImg {
-            img: dest_img,
-            sels,
-        }
+        SelImg::new(dest_img,sels)
     }
 
     pub fn active(&self) -> bool {

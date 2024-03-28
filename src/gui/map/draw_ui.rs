@@ -407,7 +407,6 @@ impl Map {
                         },
                         key if key == KMKey::with_ctrl(PointerButton::Middle, false) => {
                             hack_render_mode = Some(HackRenderMode::Sel);
-                            let palet = &mut palette.paletted[palette.selected as usize];
                             let mm = self.editsel.selmatrix(
                                 draw_selected_layer,
                                 &self.state.rooms,
@@ -438,11 +437,10 @@ impl Map {
                                 },
                                 DragOp::End(p) => {
                                     let ss = self.dsel_state.dsel_mouse_up(p.into(), &mm);
-                                    *palet = PaletteItem {
-                                        texture: None, //TODO
+                                    palette.replace_selected(PaletteItem {
                                         src: SRc::new(ss),
                                         uv: RECT_0_0_1_1,
-                                    }
+                                    });
                                 },
                                 DragOp::Abort => self.dsel_state.dsel_cancel(),
                                 _ => {},
@@ -499,7 +497,7 @@ impl Map {
 
                 if let Some(h) = reg.hover_pos_rel() {
                     match hack_render_mode {
-                        Some(HackRenderMode::Draw) => self.draw_state.draw_hover_at_pos(h.into(), &palette.paletted[palette.selected as usize], |v| shapes.push(v) ),
+                        Some(HackRenderMode::Draw) => self.draw_state.draw_hover_at_pos(h.into(), &palette.paletted[palette.selected as usize], |v| shapes.push(v), ui.ctx()),
                         Some(HackRenderMode::CSE) => self.cse_state.cse_render(h.into(), |v| shapes.push(v) ),
                         Some(HackRenderMode::Sel) => //TODO doesn't show shit in None
                             self.dsel_state.dsel_render(
@@ -524,7 +522,7 @@ impl Map {
                                 |v| shapes.push(v)
                             ),
                         None => {
-                            self.draw_state.draw_hover_at_pos(h.into(), &palette.paletted[palette.selected as usize], |v| shapes.push(v) );
+                            self.draw_state.draw_hover_at_pos(h.into(), &palette.paletted[palette.selected as usize], |v| shapes.push(v), ui.ctx());
                             self.dsel_state.dsel_render(
                                 h.into(),
                                 &self.editsel.selmatrix(

@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+use std::collections::VecDeque;
 use std::sync::Arc;
 
 use egui::{TextureHandle, TextureOptions, Rounding};
@@ -9,19 +11,34 @@ use super::init::SharedApp;
 use super::sel_matrix::SelEntry;
 use super::util::alloc_painter_rel;
 use super::{rector, line2};
-use super::texture::{RECT_0_0_1_1, ensure_texture_from_image};
+use super::texture::{ensure_texture_from_image, TextureCell, RECT_0_0_1_1};
 
 pub struct Palette {
     pub paletted: Vec<PaletteItem>,
     pub selected: u32,
+    pub lru: VecDeque<PaletteItem>,
+    pub lru_scroll_back: bool,
 }
 
 impl Palette {
     pub fn new() -> Self {
         Self {
-            paletted: (0..10).map(|_| PaletteItem { texture: None, uv: RECT_0_0_1_1, src: SRc::new(SelImg::empty()) }).collect(),
-            selected: 0
+            paletted: (0..10).map(|_| PaletteItem { uv: RECT_0_0_1_1, src: SRc::new(SelImg::empty()) }).collect(),
+            selected: 0,
+            lru: Default::default(),
+            lru_scroll_back: true,
         }
+    }
+
+    pub fn replace_selected(&mut self, item: PaletteItem) {
+        self.paletted[self.selected as usize] = item.clone();
+        if let Some(last) = self.lru.back() {
+            if last.src.img == item.src.img { // TODO should we also check the seltrix here?
+                self.lru.pop_back();
+            }
+        }
+        self.lru.push_back(item);
+        self.lru_scroll_back = true;
     }
 
     pub fn do_keyboard_numbers(&mut self, ui: &mut egui::Ui) {
@@ -47,7 +64,6 @@ impl Palette {
 
 #[derive(Clone)]
 pub struct PaletteItem {
-    pub texture: Option<TextureHandle>,
     pub src: SRc<SelImg>,
     pub uv: egui::Rect,
 }
@@ -82,6 +98,8 @@ pub fn palette_ui(state: &mut SharedApp, ui: &mut egui::Ui) {
     let hover_pos = reg.hover_pos_rel();
 
     if let Some(mouse_pos) = hover_pos {
+        state.palette.do_keyboard_numbers(ui);
+
         if reg.response.clicked_by(egui::PointerButton::Primary) {
             for (idx,i) in xbounds_iter(plen) {
                 if mouse_pos.x as u32 >= i && (mouse_pos.x as u32) < i + PALETTE_SHOW_DIMS {
@@ -105,29 +123,22 @@ pub fn palette_ui(state: &mut SharedApp, ui: &mut egui::Ui) {
 
     let selected = &mut state.palette.paletted[state.palette.selected as usize];
 
-    let paltex = ensure_texture_from_image(
-        &mut selected.texture,
-        format!("PalTex {}",state.palette.selected), PAL_TEX_OPTS,
-        &selected.src.img,
-        false, None,
-        ui.ctx(),
-    );
+    let uv = selected.uv;
+    shapes.push(egui::Shape::rect_filled(
+        texdraw_rect(0),
+        Rounding::ZERO,
+        egui::Color32::BLACK,
+    ));
 
-    /*if let Some(paltex) = &state.palette.paletted[state.palette.selected as usize].texture*/ {
-        let uv = selected.uv;
-        shapes.extend([
-            egui::Shape::rect_filled(
-                texdraw_rect(0),
-                Rounding::ZERO,
-                egui::Color32::BLACK,
-            ),
-            egui::Shape::image(
-                paltex.id(),
-                texdraw_rect(0),
-                uv,
-                egui::Color32::WHITE
-            )
-        ]);
+    if !selected.src.is_empty() {
+        let tex = &mut selected.src.texture.borrow_mut();
+        let tex = tex.ensure_image(&selected.src.img, ui.ctx());
+        shapes.push(egui::Shape::image(
+            tex.id(),
+            texdraw_rect(0),
+            uv,
+            egui::Color32::WHITE
+        ));
     }
 
     for (pal,(_,pos)) in state.palette.paletted.iter_mut().zip(xbounds_iter(plen)) {
@@ -137,9 +148,11 @@ pub fn palette_ui(state: &mut SharedApp, ui: &mut egui::Ui) {
             egui::Color32::BLACK,
         ));
 
-        if let Some(paltex) = &pal.texture {
+        if !pal.src.is_empty() {
+            let tex = &mut pal.src.texture.borrow_mut();
+            let tex = tex.ensure_image(&pal.src.img, ui.ctx());
             shapes.push(egui::Shape::image(
-                paltex.id(),
+                tex.id(),
                 texdraw_rect(pos),
                 pal.uv,
                 egui::Color32::WHITE
@@ -179,14 +192,20 @@ fn xbounds_iter(len: u32) -> impl Iterator<Item = (u32,u32)> {
 pub struct SelImg {
     pub img: RgbaImage,
     pub sels: Vec<([u16;2],SelEntry)>,
+    pub texture: RefCell<TextureCell>,
 }
 
 impl SelImg {
-    pub fn empty() -> Self {
+    pub fn new(img: RgbaImage, sels: Vec<([u16;2],SelEntry)>) -> Self{
         Self {
-            img: RgbaImage::new(0,0),
-            sels: vec![],
+            img,
+            sels,
+            texture: RefCell::new(TextureCell::new("PalTex", PAL_TEX_OPTS)),
         }
+    }
+
+    pub fn empty() -> Self {
+        Self::new(RgbaImage::new(0,0), vec![])
     }
 
     pub fn is_empty(&self) -> bool {
@@ -199,3 +218,68 @@ const PAL_TEX_OPTS: TextureOptions = TextureOptions {
     minification: egui::TextureFilter::Linear,
     wrap_mode: egui::TextureWrapMode::ClampToEdge,
 };
+
+pub fn lru_ui(state: &mut SharedApp, ui: &mut egui::Ui) {
+    while state.palette.lru.len() > 256 {
+        state.palette.lru.pop_front();
+    }
+
+    state.palette.selected = state.palette.selected.min(state.palette.paletted.len().saturating_sub(1) as u32);
+
+    let len = state.palette.lru.len();
+
+    let mut lru_rm_idx = None;
+
+    let lru_icon_size = [64.,64.];
+
+    for i in (0 .. len).rev() {
+        let reg = alloc_painter_rel(
+            ui,
+            lru_icon_size.into(), egui::Sense::click(),
+            1.,
+        );
+
+        if state.palette.lru_scroll_back {
+            state.palette.lru_scroll_back = false;
+            reg.response.scroll_to_me(None);
+        }
+
+        if reg.hover_pos_rel().is_some() {
+            state.palette.do_keyboard_numbers(ui);
+
+            if reg.response.clicked_by(egui::PointerButton::Primary) {
+                state.palette.paletted[state.palette.selected as usize] = state.palette.lru[i].clone();
+            }
+            if reg.response.double_clicked_by(egui::PointerButton::Secondary) {
+                lru_rm_idx = Some(i);
+            }
+        }
+
+        let mut shapes = Vec::with_capacity(2);
+
+        let pal = &mut state.palette.lru[i];
+
+        shapes.push(egui::Shape::rect_filled(
+            rector(0, 0, lru_icon_size[0], lru_icon_size[1]),
+            Rounding::ZERO,
+            egui::Color32::BLACK,
+        ));
+
+        if !pal.src.is_empty() {
+            let tex = &mut pal.src.texture.borrow_mut();
+            let tex = tex.ensure_image(&pal.src.img, ui.ctx());
+            shapes.push(egui::Shape::image(
+                tex.id(),
+                rector(0, 0, lru_icon_size[0], lru_icon_size[1]),
+                pal.uv,
+                egui::Color32::WHITE
+            ));
+        }
+
+        reg.extend_rel_fixtex(shapes);
+    }
+    
+    if let Some(idx) = lru_rm_idx {
+        state.palette.lru.remove(idx);
+    }
+}
