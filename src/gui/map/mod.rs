@@ -104,6 +104,8 @@ pub struct MapState {
     pub mtime: chrono::DateTime<chrono::Utc>,
     #[serde(default)]
     pub quickroom_template: Vec<Option<Room>>,
+    #[serde(default)]
+    pub set_dssel_merged: bool,
 }
 
 #[derive(Deserialize)]
@@ -198,6 +200,30 @@ impl Map {
             uuidmap.remove(&r.resuuid);
             uuidmap.remove(&r.uuid);
             //TODO have a separate uuidmap for uuidgen only which isn't cleared
+        }
+    }
+
+    pub fn dsel_updated(&mut self) {
+        if self.state.set_dssel_merged {
+            if self.dsel_room.and_then(|id| self.state.rooms.get(id) ).is_some_and(|r| r.transient ) {return;}
+            self.ssel_room = self.dsel_room;
+            self.state.ssel_coord = self.state.dsel_coord;
+        }
+    }
+
+    pub fn ssel_updated(&mut self) {
+        if self.state.set_dssel_merged {
+            let old_dsel_room = self.dsel_room;
+            self.dsel_room = self.ssel_room;
+            self.state.dsel_coord = self.state.ssel_coord;
+            if old_dsel_room != self.dsel_room {
+                if self.dsel_room.is_some_and(|s| self.state.rooms.contains_key(s) ) {
+                    let id = self.dsel_room.unwrap();
+                    self.editsel = DrawImageGroup::single(id, self.state.rooms[id].coord, self.state.rooms_size);
+                } else {
+                    self.editsel = DrawImageGroup::unsel(self.state.rooms_size);
+                }
+            }
         }
     }
 
@@ -381,6 +407,7 @@ impl Map {
                 ctime: current_time,
                 mtime: current_time,
                 quickroom_template: std::iter::repeat_with(|| None).take(4).collect(),
+                set_dssel_merged: false,
             },
             path,
             dirty_rooms: Default::default(),

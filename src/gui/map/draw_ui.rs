@@ -588,12 +588,14 @@ impl Map {
                     if let Some(&id) = self.room_matrix.get(c2) {
                         if let Some(room) = self.state.rooms.get(id) {
                             self.dsel_room = Some(id);
+                            self.dsel_updated();
                             self.post_drawroom_switch(&mut sam.uuidmap);
                             self.editsel = DrawImageGroup::single(id, c2, self.state.rooms_size);
                             return;
                         }
                     }
                     self.dsel_room = None;
+                    self.dsel_updated();
                     self.post_drawroom_switch(&mut sam.uuidmap);
                     self.create_dummy_room(c2, self.selected_quickroom_template, &mut sam.uuidmap);
                     self.editsel = DrawImageGroup::unsel(self.state.rooms_size);

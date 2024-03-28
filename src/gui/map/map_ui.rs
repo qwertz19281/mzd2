@@ -26,6 +26,7 @@ impl Map {
             };
             self.undo_buf.push_back((ur,next_ur_op_id()));
             self.after_room_op_apply_invalidation(false);
+            //if self.state.rooms.get(key)
 
             Some(room_id)
         } else {
@@ -209,6 +210,8 @@ impl Map {
                             self.state.current_level = z;
                         }
                     }
+                    ui.label("|");
+                    ui.checkbox(&mut self.state.set_dssel_merged, "Merge ssel/dsel");
                 });
                 ui.horizontal(|ui| {
                     let resp = ui.add_enabled(
@@ -257,6 +260,7 @@ impl Map {
                                     self.editsel = DrawImageGroup::unsel(self.state.rooms_size);
                                     self.post_drawroom_switch(&mut sam.uuidmap);
                                     self.ui_delete_room(v, &mut sam.uuidmap);
+                                    self.dsel_updated();
                                 }
                                 if ui.button("As Template").clicked() {
                                     self.template_room = Some(v);
@@ -268,6 +272,7 @@ impl Map {
                                         self.state.dsel_coord = Some(v);
                                         self.editsel = DrawImageGroup::single(new_id, v, self.state.rooms_size);
                                         self.post_drawroom_switch(&mut sam.uuidmap);
+                                        self.dsel_updated();
                                     }
                                 }
                                 let resp = ui.add_enabled(
@@ -283,6 +288,7 @@ impl Map {
                                         self.state.dsel_coord = Some(v);
                                         self.editsel = DrawImageGroup::single(new_id, v, self.state.rooms_size);
                                         self.post_drawroom_switch(&mut sam.uuidmap);
+                                        self.dsel_updated();
                                     }
                                 }
                             }
@@ -292,6 +298,7 @@ impl Map {
                                 if ui.button("Delete Room").double_clicked() {
                                     self.ssel_room = None;
                                     self.ui_delete_room(v, &mut sam.uuidmap);
+                                    self.ssel_updated();
                                 }
                                 if ui.button("As Template").clicked() {
                                     self.template_room = Some(v);
@@ -301,6 +308,7 @@ impl Map {
                                     if let Some(new_id) = self.ui_create_room(v, &mut sam.uuidmap) {
                                         self.ssel_room = Some(new_id);
                                         self.state.ssel_coord = Some(v);
+                                        self.ssel_updated();
                                     }
                                 }
                                 let resp = ui.add_enabled(
@@ -315,6 +323,7 @@ impl Map {
                                         self.state.ssel_coord = Some(v);
                                         self.editsel = DrawImageGroup::single(new_id, v, self.state.rooms_size);
                                         self.post_drawroom_switch(&mut sam.uuidmap);
+                                        self.ssel_updated();
                                     }
                                 }
                             }
@@ -509,6 +518,7 @@ impl Map {
                                 if self.dsel_room.is_none() {
                                     self.create_dummy_room(click_coord, None, &mut sam.uuidmap);
                                 }
+                                self.dsel_updated();
                             } else {
                                 if let Some(room) = self.room_matrix.get(click_coord) {
                                     if self.editsel.try_attach(*room, self.state.rooms_size, &self.state.rooms) {
@@ -522,6 +532,7 @@ impl Map {
                         if super_map.response.clicked_by(egui::PointerButton::Primary) {
                             self.state.ssel_coord = Some(click_coord);
                             self.ssel_room = self.room_matrix.get(click_coord).cloned();
+                            self.ssel_updated();
                         }
                     },
                     MapEditMode::Tags => {
