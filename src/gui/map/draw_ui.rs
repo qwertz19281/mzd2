@@ -1,5 +1,6 @@
 use egui::{Color32, Key, PointerButton};
 use image::RgbaImage;
+use slotmap::Key as _;
 
 use crate::gui::draw_state::DrawMode;
 use crate::gui::dsel_state::DSelMode;
@@ -13,7 +14,7 @@ use crate::gui::util::{alloc_painter_rel, dpad, dpad_icons, dpadc, dragslider_up
 use crate::util::MapId;
 use crate::SRc;
 
-use super::room_ops::RoomOp;
+use super::room_ops::{try_side, RoomOp};
 use super::uuid::UUIDMap;
 use super::{next_ur_op_id, DrawOp, HackRenderMode, Map, RoomId};
 
@@ -483,5 +484,28 @@ impl Map {
             });
         }
         self.dummyroomscope_end();
+
+        if let Some((axis,dir)) = quickmove {
+            if let Some(c) = self.state.dsel_coord {
+                try_side(c, axis, dir, |c2,_,_| {
+                    self.state.dsel_coord = Some(c2);
+                    self.move_viewpos_centred([c2[0],c2[1]]);
+                    self.state.current_level = c2[2];
+                    if let Some(&id) = self.room_matrix.get(c2) {
+                        if let Some(room) = self.state.rooms.get(id) {
+                            self.dsel_room = Some(id);
+                            self.post_drawroom_switch(&mut sam.uuidmap);
+                            self.editsel = DrawImageGroup::single(id, c2, self.state.rooms_size);
+                            return;
+                        }
+                    }
+                    self.dsel_room = None;
+                    self.post_drawroom_switch(&mut sam.uuidmap);
+                    self.create_dummy_room(c2, RoomId::null(), &mut sam.uuidmap);
+                    self.editsel = DrawImageGroup::unsel(self.state.rooms_size);
+                });
+                ui.ctx().request_repaint();
+            }
+        }
     }
 }

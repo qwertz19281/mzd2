@@ -79,7 +79,7 @@ impl Map {
         }
     }
 
-    fn move_viewpos_centred(&mut self, coord: [u8;2]) {
+    pub(crate) fn move_viewpos_centred(&mut self, coord: [u8;2]) {
         self.set_view_pos([
             (coord[0] as f32 + 0.5) * self.state.rooms_size[0] as f32 - (self.windowsize_estim.x.max(self.state.rooms_size[0] as f32) / 2.),
             (coord[1] as f32 + 0.5) * self.state.rooms_size[1] as f32 - (self.windowsize_estim.y.max(self.state.rooms_size[1] as f32) / 2.),
