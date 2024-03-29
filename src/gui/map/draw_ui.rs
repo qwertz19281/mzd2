@@ -334,7 +334,7 @@ impl Map {
                             if !mods.alt && matches!(dop,DragOp::Start(_)) {self.move_mode_palette = None;}
                             let mut palet = &palette.paletted[palette.selected as usize];
                             let mut move_mode = false;
-                            if let Some((_,p)) = self.move_mode_palette.as_ref().filter(|(r,_)| self.editsel.single_room() == Some(*r) ) {
+                            if let Some(p) = self.move_mode_palette.as_ref() {
                                 palet = p;
                                 move_mode = true;
                             }
@@ -422,7 +422,7 @@ impl Map {
                                         sel_stage,
                                         true,
                                         self.state.dsel_whole ^ mods.shift,
-                                        mods.alt && self.editsel.single_room().is_some(),
+                                        mods.alt,
                                     )
                                 },
                                 DragOp::Tick(Some(p)) => {
@@ -434,15 +434,13 @@ impl Map {
                                         sel_stage,
                                         false,
                                         self.state.dsel_whole ^ mods.shift,
-                                        mods.alt && self.editsel.single_room().is_some(),
+                                        mods.alt,
                                     )
                                 },
                                 DragOp::End(p) => {
                                     let ss = self.dsel_state.dsel_mouse_up(p.into(), &mm);
                                     if ss.src_room_off.is_some() {
-                                        self.move_mode_palette = self.editsel.single_room().map(|id|
-                                            (id,PaletteItem::basic(SRc::new(ss)))
-                                        );
+                                        self.move_mode_palette = Some(PaletteItem::basic(SRc::new(ss)));
                                     } else {
                                         self.move_mode_palette = None;
                                         palette.replace_selected(PaletteItem::basic(SRc::new(ss)));
@@ -503,7 +501,7 @@ impl Map {
 
                 if let Some(h) = reg.hover_pos_rel() {
                     let mut palet = &palette.paletted[palette.selected as usize];
-                    if let Some((_,p)) = self.move_mode_palette.as_ref().filter(|(r,_)| mods.alt && self.editsel.single_room() == Some(*r) ) {
+                    if let Some(p) = self.move_mode_palette.as_ref().filter(|_| mods.alt ) {
                         palet = p;
                     }
                     match hack_render_mode {

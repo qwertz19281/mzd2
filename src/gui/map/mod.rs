@@ -68,7 +68,7 @@ pub struct Map {
     pub template_room: Option<RoomId>,
     pub dummy_room: Option<RoomId>,
     pub selected_quickroom_template: Option<usize>,
-    pub move_mode_palette: Option<(RoomId,PaletteItem)>,
+    pub move_mode_palette: Option<PaletteItem>,
 }
 
 pub type RoomMap = HopSlotMap<RoomId,Room>;
