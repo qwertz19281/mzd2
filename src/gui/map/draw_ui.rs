@@ -2,6 +2,7 @@ use egui::{Color32, Key, PointerButton};
 use image::RgbaImage;
 
 use crate::gui::draw_state::DrawMode;
+use crate::gui::dsel_state::del::DelState;
 use crate::gui::init::SAM;
 use crate::gui::key_manager::KMKey;
 use crate::gui::palette::{Palette, PaletteItem};
@@ -330,7 +331,13 @@ impl Map {
                     match key {
                         key if key == KMKey::nomods(PointerButton::Primary) => {
                             hack_render_mode = Some(HackRenderMode::Draw);
-                            let palet = &palette.paletted[palette.selected as usize];
+                            if !mods.alt && matches!(dop,DragOp::Start(_)) {self.move_mode_palette = None;}
+                            let mut palet = &palette.paletted[palette.selected as usize];
+                            let mut move_mode = false;
+                            if let Some((_,p)) = self.move_mode_palette.as_ref().filter(|(r,_)| self.editsel.single_room() == Some(*r) ) {
+                                palet = p;
+                                move_mode = true;
+                            }
                             match dop {
                                 DragOp::Start(p) => 
                                     self.draw_state.draw_mouse_down(p.into(), palet, self.state.draw_draw_mode, true, self.state.ds_replace),
@@ -343,6 +350,15 @@ impl Map {
                                         self.state.rooms_size,
                                         (&mut self.dirty_rooms,&mut self.imglru),
                                     );
+                                    if move_mode {
+                                        if let Some(src) = self.draw_state.src.as_ref().filter(|f| f.src.src_room_off.is_some() ) {
+                                            for (p,_) in &src.src.sels {
+                                                let off = p.as_u32().add(src.src.src_room_off.unwrap().as_u32());
+                                                DelState::delete_in(off, &mut mm)
+                                            }
+                                        }
+                                    }
+                                    self.move_mode_palette = None;
                                     self.draw_state.draw_mouse_up(&mut mm);
                                 },
                                 DragOp::Abort => self.draw_state.draw_cancel(),
@@ -406,6 +422,7 @@ impl Map {
                                         sel_stage,
                                         true,
                                         self.state.dsel_whole ^ mods.shift,
+                                        mods.alt && self.editsel.single_room().is_some(),
                                     )
                                 },
                                 DragOp::Tick(Some(p)) => {
@@ -417,14 +434,19 @@ impl Map {
                                         sel_stage,
                                         false,
                                         self.state.dsel_whole ^ mods.shift,
+                                        mods.alt && self.editsel.single_room().is_some(),
                                     )
                                 },
                                 DragOp::End(p) => {
                                     let ss = self.dsel_state.dsel_mouse_up(p.into(), &mm);
-                                    palette.replace_selected(PaletteItem {
-                                        src: SRc::new(ss),
-                                        uv: RECT_0_0_1_1,
-                                    });
+                                    if ss.src_room_off.is_some() {
+                                        self.move_mode_palette = self.editsel.single_room().map(|id|
+                                            (id,PaletteItem::basic(SRc::new(ss)))
+                                        );
+                                    } else {
+                                        self.move_mode_palette = None;
+                                        palette.replace_selected(PaletteItem::basic(SRc::new(ss)));
+                                    }
                                 },
                                 DragOp::Abort => self.dsel_state.dsel_cancel(),
                                 _ => {},
@@ -480,8 +502,12 @@ impl Map {
                 if mods.shift {draw_grid(&mut shapes);}
 
                 if let Some(h) = reg.hover_pos_rel() {
+                    let mut palet = &palette.paletted[palette.selected as usize];
+                    if let Some((_,p)) = self.move_mode_palette.as_ref().filter(|(r,_)| mods.alt && self.editsel.single_room() == Some(*r) ) {
+                        palet = p;
+                    }
                     match hack_render_mode {
-                        Some(HackRenderMode::Draw) => self.draw_state.draw_hover_at_pos(h.into(), &palette.paletted[palette.selected as usize], |v| shapes.push(v), ui.ctx()),
+                        Some(HackRenderMode::Draw) => self.draw_state.draw_hover_at_pos(h.into(), palet, |v| shapes.push(v), ui.ctx()),
                         Some(HackRenderMode::CSE) => self.cse_state.cse_render(h.into(), |v| shapes.push(v) ),
                         Some(HackRenderMode::Sel) => //TODO doesn't show shit in None
                             self.dsel_state.dsel_render(
@@ -506,7 +532,7 @@ impl Map {
                                 |v| shapes.push(v)
                             ),
                         None => {
-                            self.draw_state.draw_hover_at_pos(h.into(), &palette.paletted[palette.selected as usize], |v| shapes.push(v), ui.ctx());
+                            self.draw_state.draw_hover_at_pos(h.into(), palet, |v| shapes.push(v), ui.ctx());
                             self.dsel_state.dsel_render(
                                 h.into(),
                                 &self.editsel.selmatrix(

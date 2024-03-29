@@ -214,6 +214,7 @@ impl Tileset {
                                 sel_stage,
                                 true,
                                 self.state.dsel_whole ^ mods.shift,
+                                false,
                             )
                         },
                         DragOp::Tick(Some(p)) => {
@@ -225,14 +226,12 @@ impl Tileset {
                                 sel_stage,
                                 false,
                                 self.state.dsel_whole ^ mods.shift,
+                                false,
                             )
                         },
                         DragOp::End(p) => {
                             let ss = self.dsel_state.dsel_mouse_up(p.into(), &self.loaded_image);
-                            palette.replace_selected(PaletteItem {
-                                src: SRc::new(ss),
-                                uv: RECT_0_0_1_1,
-                            });
+                            palette.replace_selected(PaletteItem::basic(SRc::new(ss)));
                         },
                         DragOp::Abort => self.dsel_state.dsel_cancel(),
                         _ => {},

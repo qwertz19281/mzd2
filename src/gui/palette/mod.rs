@@ -72,6 +72,12 @@ pub struct PaletteItem {
 }
 
 impl PaletteItem {
+    pub fn basic(src: SRc<SelImg>) -> Self {
+        Self {
+            src,
+            uv: RECT_0_0_1_1,
+        }
+    }
     // divided by 8
     pub fn quantis8(&self) -> [u32;2] {
         let (w,h) = self.src.img.dimensions();
@@ -196,19 +202,21 @@ pub struct SelImg {
     pub img: RgbaImage,
     pub sels: Vec<([u16;2],SelEntry)>,
     pub texture: RefCell<TextureCell>,
+    pub src_room_off: Option<[u16;2]>,
 }
 
 impl SelImg {
-    pub fn new(img: RgbaImage, sels: Vec<([u16;2],SelEntry)>) -> Self{
+    pub fn new(img: RgbaImage, sels: Vec<([u16;2],SelEntry)>, src_room_off: Option<[u16;2]>) -> Self{
         Self {
             img,
             sels,
             texture: RefCell::new(TextureCell::new("PalTex", PAL_TEX_OPTS)),
+            src_room_off
         }
     }
 
     pub fn empty() -> Self {
-        Self::new(RgbaImage::new(0,0), vec![])
+        Self::new(RgbaImage::new(0,0), vec![], None)
     }
 
     pub fn is_empty(&self) -> bool {

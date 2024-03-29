@@ -28,6 +28,7 @@ pub struct DSelState {
     dsel_mode: DSelMode,
     sel_area: ([u16;2],[u16;2]),
     whole_selentry: bool,
+    move_mode: bool,
 }
 
 impl DSelState {
@@ -41,11 +42,12 @@ impl DSelState {
             dsel_mode: DSelMode::Direct,
             sel_area: ([65535,65535],[0,0]),
             whole_selentry: true,
+            move_mode: false,
         }
     }
     ///
     /// add: true = add to sel, false = remove from sel
-    pub fn dsel_mouse_down(&mut self, pos: [f32;2], src: &impl SelEntryRead, mode: DSelMode, add: bool, stage: bool, new: bool, whole_selentry: bool) {
+    pub fn dsel_mouse_down(&mut self, pos: [f32;2], src: &impl SelEntryRead, mode: DSelMode, add: bool, stage: bool, new: bool, whole_selentry: bool, move_mode: bool) {
         if new {
             self.dsel_cancel();
             if !stage {
@@ -55,6 +57,7 @@ impl DSelState {
             self.dsel_mode = mode;
             self.whole_selentry = whole_selentry;
             self.staging_mode = add;
+            self.move_mode = move_mode;
         }
         // if srcid != self.src_id {
         //     self.clear_selection();
@@ -119,6 +122,7 @@ impl DSelState {
         self.dsel_cancel();
         self.selected.clear();
         self.sel_area = ([65535,65535],[0,0]);
+        self.move_mode = false;
     }
 
     pub fn dsel_mouse_up(&mut self, _: [f32;2], img: &impl ImgRead) -> SelImg {
@@ -169,7 +173,7 @@ impl DSelState {
 
         // eprintln!("{:?}",&sels);
 
-        SelImg::new(dest_img,sels)
+        SelImg::new(dest_img,sels,self.move_mode.then_some(min))
     }
 
     pub fn active(&self) -> bool {

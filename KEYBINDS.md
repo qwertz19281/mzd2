@@ -6,6 +6,7 @@
   - Press + to add or - to remove from selection (pressing none starts new selection)
   - Press shift to invert DSelOnly (whether selecting should snap to seltrix)
 - Middle Mouse + Ctrl: CSE (define seltrix)
+- Alt + Left Mouse, then Alt + Middle Mouse: Quick move of selection (separate from palette slot, clears previous area)
 
 # Drawing Layer keys
 
@@ -25,6 +26,16 @@
 
 - Ctrl: Make only this layer visible and all other invisible
 - Shift: Make only this and layers below visible and the above invisible
+
+# Palette
+
+- Left Mouse: Select
+- 1-0 on keyboard (while hovering over draw area): Select
+
+# Lru Palette History
+
+- Left Mouse: Select
+- Right Mouse: Remove
 
 # Selecting/Drawing (tileset)
 

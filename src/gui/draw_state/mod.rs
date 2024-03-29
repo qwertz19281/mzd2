@@ -17,7 +17,7 @@ pub struct DrawState {
     current_dest: HashSet<[i16;2]>,
     current_dest2: Vec<[i16;2]>,
     prev_tik: Option<[i16;2]>,
-    src: Option<PaletteItem>,
+    pub(crate) src: Option<PaletteItem>,
     mode: DrawMode,
     replace: bool,
 }

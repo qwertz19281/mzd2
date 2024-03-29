@@ -83,23 +83,27 @@ impl DelState {
     }
 
     pub fn del_mouse_up(&mut self, write: &mut (impl SelEntryWrite + ImgWrite)) {
-        for &a in self.selected.keys() {
-            let draw_src_off = a.as_u32().mul8();
-
-            if let Some(se) = write.get_mut(a.as_u32()) {
-                *se = SelEntry {
-                    start: [0,0],
-                    size: [0,0],
-                };
-            }
-
-            write.img_erase(
-                draw_src_off,
-                [8,8],
-            );
+        for a in self.selected.keys() {
+            Self::delete_in(a.as_u32(), write);
         }
 
         self.del_cancel();
+    }
+
+    pub fn delete_in(pos: [u32;2], write: &mut (impl SelEntryWrite + ImgWrite)) {
+        let draw_src_off = pos.mul8();
+
+        if let Some(se) = write.get_mut(pos) {
+            *se = SelEntry {
+                start: [0,0],
+                size: [0,0],
+            };
+        }
+
+        write.img_erase(
+            draw_src_off,
+            [8,8],
+        );
     }
 
     pub fn active(&self) -> bool {

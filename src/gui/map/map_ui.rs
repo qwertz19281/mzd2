@@ -110,6 +110,7 @@ impl Map {
         self.draw_state.draw_cancel();
         self.dsel_state.clear_selection();
         self.del_state.del_cancel();
+        self.move_mode_palette = None;
     }
 
     fn attempt_remove_transient_room(&mut self, id: RoomId, uuidmap: &mut UUIDMap) {

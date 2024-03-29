@@ -23,6 +23,7 @@ use super::dsel_state::cse::CSEState;
 use super::dsel_state::del::DelState;
 use super::dsel_state::{DSelMode, DSelState};
 use super::key_manager::KMKey;
+use super::palette::PaletteItem;
 use super::room::Room;
 use super::room::draw_image::DrawImageGroup;
 use super::texture::TextureCell;
@@ -67,6 +68,7 @@ pub struct Map {
     pub template_room: Option<RoomId>,
     pub dummy_room: Option<RoomId>,
     pub selected_quickroom_template: Option<usize>,
+    pub move_mode_palette: Option<(RoomId,PaletteItem)>,
 }
 
 pub type RoomMap = HopSlotMap<RoomId,Room>;
@@ -307,6 +309,7 @@ impl Map {
             template_room,
             dummy_room: None,
             selected_quickroom_template: None,
+            move_mode_palette: None,
         };
 
         if map.state.quickroom_template.is_empty() {
@@ -435,6 +438,7 @@ impl Map {
             template_room: None,
             dummy_room: None,
             selected_quickroom_template: None,
+            move_mode_palette: None,
         };
 
         uuidmap.insert(this.state.uuid, UUIDTarget::Map(this.id));
