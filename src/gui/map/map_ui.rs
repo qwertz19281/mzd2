@@ -84,7 +84,7 @@ impl Map {
                 regen = false;
             }
         }
-        if !self.check_shift_smart1(coord, self.state.sift_size, axis, dir).is_some() {
+        if self.check_shift_smart1(coord, self.state.sift_size, axis, dir).is_none() {
             self.smartmove_preview = None;
             return;
         }
@@ -717,8 +717,8 @@ impl Map {
                             );
                             if preview_smart_move == Some(room.op_evo) {
                                 let rect = rector(
-                                    cx as u32 * self.state.rooms_size[0], cy as u32 * self.state.rooms_size[1],
-                                    (cx as u32+1) * self.state.rooms_size[0], (cy as u32+1) * self.state.rooms_size[1],
+                                    cx * self.state.rooms_size[0], cy * self.state.rooms_size[1],
+                                    (cx+1) * self.state.rooms_size[0], (cy+1) * self.state.rooms_size[1],
                                 );
                                 shapes.push(egui::Shape::rect_filled(rect, Rounding::ZERO, Color32::from_rgba_unmultiplied(255, 255, 0, 64)));
                             }

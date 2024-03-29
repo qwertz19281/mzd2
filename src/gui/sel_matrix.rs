@@ -115,9 +115,8 @@ impl SelEntry {
     }
 
     pub fn clampfix(&self, pos_in_clamp_space: [i32;2], clamp_space: ([i32;2],[i32;2])) -> Self {
-        let vspt = self.to_sel_pt_fixedi(pos_in_clamp_space, clamp_space);
-        let vspt = vspt.to_sel_entryi(pos_in_clamp_space);
-        vspt
+        let pt = self.to_sel_pt_fixedi(pos_in_clamp_space, clamp_space);
+        pt.to_sel_entryi(pos_in_clamp_space)
     }
 }
 
@@ -234,12 +233,6 @@ impl SelMatrixLayered {
             }
         }
         Ok(dest)
-    }
-}
-
-impl Default for SelMatrixLayered {
-    fn default() -> Self {
-        Self { dims: Default::default(), layers: Default::default() }
     }
 }
 
@@ -373,10 +366,8 @@ impl SelEntryWrite for SelMatrix {
         let dims = self.dims.as_i32();
 
         if let Some(e) = self.get_mut(pos) {
-            let vspt = v.to_sel_pt_fixedi(pos.as_i32(), ([0,0],dims));
-            let vspt = vspt.to_sel_entry(pos);
-
-            *e = vspt;
+            let pt = v.to_sel_pt_fixedi(pos.as_i32(), ([0,0],dims));
+            *e = pt.to_sel_entry(pos);
         }
     }
 }

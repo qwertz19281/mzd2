@@ -151,7 +151,7 @@ impl Map {
                 // UNCHECKED
             },
             RoomOp::Multi(v) => {
-                ok &= v.into_iter().all(|v| self.validate_apply(v, messages) );
+                ok &= v.iter().all(|v| self.validate_apply(v, messages) );
             },
         }
 
@@ -264,7 +264,7 @@ impl Map {
     }
 
     pub fn create_single_move(&self, id: RoomId, axis: OpAxis, dir: bool) -> Option<RoomOp> {
-        let Some(coord) = self.state.rooms.get(id).map(|i| i.coord ) else {return None};
+        let coord = self.state.rooms.get(id).map(|i| i.coord )?;
         try_side(coord, axis, dir, |dest,_,_| {
             self.create_move_room(id, dest)
         }).flatten()
@@ -397,13 +397,13 @@ impl Map {
 
     pub(super) fn check_shift_smart1(&self, base_coord: [u8;3], n_sift: u8, axis: OpAxis, dir: bool) -> Option<RoomId> {
         if n_sift == 0 || n_sift == 255 {return None;}
-        let Some(&my_room) = self.room_matrix.get(base_coord) else {return None};
+        let &my_room = self.room_matrix.get(base_coord)?;
         if !sift_range_big_enough(base_coord, n_sift, axis, dir) {return None;}
         Some(my_room)
     }
 
     pub(super) fn shift_smart_collect(&mut self, base_coord: [u8;3], mut n_sift: u8, axis: OpAxis, dir: bool, away_lock: bool, no_new_connect: bool, allow_siftshrink: bool) -> Option<ShiftSmartCollected> {
-        let Some(my_room) = self.check_shift_smart1(base_coord, n_sift, axis, dir) else {return None};
+        let my_room = self.check_shift_smart1(base_coord, n_sift, axis, dir)?;
         
         let (mut area_min, mut area_max) = ([255,255,255],[0,0,0]);
         let mut flood_spin = VecDeque::<(RoomId,Option<(u8,bool)>)>::with_capacity(65536);
@@ -648,8 +648,8 @@ fn sift_range_big_enough(base: [u8;3], n_sift: u8, axis: OpAxis, dir: bool) -> b
 
 fn sift_vali((v_min,v_max): ([u8;3],[u8;3]), n_sift: u8, axis: OpAxis, dir: bool) -> bool {
     assert!(n_sift != 0);
-    let upper_limit = 255u8 - n_sift as u8;
-    let lower_limit = 0u8 + n_sift as u8;
+    let upper_limit = 255u8 - n_sift;
+    let lower_limit = 0u8 + n_sift;
     match (axis,dir) {
         (OpAxis::X, true ) => v_max[0] <= upper_limit,
         (OpAxis::X, false) => v_min[0] >= lower_limit,

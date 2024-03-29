@@ -1,9 +1,6 @@
-use std::cell::Cell;
 use std::path::PathBuf;
 
-use egui::Vec2;
 use scoped_tls_hkt::scoped_thread_local;
-use serde::{Deserialize, Serialize};
 
 use crate::util::uuid::UUIDMap;
 use crate::util::MapId;
@@ -29,7 +26,7 @@ pub fn launch_gui(args: crate::cli::Args) {
     eframe::run_native(
         "mzd 2.0",
         options,
-        Box::new(|cc| {
+        Box::new(|_| {
             Box::new(SharedApp::new(args.load_paths))
         }),
     ).unwrap();
@@ -111,7 +108,7 @@ impl eframe::App for SharedApp {
                 self.dock_ui(ui)
             });
 
-            for v in std::mem::replace(&mut self.sam.mut_queue, vec![]) {
+            for v in std::mem::take(&mut self.sam.mut_queue) {
                 v(self);
             }
         });

@@ -52,7 +52,7 @@ pub fn templicon<S>(
         // }
 
         let visible_layers = room.visible_layers.iter().enumerate()
-            .filter(|(i,(v,_))| *v != 0)
+            .filter(|(_,(v,_))| *v != 0)
             .map(|(i,_)| i);
         
         for i in visible_layers {
@@ -70,11 +70,11 @@ pub fn templicon<S>(
 
     if let Some(_) = p.hover_pos_rel() {
         if p.response.clicked_by(egui::PointerButton::Primary) {
-            if let Some(mut select) = select {
+            if let Some(select) = select {
                 select(state);
             }
         } else if p.response.clicked_by(egui::PointerButton::Middle) {
-            if let Some(mut steal) = steal {
+            if let Some(steal) = steal {
                 steal(state);
             }
         } else if p.response.clicked_by(egui::PointerButton::Secondary) {

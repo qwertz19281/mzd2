@@ -23,7 +23,7 @@ impl Map {
 
         if self.room_matrix.get(coord).is_some() {return;}
         
-        let mut room = if let Some(t) = template
+        let room = if let Some(t) = template
             .filter(|idx| self.state.quickroom_template.len() > *idx )
             .and_then(|idx| self.state.quickroom_template[idx].as_ref() )
             .filter(|r| r.loaded.is_some() )
@@ -245,7 +245,7 @@ impl Map {
 
                     palette.do_keyboard_numbers(ui);
 
-                    if let Some(room) = self.editsel.rooms.get(0).and_then(|(r,_,_)| self.state.rooms.get_mut(*r) ) {
+                    if let Some(room) = self.editsel.rooms.first().and_then(|(r,_,_)| self.state.rooms.get_mut(*r) ) {
                         hide_layers_above = room.editor_hide_layers_above;
                         let mut moved = false;
                         if ui.input(|i| i.key_pressed(Key::R) ) {
@@ -275,7 +275,7 @@ impl Map {
                                         if hide_layers_above | hide_layers_all {*i <= room.selected_layer} else {true}
                                     )
                                     .map(|(i,_)| i);
-                                if let Some((traced,_)) = loaded.sel_matrix.get_traced(hov.into(), itre) {
+                                if let Some((traced,_)) = loaded.sel_matrix.get_traced(hov, itre) {
                                     room.selected_layer = traced;
                                 }
                             }
@@ -333,7 +333,7 @@ impl Map {
                     hover_single_layer
                 }).inner;
                 
-                let Some(draw_selected_layer) = self.editsel.rooms.get(0)
+                let Some(draw_selected_layer) = self.editsel.rooms.first()
                     .and_then(|(r,_,_)| self.state.rooms.get(*r) )
                     .map(|r| r.selected_layer ) else {self.dummyroomscope_end(); return};
 

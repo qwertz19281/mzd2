@@ -815,61 +815,61 @@ pub fn dpadc(
     pa.extend_rel(shapes);
 }
 
-pub fn dragvalion_down<Num>(value: &mut Num, speed: impl Into<f64>, clamp_range: RangeInclusive<Num>, stepu: Num, ui: &mut egui::Ui) where Num: egui::emath::Numeric + NumUtl + Clone {
+pub fn dragvalion_down<Num>(value: &mut Num, speed: impl Into<f64>, clamp_range: RangeInclusive<Num>, stepu: Num, ui: &mut egui::Ui) where Num: egui::emath::Numeric + NumUtl {
     let resp = ui.add(egui::DragValue::new(value).speed(speed).clamp_range(clamp_range.clone()));
     if resp.hovered() {
         let delta = ui.input(|i| i.raw_scroll_delta );
         if delta.y < -0.9 {
-            *value = value.clone().sat_add(stepu.clone(), clamp_range.clone());
+            *value = value.sat_add(stepu, clamp_range.clone());
             ui.ctx().request_repaint();
         }
         if delta.y > 0.9 {
-            *value = value.clone().sat_sub(stepu.clone(), clamp_range.clone());
+            *value = value.sat_sub(stepu, clamp_range.clone());
             ui.ctx().request_repaint();
         }
     }
 }
 
-pub fn dragvalion_up<Num>(value: &mut Num, speed: impl Into<f64>, clamp_range: RangeInclusive<Num>, stepu: Num, ui: &mut egui::Ui) where Num: egui::emath::Numeric + NumUtl + Clone {
+pub fn dragvalion_up<Num>(value: &mut Num, speed: impl Into<f64>, clamp_range: RangeInclusive<Num>, stepu: Num, ui: &mut egui::Ui) where Num: egui::emath::Numeric + NumUtl {
     let resp = ui.add(egui::DragValue::new(value).speed(speed).clamp_range(clamp_range.clone()));
     if resp.hovered() {
         let delta = ui.input(|i| i.raw_scroll_delta );
         if delta.y < -0.9 {
-            *value = value.clone().sat_sub(stepu.clone(), clamp_range.clone());
+            *value = value.sat_sub(stepu, clamp_range.clone());
             ui.ctx().request_repaint();
         }
         if delta.y > 0.9 {
-            *value = value.clone().sat_add(stepu.clone(), clamp_range.clone());
+            *value = value.sat_add(stepu, clamp_range.clone());
             ui.ctx().request_repaint();
         }
     }
 }
 
-pub fn dragslider_down<Num>(value: &mut Num, speed: impl Into<f64>, clamp_range: RangeInclusive<Num>, stepu: Num, ui: &mut egui::Ui) where Num: egui::emath::Numeric + NumUtl + Clone {
+pub fn dragslider_down<Num>(value: &mut Num, speed: impl Into<f64>, clamp_range: RangeInclusive<Num>, stepu: Num, ui: &mut egui::Ui) where Num: egui::emath::Numeric + NumUtl {
     let resp = ui.add(egui::Slider::new(value, clamp_range.clone()).drag_value_speed(speed.into()));
     if resp.hovered() {
         let delta = ui.input(|i| i.raw_scroll_delta );
         if delta.y < -0.9 {
-            *value = value.clone().sat_add(stepu.clone(), clamp_range.clone());
+            *value = value.sat_add(stepu, clamp_range.clone());
             ui.ctx().request_repaint();
         }
         if delta.y > 0.9 {
-            *value = value.clone().sat_sub(stepu.clone(), clamp_range.clone());
+            *value = value.sat_sub(stepu, clamp_range.clone());
             ui.ctx().request_repaint();
         }
     }
 }
 
-pub fn dragslider_up<Num>(value: &mut Num, speed: impl Into<f64>, clamp_range: RangeInclusive<Num>, stepu: Num, ui: &mut egui::Ui) where Num: egui::emath::Numeric + NumUtl + Clone {
+pub fn dragslider_up<Num>(value: &mut Num, speed: impl Into<f64>, clamp_range: RangeInclusive<Num>, stepu: Num, ui: &mut egui::Ui) where Num: egui::emath::Numeric + NumUtl {
     let resp = ui.add(egui::Slider::new(value, clamp_range.clone()).drag_value_speed(speed.into()));
     if resp.hovered() {
         let delta = ui.input(|i| i.raw_scroll_delta );
         if delta.y < -0.9 {
-            *value = value.clone().sat_sub(stepu.clone(), clamp_range.clone());
+            *value = value.sat_sub(stepu, clamp_range.clone());
             ui.ctx().request_repaint();
         }
         if delta.y > 0.9 {
-            *value = value.clone().sat_add(stepu.clone(), clamp_range.clone());
+            *value = value.sat_add(stepu, clamp_range.clone());
             ui.ctx().request_repaint();
         }
     }

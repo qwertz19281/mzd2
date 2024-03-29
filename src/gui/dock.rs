@@ -31,7 +31,7 @@ impl Docky {
 
 fn create_initial() -> DockState<DockTab> {
     let mut state = DockState::new(vec![DockTab::Draw]);
-    let mut surf = state.main_surface_mut();
+    let surf = state.main_surface_mut();
     let [orig,_] = surf.split_left(NodeIndex::root(), 0.5, vec![DockTab::Palette]);
     surf.split_right(orig, 0.9, vec![DockTab::Lru]);
     //surf.split_above(left, 0.01, vec![]);
@@ -131,7 +131,7 @@ impl SharedApp {
         for add in self.dock.add_tabs.drain(..) {
             match add {
                 DockTab::Map(_) => {'tri:{
-                    if let Some((a,b,c)) = self.dock.last_focused_map.and_then(|b| state.find_tab(&DockTab::Map(b)) ) {
+                    if let Some((a,b,_)) = self.dock.last_focused_map.and_then(|b| state.find_tab(&DockTab::Map(b)) ) {
                         if try_append_tab_to_node(state, a, b, &add) {
                             break 'tri;
                         }
@@ -238,8 +238,8 @@ impl TabViewer for TabV<'_> {
                     &mut self.0.sam,
                 );
             },
-            DockTab::Palette => palette_ui(&mut self.0, ui),
-            DockTab::Lru => lru_ui(&mut self.0, ui),
+            DockTab::Palette => palette_ui(self.0, ui),
+            DockTab::Lru => lru_ui(self.0, ui),
             DockTab::Draw => if let Some(map) = self.0.dock.last_focused_map.and_then(|id| self.0.maps.open_maps.get_mut(&id)) {
                 let mut map = map.borrow_mut();
                 map.ui_draw(

@@ -1,5 +1,5 @@
-use std::io::Cursor;
-use std::path::PathBuf;
+
+use std::path::Path;
 
 use serde::Deserialize;
 
@@ -7,7 +7,6 @@ use crate::convert_0_1::{OldSelMatrix, OldSelMatrixLayered};
 use crate::gui::draw_state::DrawMode;
 use crate::gui::dsel_state::DSelMode;
 use crate::gui::sel_matrix::SelMatrix;
-use crate::util::ResultExt;
 
 use super::TilesetState;
 
@@ -24,8 +23,8 @@ pub struct OldTilesetState {
     pub dsel_whole: bool,
 }
 
-pub(super) fn try_convert_tileset(epath: &PathBuf, tpath: &PathBuf) -> anyhow::Result<(TilesetState,SelMatrix)> {
-    let data = std::fs::read(&epath)?;
+pub(super) fn try_convert_tileset(epath: &Path, tpath: &Path) -> anyhow::Result<(TilesetState,SelMatrix)> {
+    let data = std::fs::read(epath)?;
     let old_state = serde_json::from_slice::<OldTilesetState>(&data)?;
 
     let sel_matrix_dims = old_state.sel_matrix.dims;

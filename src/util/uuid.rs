@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use egui::ahash::HashMap;
 use uuid::Uuid;
@@ -30,11 +30,8 @@ pub fn generate_res_uuid(check: &UUIDMap, map_path: impl Into<PathBuf>) -> Uuid 
     let map_path = map_path.into();
     loop {
         let uuid = generate_uuid(check);
-        fn check_exist(path: &PathBuf) -> bool {
-            match path.symlink_metadata() {
-                Ok(_) => true,
-                Err(_) => false,
-            }
+        fn check_exist(path: &Path) -> bool {
+            path.symlink_metadata().is_ok()
         }
         let tex_path = tex_resource_path(&map_path, &uuid);
         let seltrix_path = seltrix_resource_path(&map_path, &uuid);

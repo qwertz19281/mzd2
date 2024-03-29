@@ -1,7 +1,6 @@
 use std::ffi::OsStr;
 use std::io::Cursor;
-use std::path::PathBuf;
-use std::sync::Arc;
+use std::path::{Path, PathBuf};
 
 use egui::{Vec2, TextureOptions, Color32, PointerButton};
 use image::RgbaImage;
@@ -357,18 +356,18 @@ impl Tileset {
         Self::load2(path, image.to_rgba8())
     }
 
-    fn try_load_selmatrix(tpath: &PathBuf, expected_size: [u32;2]) -> anyhow::Result<SelMatrix> {
-        let data = std::fs::read(&tpath)?;
+    fn try_load_selmatrix(tpath: &Path, expected_size: [u32;2]) -> anyhow::Result<SelMatrix> {
+        let data = std::fs::read(tpath)?;
         let mut sml = SelMatrixLayered::deser(&data[..], expected_size)?;
         anyhow::ensure!(sml.layers.len() == 1);
         Ok(sml.layers.swap_remove(0))
     }
 
-    fn try_deser_state(epath: &PathBuf, tpath: &PathBuf, dirty: &mut bool, selm: &mut Option<SelMatrix>) -> anyhow::Result<TilesetState> {
-        let data = std::fs::read(&epath)?;
+    fn try_deser_state(epath: &Path, tpath: &Path, dirty: &mut bool, selm: &mut Option<SelMatrix>) -> anyhow::Result<TilesetState> {
+        let data = std::fs::read(epath)?;
         match serde_json::from_slice::<TilesetState>(&data) {
             Ok(v) => {
-                if let Some(s) = Self::try_load_selmatrix(&tpath, v.validate_size.div8()).unwrap_gui("Failed to load seltrix") {
+                if let Some(s) = Self::try_load_selmatrix(tpath, v.validate_size.div8()).unwrap_gui("Failed to load seltrix") {
                     *selm = Some(s);
                 }
                 Ok(v)
@@ -377,7 +376,7 @@ impl Tileset {
                 if let Ok((v,s)) = convert_0_1::try_convert_tileset(epath, tpath) {
                     *dirty = true;
                     *selm = Some(s);
-                    return Ok(v);
+                    Ok(v)
                 } else {
                     Err(e.into())
                 }
@@ -386,7 +385,7 @@ impl Tileset {
     }
 
     pub fn load2(path: PathBuf, image: RgbaImage) -> anyhow::Result<Self> {
-        let img_size = [image.width() as u32, image.height() as u32];
+        let img_size = image.dimensions().into();
 
         let epath = attached_to_path(&path, ".mzdtileset");
         let spath = attached_to_path(&path, ".mzdtileset.sel");

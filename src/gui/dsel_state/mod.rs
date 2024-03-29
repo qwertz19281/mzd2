@@ -96,12 +96,12 @@ impl DSelState {
             dest(egui::Shape::rect_filled(rect, Rounding::ZERO, Color32::from_rgba_unmultiplied(255,0,0,64)));
         };
         
-        for (&a,_) in &self.selected {
+        for &a in self.selected.keys() {
             if !self.staging_mode && self.selected_staging.contains_key(&a) {continue;}
             render_rect(a);
         }
         if self.staging_mode {
-            for (&a,_) in &self.selected_staging {
+            for &a in self.selected_staging.keys() {
                 if self.selected.contains_key(&a) {continue;}
                 render_rect(a);
             }
@@ -231,7 +231,7 @@ impl DSelState {
     fn calc_sel_area(&mut self) {
         self.sel_area = ([65535,65535],[0,0]);
 
-        for (&k,_) in &self.selected {
+        for &k in self.selected.keys() {
             self.sel_area.0 = self.sel_area.0.vmin(k);
             self.sel_area.1 = self.sel_area.1.vmax(k);
         }

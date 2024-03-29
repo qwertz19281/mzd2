@@ -40,6 +40,10 @@ codegen-units = 16
 [profile.dev]
 opt-level = 0
 
+[profile.dev-opti.package."*"]
+opt-level = 3
+codegen-units = 1
+
 [profile.dev-opti]
 inherits = "dev"
 opt-level = 3

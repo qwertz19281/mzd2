@@ -45,7 +45,7 @@ pub fn top_panel_ui(state: &mut SharedApp, ui: &mut egui::Ui) {
         dragvalion_up(&mut state.top_panel.create_tileset_quant, 0.03125, 1..=2, 1, ui);
         ui.label("|");
         if let Some(warpon) = state.warpon {
-            if ui.button(format!("Cancel warp creation")).clicked() {
+            if ui.button(format!("Cancel warp creation: {}","TODO")).clicked() {
                 state.warpon = None;
             }
         }

@@ -42,8 +42,7 @@ impl<T> CoordStore<T> {
     pub fn get(&self, [x,y,z]: [u8;3]) -> Option<&T> {
         let x1 = x / 16; let y1 = y / 16; let z1 = z / 16;
         let x2 = x % 16; let y2 = y % 16; let z2 = z % 16;
-        let sub = &self.v[z1 as usize][y1 as usize][x1 as usize];
-        let Some(sub) = sub else {return None};
+        let sub = self.v[z1 as usize][y1 as usize][x1 as usize].as_ref()?;
         let cell = &sub.v[z2 as usize][y2 as usize][x2 as usize];
         cell.as_ref()
     }
@@ -51,8 +50,7 @@ impl<T> CoordStore<T> {
     pub fn get_mut(&mut self, [x,y,z]: [u8;3]) -> Option<&mut T> {
         let x1 = x / 16; let y1 = y / 16; let z1 = z / 16;
         let x2 = x % 16; let y2 = y % 16; let z2 = z % 16;
-        let sub = &mut self.v[z1 as usize][y1 as usize][x1 as usize];
-        let Some(sub) = sub else {return None};
+        let sub = self.v[z1 as usize][y1 as usize][x1 as usize].as_mut()?;
         let cell = &mut sub.v[z2 as usize][y2 as usize][x2 as usize];
         cell.as_mut()
     }
@@ -74,7 +72,7 @@ impl<T> CoordStore<T> {
         let x1 = x / 16; let y1 = y / 16; let z1 = z / 16;
         let x2 = x % 16; let y2 = y % 16; let z2 = z % 16;
         let osub = &mut self.v[z1 as usize][y1 as usize][x1 as usize];
-        let Some(sub) = osub else {return None};
+        let sub = osub.as_mut()?;
         let cell = &mut sub.v[z2 as usize][y2 as usize][x2 as usize];
         let v = cell.take();
         if v.is_some() {
@@ -113,7 +111,7 @@ impl<T> CoordStore<T> {
 
     pub fn zuckerbounds(&mut self) -> Option<([u8;3],[u8;3])> {
         self.laser.rezucker();
-        self.laser.zuckerbounds.clone()
+        self.laser.zuckerbounds
     }
 
     pub fn vacant_axis(&self, v: u8, axis: OpAxis) -> usize {

@@ -1,11 +1,10 @@
 use std::hash::{Hash, Hasher};
-use std::ops::{Deref, DerefMut};
 use std::path::Path;
 
 use egui::{Color32, Rounding, Stroke, Pos2, Align2, FontId};
 use egui::epaint::ahash::AHasher;
 use image::{RgbaImage, GenericImage, GenericImageView, ImageBuffer};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 use crate::gui::map::{RoomId, RoomMap, DirtyRooms, MapEditMode, LruCache};
 use crate::gui::util::ArrUtl;
@@ -15,7 +14,7 @@ use crate::gui::texture::TextureCell;
 
 use super::Room;
 
-#[derive(Deserialize,Serialize)]
+#[derive(Deserialize)]
 pub struct DrawImage {
     #[serde(skip)]
     pub img: RgbaImage,
@@ -70,7 +69,7 @@ impl DrawImage {
         assert_eq!(self.img.height() as usize, rooms_size[1] as usize * self.layers);
         assert_eq!(self.img.width(), rooms_size[0]);
 
-        let iv: &mut [u8] = &mut *self.img;
+        let iv: &mut [u8] = &mut self.img;
 
         let seg_len = rooms_size[0] as usize * rooms_size[1] as usize * 4;
 
@@ -110,7 +109,7 @@ impl DrawImage {
 
         for y in y0 .. y0 + rooms_size[1] {
             for x in 0 .. self.img.width() {
-                let pix = unsafe { self.img.get_pixel_checked(x, y).unwrap_unchecked().clone() };
+                let pix = unsafe { self.img.get_pixel_checked(x, y).unwrap_unchecked() };
                 if pix.0[3] > 16 {
                     avgc[0] += pix.0[0] as u64; avgc[1] += pix.0[1] as u64; avgc[2] += pix.0[2] as u64;
                     ac += 1;
@@ -233,7 +232,7 @@ impl DrawImageGroup {
             assert!(roff[0] % 8 == 0 && roff[1] % 8 == 0 && loaded.image.img.width() % 8 == 0 && loaded.image.img.height() % 8 == 0);
             assert!(op_0[0] % 8 == 0 && op_0[1] % 8 == 0 && op_1[0] % 8 == 0 && op_1[1] % 8 == 0);
 
-            let (opi_0,opi_1) = (op_0.sub(roff),op_1.sub(roff));
+            let opi_0 = op_0.sub(roff);
 
             loaded.pre_img_draw(&room.visible_layers, room.selected_layer);
 
@@ -258,10 +257,10 @@ impl DrawImageGroup {
                 tc.dirty_region((
                     [
                         op_0[0],
-                        op_0[1] + (layer as u32 * rooms_size[1] as u32),
+                        op_0[1] + (layer as u32 * rooms_size[1]),
                     ],[
                         op_1[0],
-                        op_1[1] + (layer as u32 * rooms_size[1] as u32),
+                        op_1[1] + (layer as u32 * rooms_size[1]),
                     ]
                 ));
             }
@@ -290,7 +289,7 @@ impl DrawImageGroup {
 
             for y in opi_0[1] .. opi_1[1] {
                 for x in opi_0[0] .. opi_1[0] {
-                    let y = y + (layer as u32 * rooms_size[1] as u32);
+                    let y = y + (layer as u32 * rooms_size[1]);
                     unsafe { loaded.image.img.unsafe_put_pixel(x, y, image::Rgba([0,0,0,0])); }
                 }
             }
@@ -302,10 +301,10 @@ impl DrawImageGroup {
                 tc.dirty_region((
                     [
                         op_0[0],
-                        op_0[1] + (layer as u32 * rooms_size[1] as u32),
+                        op_0[1] + (layer as u32 * rooms_size[1]),
                     ],[
                         op_1[0],
-                        op_1[1] + (layer as u32 * rooms_size[1] as u32),
+                        op_1[1] + (layer as u32 * rooms_size[1]),
                     ]
                 ));
             }
@@ -330,7 +329,7 @@ impl DrawImageGroup {
             assert!(roff[0] % 8 == 0 && roff[1] % 8 == 0 && loaded.image.img.width() % 8 == 0 && loaded.image.img.height() % 8 == 0);
             assert!(op_0[0] % 8 == 0 && op_0[1] % 8 == 0 && op_1[0] % 8 == 0 && op_1[1] % 8 == 0);
 
-            let (opi_0,opi_1) = (op_0.sub(roff),op_1.sub(roff));
+            let opi_0 = op_0.sub(roff);
 
             imgcopy(
                 dest,
@@ -356,7 +355,7 @@ impl DrawImageGroup {
     }
 
     pub fn render(&self, rooms: &mut RoomMap, rooms_size: [u32;2], only_show_layer: Option<usize>, hide_above: bool, hide_below: bool, mut dest: impl FnMut(egui::Shape), map_path: &Path, ctx: &egui::Context) {
-        let Some(visible_layers) = self.rooms.get(0)
+        let Some(visible_layers) = self.rooms.first()
             .and_then(|&(r,_,_)| rooms.get(r) )
             .map(|r| r.visible_layers.clone() )
         else {return};
@@ -372,7 +371,7 @@ impl DrawImageGroup {
                     std::iter::once(vsl),
                     None,
                     rooms_size,
-                    |v| dest(v),
+                    &mut dest,
                     map_path,
                     ctx,
                 );
@@ -386,7 +385,7 @@ impl DrawImageGroup {
                         .filter(|i| if hide_below {*i >= selected_layer} else {true}),
                     None,
                     rooms_size,
-                    |v| dest(v),
+                    &mut dest,
                     map_path,
                     ctx,
                 );
@@ -637,7 +636,7 @@ impl ImgRead for DrawImage {
 
         for y in y0 .. y1 {
             for x in x0 .. x1 {
-                let mut pix = unsafe { self.img.get_pixel_checked(x, y).unwrap_unchecked().clone() };
+                let mut pix = unsafe { *self.img.get_pixel_checked(x, y).unwrap_unchecked() };
                 if pix.0[3] < 16 {
                     pix.0[0] = 0; pix.0[1] = 0; pix.0[2] = 0;
                 }

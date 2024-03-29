@@ -1,8 +1,7 @@
 use std::cell::RefCell;
 use std::collections::VecDeque;
-use std::sync::Arc;
 
-use egui::{TextureHandle, TextureOptions, Rounding};
+use egui::{TextureOptions, Rounding};
 use image::RgbaImage;
 
 use crate::util::MapId;
@@ -13,7 +12,7 @@ use super::map::RoomId;
 use super::sel_matrix::SelEntry;
 use super::util::alloc_painter_rel;
 use super::{rector, line2};
-use super::texture::{ensure_texture_from_image, TextureCell, RECT_0_0_1_1};
+use super::texture::{TextureCell, RECT_0_0_1_1};
 
 pub struct Palette {
     pub paletted: Vec<PaletteItem>,

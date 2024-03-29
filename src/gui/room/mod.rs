@@ -40,9 +40,9 @@ pub struct Room {
     pub dirconn: [[bool;2];3],
     pub ctime: chrono::DateTime<chrono::Utc>,
     pub mtime: chrono::DateTime<chrono::Utc>,
-    #[serde(skip)] // TODO remove default in final disk_format_0.2
+    #[serde(skip)]
     pub transient: bool,
-    #[serde(default)]
+    #[serde(default)] // TODO remove default in final disk_format_0.2
     pub editor_hide_layers_above: bool,
 }
 
@@ -58,7 +58,7 @@ pub struct RoomLoaded {
 impl Room {
     pub fn create_empty(coord: [u8;3], rooms_size: [u32;2], image: RgbaImage, initial_layers: usize, uuidmap: &mut UUIDMap, map_id: MapId, map_path: impl Into<PathBuf>) -> Self {
         assert!(rooms_size[0] % 16 == 0 && rooms_size[1] % 16 == 0);
-        assert!(image.width() == rooms_size[0] && image.height() as usize == rooms_size[1] as usize * initial_layers as usize);
+        assert!(image.width() == rooms_size[0] && image.height() as usize == rooms_size[1] as usize * initial_layers);
 
         let current_time = chrono::Utc::now();
 
@@ -107,7 +107,7 @@ impl Room {
 
         let uuid = generate_uuid(uuidmap);
 
-        let Some(old_loaded) = &self.loaded else {return None};
+        let old_loaded = self.loaded.as_ref()?;
 
         let this = Self {
             loaded: Some(RoomLoaded {
@@ -195,7 +195,7 @@ impl Room {
         if self.loaded.is_none() || self.locked.is_some() {
             return None;
         }
-        let Some(loaded) = &mut self.loaded else {return None};
+        let loaded = self.loaded.as_mut()?;
         Some(loaded.image.tex
             .get_or_insert_with(|| TextureCell::new(format!("RoomTex{}",self.uuid), ROOM_TEX_OPTS) )
             .ensure_image(&loaded.image.img, ctx))
@@ -256,7 +256,7 @@ impl Room {
 
         if let Some(loaded) = &mut self.loaded {
             let old_resuuid = self.resuuid;
-            self.resuuid = generate_res_uuid(&uuidmap, &map_path);
+            self.resuuid = generate_res_uuid(uuidmap, &map_path);
             uuidmap.remove(&old_resuuid);
             uuidmap.insert(self.resuuid, UUIDTarget::Resource(map_id,room_id));
 
@@ -334,7 +334,7 @@ mod dirconn_serde {
         D: serde::Deserializer<'de>
     {
         let v = <[[u8;2];3]>::deserialize(deserializer)?;
-        let v = stupid_dirconn_deser(v).map_err(|e| D::Error::custom(e))?;
+        let v = stupid_dirconn_deser(v).map_err(D::Error::custom)?;
         Ok(v)
     }
 

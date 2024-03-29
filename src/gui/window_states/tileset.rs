@@ -1,7 +1,5 @@
 use egui::epaint::ahash::HashMap;
 
-//use crate::util::declare_id_type;
-use crate::gui::init::SharedApp;
 use crate::gui::tileset::Tileset;
 use crate::util::TilesetId;
 

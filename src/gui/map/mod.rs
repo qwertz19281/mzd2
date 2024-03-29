@@ -155,7 +155,7 @@ impl Map {
                     if let Err(e) = room.save_room_res(self.path.clone(), &mut cleanup_res, uuidmap, self.id, dirty_room) {
                         errors.push(e);
                     } else {
-                        room.loaded.as_mut().map(|v| v.dirty_file = false);
+                        if let Some(v) = &mut room.loaded {v.dirty_file = false;}
                     }
                 }
             }
@@ -167,7 +167,7 @@ impl Map {
                 if let Err(e) = room.save_room_res(self.path.clone(), &mut cleanup_res, uuidmap, self.id, RoomId::null()) {
                     errors.push(e);
                 } else {
-                    room.loaded.as_mut().map(|v| v.dirty_file = false);
+                    if let Some(v) = &mut room.loaded {v.dirty_file = false;}
                 }
             }
         }
@@ -262,7 +262,7 @@ impl Map {
         fn get_room_id(v: &Uuid, uuidmap: &mut UUIDMap, state: &MapState, typ: &str) -> Option<RoomId> {
             let room_id = uuidmap.get(v)
                 .and_then(|v| match v {
-                    UUIDTarget::Room(map, room) => Some(*room),
+                    UUIDTarget::Room(map, room) => Some(*room), // TODO do we need to assert the the map is this map?
                     _ => None,
                 })
                 .filter(|&v| state.rooms.contains_key(v));

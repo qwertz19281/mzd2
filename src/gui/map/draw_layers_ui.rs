@@ -17,7 +17,7 @@ impl Map {
 
         if self.editsel.rooms.is_empty() {return None;}
         let room_id = self.editsel.rooms[0].0;
-        let Some(room) = self.state.rooms.get_mut(room_id) else {return None};
+        let room = self.state.rooms.get_mut(room_id)?;
 
         let mods = ui.input(|i| i.modifiers );
 
@@ -92,8 +92,8 @@ impl Map {
         });
 
         for (room_id,_,_) in &self.editsel.rooms {
-            let Some(room) = self.state.rooms.get_mut(*room_id) else {return None};
-            let Some(loaded) = &mut room.loaded else {return None};
+            let room = self.state.rooms.get_mut(*room_id)?;
+            let loaded = room.loaded.as_mut()?;
 
             match op {
                 Oper::Add(_) | Oper::Del(_) | Oper::Swap(_,_) => {
@@ -110,7 +110,7 @@ impl Map {
             }
         }
 
-        let Some(room) = self.state.rooms.get_mut(room_id) else {return None};
+        let room = self.state.rooms.get_mut(room_id)?;
 
         match op {
             Oper::Noop => {},
@@ -145,8 +145,8 @@ impl Map {
         }
 
         for (room_id,_,_) in &self.editsel.rooms {
-            let Some(room) = self.state.rooms.get_mut(*room_id) else {return None};
-            let Some(loaded) = &mut room.loaded else {return None};
+            let room = self.state.rooms.get_mut(*room_id)?;
+            let loaded = room.loaded.as_mut()?;
 
             assert_eq!(room.visible_layers.len(), n_layers);
             assert_eq!(loaded.sel_matrix.layers.len(), n_layers);
@@ -173,8 +173,8 @@ impl Map {
             }
         }
 
-        let Some(room) = self.state.rooms.get_mut(room_id) else {return None};
-        let Some(loaded) = &mut room.loaded else {return None};
+        let room = self.state.rooms.get_mut(room_id)?;
+        let loaded = room.loaded.as_mut()?;
 
         if !matches!(op, Oper::Noop) {
             ui.ctx().request_repaint();

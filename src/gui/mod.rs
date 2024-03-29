@@ -68,7 +68,7 @@ pub fn dpi_hack(ctx: &egui::Context, frame: &mut eframe::Frame) -> f32 {
     
     let mut fontdef = egui::FontDefinitions::default();
 
-    for (_,font) in &mut fontdef.font_data {
+    for font in fontdef.font_data.values_mut() {
         font.tweak.scale *= scale;
     }
 
