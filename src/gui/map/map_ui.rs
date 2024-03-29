@@ -176,7 +176,7 @@ impl Map {
                         let id = self.id;
                         sam.mut_queue.push(Box::new(move |state: &mut SharedApp| {state.maps.open_maps.remove(&id);} ))
                     }
-                    if ui.button("Abort&Close").double_clicked() {
+                    if ui.button("Abort&Close").on_hover_text("Must be double clicked").double_clicked() {
                         let id = self.id;
                         self.unload_map(&mut sam.uuidmap);
                         sam.uuidmap.remove(&self.state.uuid);
@@ -274,7 +274,7 @@ impl Map {
                     match self.state.edit_mode {
                         MapEditMode::DrawSel => {
                             if let Some(v) = self.dsel_room.filter(|&v| self.state.rooms.contains_key(v) ) {
-                                if ui.button("Delete Room").double_clicked() {
+                                if ui.button("Delete Room").clicked() {
                                     self.dsel_room = None;
                                     self.editsel = DrawImageGroup::unsel(self.state.rooms_size);
                                     self.post_drawroom_switch(&mut sam.uuidmap);
@@ -319,7 +319,7 @@ impl Map {
                         },
                         _ => {
                             if let Some(v) = self.ssel_room.filter(|&v| self.state.rooms.contains_key(v) ) {
-                                if ui.button("Delete Room").double_clicked() {
+                                if ui.button("Delete Room").clicked() {
                                     self.ssel_room = None;
                                     self.ui_delete_room(v, &mut sam.uuidmap);
                                     self.ssel_updated();

@@ -74,7 +74,7 @@ impl Tileset {
                 let id = self.id;
                 sam.mut_queue.push(Box::new(move |state: &mut SharedApp| {state.tilesets.open_tilesets.remove(&id);} ))
             }
-            if ui.button("Abort&Close").double_clicked() {
+            if ui.button("Abort&Close").on_hover_text("Must be double clicked").double_clicked() {
                 let id = self.id;
                 sam.mut_queue.push(Box::new(move |state: &mut SharedApp| {state.tilesets.open_tilesets.remove(&id);} ))
             }
@@ -83,7 +83,7 @@ impl Tileset {
         ui.horizontal(|ui| {
             dragslider_up(&mut self.state.zoom, 0.03125, 1..=2, 1, ui);
             if !self.edit_path {
-                if ui.button("Make editable").double_clicked() {
+                if ui.button("Make editable").clicked() {
                     if self.quant != 1 {
                         self.sel_matrix.intervalize([self.quant,self.quant]);
                     }

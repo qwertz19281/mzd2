@@ -253,7 +253,7 @@ pub fn lru_ui(state: &mut SharedApp, ui: &mut egui::Ui) {
             if reg.response.clicked_by(egui::PointerButton::Primary) {
                 state.palette.paletted[state.palette.selected as usize] = state.palette.lru[i].clone();
             }
-            if reg.response.double_clicked_by(egui::PointerButton::Secondary) {
+            if reg.response.clicked_by(egui::PointerButton::Secondary) { // or move completely down?
                 lru_rm_idx = Some(i);
             }
         }

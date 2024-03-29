@@ -80,7 +80,7 @@ impl Map {
                             if result.hovered() {
                                 hovered_layer = Some(layer);
                             }
-                            if result.double_clicked() {
+                            if result.clicked() {
                                 op = Oper::Del(layer);
                             }
                         }
