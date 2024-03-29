@@ -1,4 +1,4 @@
-use egui_dock::{DockArea, DockState, Node, NodeIndex, Split, SurfaceIndex, TabViewer};
+use egui_dock::{DockArea, DockState, Node, NodeIndex, Split, SurfaceIndex, TabViewer, Tree};
 
 use crate::util::{MapId, TilesetId};
 
@@ -113,6 +113,21 @@ impl SharedApp {
         //     false
         // }
 
+        fn find_tab_scored(a: &Tree<DockTab>, node: NodeIndex, b: &mut impl FnMut(&DockTab)->u8) -> u8 {
+            let mut score = 0;
+            match &a[node] {
+                Node::Empty => {},
+                Node::Leaf { tabs, .. } => for t in tabs {
+                    score = score.max(b(t));
+                },
+                Node::Vertical {..} | Node::Horizontal {..} => {
+                    score = score.max(find_tab_scored(a, node.left(), b));
+                    score = score.max(find_tab_scored(a, node.right(), b));
+                },
+            }
+            score
+        }
+
         for add in self.dock.add_tabs.drain(..) {
             match add {
                 DockTab::Map(_) => {'tri:{
@@ -121,45 +136,49 @@ impl SharedApp {
                             break 'tri;
                         }
                     }
-                    if let Some((a,b,c)) = self.dock.last_rendered_map.and_then(|b| state.find_tab(&DockTab::Map(b)) ) {
+                    if let Some((a,b,_)) = self.dock.last_rendered_map.and_then(|b| state.find_tab(&DockTab::Map(b)) ) {
                         if try_append_tab_to_node(state, a, b, &add) {
                             break 'tri;
                         }
                     }
-                    let (a,b,c) = state.find_tab(&DockTab::Palette).unwrap();
+                    let (a,b,_) = state.find_tab(&DockTab::Palette).unwrap();
                     state.split((a,b), Split::Above, 0.9, Node::leaf_with(vec![add]));
                 }},
                 DockTab::Tileset(_) => {'tri:{
-                    if let Some((a,b,c)) = self.dock.last_focused_tileset.and_then(|b| state.find_tab(&DockTab::Tileset(b)) ) {
+                    if let Some((a,b,_)) = self.dock.last_focused_tileset.and_then(|b| state.find_tab(&DockTab::Tileset(b)) ) {
                         if try_append_tab_to_node(state, a, b, &add) {
                             break 'tri;
                         }
                     }
-                    if let Some((a,b,c)) = self.dock.last_rendered_tileset.and_then(|b| state.find_tab(&DockTab::Tileset(b)) ) {
+                    if let Some((a,b,_)) = self.dock.last_rendered_tileset.and_then(|b| state.find_tab(&DockTab::Tileset(b)) ) {
                         if try_append_tab_to_node(state, a, b, &add) {
                             break 'tri;
                         }
                     }
-                    let (a,b,c) = state.find_tab(&DockTab::Draw).unwrap();
-                    if let Some(bp) = b.parent() {
+                    let (a,mut b,_) = state.find_tab(&DockTab::Draw).unwrap();
+                    while let Some(bp) = b.parent() {
                         if let Some(tree) = state.get_surface_mut(a).and_then(|s| s.node_tree_mut() ) {
-                            if matches!(&tree[bp], Node::Horizontal{..}) {
-                                let what_tab = |bp_child| {
-                                    if let Node::Leaf { tabs, .. } = &tree[bp_child] {
-                                        for c in tabs {
-                                            if matches!(c,DockTab::Draw) {return 1;}
-                                            if matches!(c,DockTab::Lru) {return 2;}
-                                        }
+                            if matches!(&tree[bp], Node::Horizontal{..} | Node::Vertical{..}) {
+                                let what_tab = |node| find_tab_scored(tree, node, &mut |t|
+                                    match t {
+                                        DockTab::Palette => 1,
+                                        DockTab::Lru => 2,
+                                        DockTab::Draw => 3,
+                                        DockTab::Map(_) => 4,
+                                        _ => 0,
                                     }
-                                    0
-                                };
+                                );
                                 let (l,r) = (what_tab(bp.left()),what_tab(bp.right()));
-                                if l != 0 && r != 0 && l != r {
-                                    state.split((a,bp), Split::Below, 0.55, Node::leaf_with(vec![add]));
-                                    break 'tri;
+                                if matches!(&tree[bp],Node::Horizontal{..}) && l == 1 {
+                                    break;
+                                }
+                                if l != 0 && r != 0 && l <= 3 && r <= 3 && l != r {
+                                    b = bp;
+                                    continue;
                                 }
                             }
                         }
+                        break;
                     }
                     state.split((a,b), Split::Below, 0.55, Node::leaf_with(vec![add]));
                 }},
