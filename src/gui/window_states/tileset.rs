@@ -17,10 +17,10 @@ impl Tilesets {
     }
 }
 
-pub fn tilesets_ui(state: &mut SharedApp, ctx: &egui::Context) {
-    for (t_id,t) in &mut state.tilesets.open_tilesets {
-        egui::Window::new(&t.state.title)
-            .id(t_id.egui_id())
-            .show(ctx, |ui| t.ui(&mut state.palette, ui, &mut state.sam) );
-    }
-}
+// pub fn tilesets_ui(state: &mut SharedApp, ctx: &egui::Context) {
+//     for (t_id,t) in &mut state.tilesets.open_tilesets {
+//         egui::Window::new(&t.state.title)
+//             .id(t_id.egui_id())
+//             .show(ctx, |ui| t.ui(&mut state.palette, ui, &mut state.sam) );
+//     }
+// }

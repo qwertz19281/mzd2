@@ -1,15 +1,16 @@
+use std::ops::Deref;
 use std::sync::Arc;
 
 use egui::{Sense, Vec2, Color32, Rounding, PointerButton};
-use slotmap::Key;
 
-use crate::gui::map::room_ops::describe_direction;
 use crate::gui::room::draw_image::DrawImageGroup;
 use crate::gui::rector;
 use crate::gui::init::{SharedApp, SAM};
 use crate::gui::palette::Palette;
+use crate::gui::room::Room;
 use crate::gui::texture::basic_tex_shape;
 use crate::gui::util::{alloc_painter_rel, alloc_painter_rel_ds, draw_grid, ArrUtl, dpad, DragOp, dragvalion_up, dragvalion_down, dragslider_up};
+use crate::gui::window_states::map::Maps;
 use crate::util::{MapId, gui_error};
 
 use super::room_ops::{render_picomap, RoomOp, OpAxis};
@@ -19,6 +20,23 @@ use super::{next_ur_op_id, zoomf, Map, MapEditMode, RoomId};
 impl Map {
     fn ui_create_room(&mut self, coord: [u8;3], uuidmap: &mut UUIDMap) -> Option<RoomId> {
         if let Some(roomcreate_op) = self.create_create_room(coord, uuidmap) {
+            let ur = self.apply_room_op(roomcreate_op, uuidmap);
+            let room_id = match &ur {
+                &RoomOp::Del(id) => id,
+                _ => panic!(),
+            };
+            self.undo_buf.push_back((ur,next_ur_op_id()));
+            self.after_room_op_apply_invalidation(false);
+            //if self.state.rooms.get(key)
+
+            Some(room_id)
+        } else {
+            None
+        }
+    }
+
+    fn ui_add_room(&mut self, room: Room, uuidmap: &mut UUIDMap) -> Option<RoomId> {
+        if let Some(roomcreate_op) = self.create_add_room(room) {
             let ur = self.apply_room_op(roomcreate_op, uuidmap);
             let room_id = match &ur {
                 &RoomOp::Del(id) => id,
@@ -129,6 +147,7 @@ impl Map {
         palette: &mut Palette,
         ui: &mut egui::Ui,
         sam: &mut SAM,
+        other_maps: &Maps,
     ) {
         if let Some(r) = self.dsel_room.and_then(|r| self.state.rooms.get(r) ) {
             self.state.dsel_coord = Some(r.coord);
@@ -280,10 +299,15 @@ impl Map {
                                     egui::Button::new("From Template")
                                 );
                                 if resp.clicked() {
-                                    if let Some(new_id) = self.ui_create_room(v, &mut sam.uuidmap) {
-                                        let [a,b] = self.state.rooms.get_disjoint_mut([new_id,self.template_room.unwrap()]).unwrap();
-                                        a.clone_from(b, &self.path, self.state.rooms_size);
-                                        self.dirty_rooms.insert(new_id);
+                                    let template_room = &mut self.state.rooms[self.template_room.unwrap()];
+                                    template_room.ensure_loaded(&self.path, self.state.rooms_size);
+                                    let new_room = template_room.create_clone(
+                                        v,
+                                        self.state.rooms_size, &mut sam.uuidmap,
+                                        self.id, &self.path
+                                    );
+                                    if let Some(new_id) = new_room.and_then(|r| self.ui_add_room(r, &mut sam.uuidmap) ) {
+                                        self.state.rooms[new_id].update_uuidmap(new_id, &mut sam.uuidmap, self.id);
                                         self.dsel_room = Some(new_id);
                                         self.state.dsel_coord = Some(v);
                                         self.editsel = DrawImageGroup::single(new_id, v, self.state.rooms_size);
@@ -303,6 +327,9 @@ impl Map {
                                 if ui.button("As Template").clicked() {
                                     self.template_room = Some(v);
                                 }
+                                if ui.button("GCopy").clicked() {
+                                    palette.global_clipboard = Some((self.id,v));
+                                }
                             } else if let Some(v) = self.state.ssel_coord {
                                 if ui.button("Create Room").clicked() {
                                     if let Some(new_id) = self.ui_create_room(v, &mut sam.uuidmap) {
@@ -316,9 +343,46 @@ impl Map {
                                     egui::Button::new("From Template")
                                 );
                                 if resp.clicked() {
-                                    if let Some(new_id) = self.ui_create_room(v, &mut sam.uuidmap) {
-                                        let [a,b] = self.state.rooms.get_disjoint_mut([new_id,self.template_room.unwrap()]).unwrap();
-                                        a.clone_from(b, &self.path, self.state.rooms_size);
+                                    let template_room = &mut self.state.rooms[self.template_room.unwrap()];
+                                    template_room.ensure_loaded(&self.path, self.state.rooms_size);
+                                    let new_room = template_room.create_clone(
+                                        v,
+                                        self.state.rooms_size, &mut sam.uuidmap,
+                                        self.id, &self.path
+                                    );
+                                    if let Some(new_id) = new_room.and_then(|r| self.ui_add_room(r, &mut sam.uuidmap) ) {
+                                        self.state.rooms[new_id].update_uuidmap(new_id, &mut sam.uuidmap, self.id);
+                                        self.ssel_room = Some(new_id);
+                                        self.state.ssel_coord = Some(v);
+                                        self.editsel = DrawImageGroup::single(new_id, v, self.state.rooms_size);
+                                        self.post_drawroom_switch(&mut sam.uuidmap);
+                                        self.ssel_updated();
+                                    }
+                                }
+
+                                let resp = ui.add_enabled(
+                                    palette.global_clipboard.is_some_and(|(m,r)| 
+                                        if let Some(m) = get_map_by_id(&self, other_maps, m) {
+                                            m.state.rooms_size == self.state.rooms_size && m.state.rooms.contains_key(r)
+                                        } else {
+                                            false
+                                        }
+                                    ),
+                                    egui::Button::new("GPaste")
+                                );
+                                if resp.clicked() {
+                                    let (src_map,src_room) = palette.global_clipboard.unwrap();
+                                    let src_map = get_map_by_id(&self, other_maps, src_map).unwrap();
+                                    let src_room = &src_map.state.rooms[src_room];
+
+                                    let new_room = src_room.create_clone(
+                                        v,
+                                        self.state.rooms_size, &mut sam.uuidmap,
+                                        self.id, &self.path
+                                    );
+                                    drop(src_map);
+                                    if let Some(new_id) = new_room.and_then(|r| self.ui_add_room(r, &mut sam.uuidmap) ) {
+                                        self.state.rooms[new_id].update_uuidmap(new_id, &mut sam.uuidmap, self.id);
                                         self.ssel_room = Some(new_id);
                                         self.state.ssel_coord = Some(v);
                                         self.editsel = DrawImageGroup::single(new_id, v, self.state.rooms_size);
@@ -757,5 +821,35 @@ fn rooms_in_view(off: [f32;2], size: [f32;2], rooms_size: [u32;2], mut cb: impl 
         }
 
         stepy += rooms_size[1];
+    }
+}
+
+enum MapRef<'a> {
+    Direct(&'a Map),
+    Ref(std::cell::Ref<'a,Map>)
+}
+
+impl Deref for MapRef<'_> {
+    type Target = Map;
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            MapRef::Direct(v) => v,
+            MapRef::Ref(v) => v,
+        }
+    }
+}
+
+fn get_map_by_id<'a>(this: &'a Map, others: &'a Maps, map_id: MapId) -> Option<MapRef<'a>> {
+    if map_id == this.id {
+        Some(MapRef::Direct(this))
+    } else if let Some(m) = others.open_maps.get(&map_id) {
+        if let Ok(m) = m.try_borrow() {
+            Some(MapRef::Ref(m))
+        } else {
+            None
+        }
+    } else {
+        None
     }
 }

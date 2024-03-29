@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::ffi::OsStr;
 use std::path::PathBuf;
 
@@ -74,7 +75,7 @@ fn new_map(state: &mut SharedApp) {
     let map = Map::new(path, state.top_panel.create_map_size, &mut state.sam.uuidmap);
 
     state.dock.add_tabs.push(DockTab::Map(map.id));
-    state.maps.open_maps.insert(map.id, map);
+    state.maps.open_maps.insert(map.id, RefCell::new(map));
 }
 
 fn new_tileset(state: &mut SharedApp) {

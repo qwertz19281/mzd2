@@ -1,6 +1,5 @@
 use std::collections::VecDeque;
 use std::fmt::Write;
-use std::sync::Arc;
 
 use egui::{ColorImage, Color32};
 use image::RgbaImage;

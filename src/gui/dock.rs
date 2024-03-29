@@ -198,6 +198,7 @@ impl TabViewer for TabV<'_> {
         match tab {
             DockTab::Map(id) => {
                 if let Some(map) = self.0.maps.open_maps.get(&*id) {
+                    let map = map.borrow();
                     format!("Map - {}", map.state.title).into()
                 } else {
                     "".into()
@@ -218,13 +219,15 @@ impl TabViewer for TabV<'_> {
 
     fn ui(&mut self, ui: &mut egui::Ui, tab: &mut Self::Tab) {
         match tab {
-            DockTab::Map(id) => if let Some(map) = self.0.maps.open_maps.get_mut(&*id) {
+            DockTab::Map(id) => if let Some(map) = self.0.maps.open_maps.get(&*id) {
+                let mut map = map.borrow_mut();
                 self.0.dock.last_rendered_map = Some(*id);
                 map.ui_map(
                     &mut self.0.warpon,
                     &mut self.0.palette,
                     ui,
                     &mut self.0.sam,
+                    &self.0.maps,
                 );
             },
             DockTab::Tileset(id) => if let Some(tileset) = self.0.tilesets.open_tilesets.get_mut(&*id) {
@@ -238,6 +241,7 @@ impl TabViewer for TabV<'_> {
             DockTab::Palette => palette_ui(&mut self.0, ui),
             DockTab::Lru => lru_ui(&mut self.0, ui),
             DockTab::Draw => if let Some(map) = self.0.dock.last_focused_map.and_then(|id| self.0.maps.open_maps.get_mut(&id)) {
+                let mut map = map.borrow_mut();
                 map.ui_draw(
                     &mut self.0.warpon,
                     &mut self.0.palette,

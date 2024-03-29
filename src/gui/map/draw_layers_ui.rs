@@ -1,4 +1,4 @@
-use egui::{FontId, Key, TextEdit};
+use egui::{FontId, TextEdit};
 
 use crate::gui::init::SAM;
 use crate::gui::sel_matrix::SelMatrix;

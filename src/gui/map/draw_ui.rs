@@ -1,9 +1,7 @@
 use egui::{Color32, Key, PointerButton};
 use image::RgbaImage;
-use slotmap::Key as _;
 
 use crate::gui::draw_state::DrawMode;
-use crate::gui::dsel_state::DSelMode;
 use crate::gui::init::SAM;
 use crate::gui::key_manager::KMKey;
 use crate::gui::palette::{Palette, PaletteItem};
@@ -17,7 +15,7 @@ use crate::SRc;
 use super::room_ops::{try_side, OpAxis, RoomOp};
 use super::room_template_icon::templicon;
 use super::uuid::UUIDMap;
-use super::{next_ur_op_id, DrawOp, HackRenderMode, Map, RoomId};
+use super::{next_ur_op_id, HackRenderMode, Map, RoomId};
 
 impl Map {
     pub fn create_dummy_room(&mut self, coord: [u8;3], template: Option<usize>, uuidmap: &mut UUIDMap) {
@@ -36,9 +34,9 @@ impl Map {
                 uuidmap,
                 self.id,
                 &self.path,
-            ).unwrap()
+            )
         } else {
-            Room::create_empty(
+            Some(Room::create_empty(
                 coord,
                 self.state.rooms_size,
                 RgbaImage::new(self.state.rooms_size[0], self.state.rooms_size[1] * 1),
@@ -46,8 +44,10 @@ impl Map {
                 uuidmap,
                 self.id,
                 &self.path,
-            )
+            ))
         };
+
+        let Some(mut room) = room else {return};
 
         room.transient = true;
         room.loaded.as_mut().unwrap().dirty_file = false;
@@ -125,9 +125,11 @@ impl Map {
                         &mut sam.uuidmap,
                         id,
                         &path,
-                    ).unwrap();
-                    s.state.quickroom_template[idx] = Some(new_room);
-                    s.selected_quickroom_template = Some(idx);
+                    );
+                    if let Some(new_room) = new_room {
+                        s.state.quickroom_template[idx] = Some(new_room);
+                        s.selected_quickroom_template = Some(idx);
+                    }
                 }
             }),
             |s| s.selected_quickroom_template = None,

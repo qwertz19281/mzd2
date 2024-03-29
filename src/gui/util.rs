@@ -582,7 +582,7 @@ pub fn dpad(
     inv_icons: bool,
     visible: bool,
     ui: &mut egui::Ui,
-    mut fun: impl FnMut(&mut egui::Ui,bool,OpAxis,bool),
+    fun: impl FnMut(&mut egui::Ui,bool,OpAxis,bool),
 ) {
     let icons = if inv_icons {
         ["→","←","↓","↑","-","+"]

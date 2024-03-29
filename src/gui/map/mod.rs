@@ -547,7 +547,7 @@ fn zoomf(zoom: i32) -> f32 {
 
 mod roommap_serde {
     use super::*;
-    use serde::de::{Error, MapAccess, Visitor};
+    use serde::de::{MapAccess, Visitor};
 
     pub(super) fn serialize<S>(v: &RoomMap, serializer: S) -> Result<S::Ok, S::Error>
     where

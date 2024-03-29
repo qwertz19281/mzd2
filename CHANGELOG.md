@@ -13,6 +13,8 @@
 
 - Quick room switching
 - Improved key and mouse bindings for draw/tileset
+- New last used palette tab
+- egui_dock
 - (inefficient) room undo/redo
 - Room sel staging now works
 - New room layer keybinds

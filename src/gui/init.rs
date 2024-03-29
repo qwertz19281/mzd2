@@ -11,10 +11,10 @@ use crate::util::MapId;
 use super::dock::Docky;
 use super::{MutQueue, dpi_hack};
 use super::map::RoomId;
-use super::palette::{Palette, palette_ui};
+use super::palette::Palette;
 use super::top_panel::{TopPanel, top_panel_ui};
-use super::window_states::map::{Maps, maps_ui};
-use super::window_states::tileset::{Tilesets, tilesets_ui};
+use super::window_states::map::Maps;
+use super::window_states::tileset::Tilesets;
 
 pub fn launch_gui(args: crate::cli::Args) {
     let options = eframe::NativeOptions {

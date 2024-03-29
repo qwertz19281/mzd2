@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -37,7 +38,7 @@ impl SharedApp {
         let Some(map) = Map::load_map(path, &mut self.sam.uuidmap).unwrap_gui("Failed to load map") else {return};
 
         self.dock.add_tabs.push(DockTab::Map(map.id));
-        self.maps.open_maps.insert(map.id, map);
+        self.maps.open_maps.insert(map.id, RefCell::new(map));
     }
 
     fn try_load_tileset(&mut self, path: PathBuf, img: RgbaImage) {

@@ -185,14 +185,6 @@ impl Laser {
     }
 }
 
-fn castor(v: i8) -> u8 {
-    unsafe { std::mem::transmute::<i8,u8>(v) ^ 128 }
-}
-
-fn castor_inv(v: u8) -> i8 {
-    unsafe { std::mem::transmute::<u8,i8>(v ^ 128) }
-}
-
 impl<T> CoordStoreSub<T> {
     #[inline]
     fn new() -> Self {

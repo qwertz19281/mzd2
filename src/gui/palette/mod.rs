@@ -5,9 +5,11 @@ use std::sync::Arc;
 use egui::{TextureHandle, TextureOptions, Rounding};
 use image::RgbaImage;
 
+use crate::util::MapId;
 use crate::SRc;
 
 use super::init::SharedApp;
+use super::map::RoomId;
 use super::sel_matrix::SelEntry;
 use super::util::alloc_painter_rel;
 use super::{rector, line2};
@@ -18,6 +20,7 @@ pub struct Palette {
     pub selected: u32,
     pub lru: VecDeque<PaletteItem>,
     pub lru_scroll_back: bool,
+    pub global_clipboard: Option<(MapId,RoomId)>,
 }
 
 impl Palette {
@@ -27,6 +30,7 @@ impl Palette {
             selected: 0,
             lru: Default::default(),
             lru_scroll_back: true,
+            global_clipboard: None,
         }
     }
 

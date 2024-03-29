@@ -1,6 +1,5 @@
 use std::io::{Cursor, ErrorKind};
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 
 use anyhow::Context;
 use chrono::{DateTime, Utc};

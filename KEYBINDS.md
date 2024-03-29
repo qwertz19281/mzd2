@@ -15,6 +15,12 @@
 - D Hold: Hide other layers (all but current)
 - Q Press: Trace and set selected layer (can be use together with E)
 
+# Drawing other
+
+- ArrowKeys/PgUp/PgDown: Quickswitch room
+- ArrowKeys/PgUp/PgDown + Ctrl: Toggle connection in this direction
+- Ctrl+Z/Y: Undo/Redo
+
 # Layers: Select Draw Layer
 
 - Ctrl: Make only this layer visible and all other invisible
