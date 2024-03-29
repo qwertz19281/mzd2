@@ -461,6 +461,18 @@ impl DrawImageGroup {
             loaded.ur_snapshot_required = true;
         }
     }
+
+    pub fn single_room(&self) -> Option<RoomId> {
+        (self.rooms.len() == 1).then(|| self.rooms[0].0 )
+    }
+
+    pub fn get_single_room<'a>(&self, rooms: &'a RoomMap) -> Option<&'a Room> {
+        self.single_room().and_then(|id| rooms.get(id) )
+    }
+
+    pub fn get_single_room_mut<'a>(&self, rooms: &'a mut RoomMap) -> Option<&'a mut Room> {
+        self.single_room().and_then(|id| rooms.get_mut(id) )
+    }
 }
 
 impl Room {

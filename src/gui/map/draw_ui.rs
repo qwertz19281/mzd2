@@ -72,7 +72,6 @@ impl Map {
 
     fn dummyroomscope_start(&mut self) {
         if self.dummy_room.is_some_and(|v| self.state.rooms.contains_key(v) ) && self.dsel_room.is_none() && self.editsel.rooms.is_empty() {
-            self.dsel_room = self.dummy_room;
             let room = &self.state.rooms[self.dummy_room.unwrap()];
             debug_assert!(room.transient);
             self.editsel = DrawImageGroup::single(self.dummy_room.unwrap(),room.coord,self.state.rooms_size);
@@ -89,20 +88,13 @@ impl Map {
                     self.state.rooms.get_mut(id).unwrap().transient = false;
                     self.room_matrix.insert(coord,id);
                     self.undo_buf.push_back((RoomOp::Del(id),next_ur_op_id()));
+                    self.dsel_room = Some(id);
                     self.after_room_op_apply_invalidation(false);
+                    self.dsel_updated();
                 }
             }
         }
 
-        if let Some(v) = self.dsel_room {
-            if let Some(room) = self.state.rooms.get(v) {
-                if room.transient {
-                    self.dsel_room = None;
-                }
-            } else {
-                self.dsel_room = None;
-            }
-        }
         self.editsel.rooms.retain(|(id,_,_)| self.state.rooms.get(*id).map_or(false, |v| !v.transient ));
     }
 
@@ -118,7 +110,7 @@ impl Map {
             is_selected,
             Some(|s: &mut Self| s.selected_quickroom_template = Some(idx)),
             Some(|s: &mut Self| {
-                if let Some(r) = s.dsel_room.and_then(|id| s.state.rooms.get_mut(id) ).filter(|r| !r.transient && r.loaded.is_some() ) {
+                if let Some(r) = s.editsel.get_single_room_mut(&mut s.state.rooms).filter(|r| !r.transient && r.loaded.is_some() ) {
                     let new_room = r.create_clone(
                         [255,255,255],
                         rooms_size,
@@ -158,35 +150,29 @@ impl Map {
             ui.label("Zoom: ");
             dragslider_up(&mut self.state.draw_zoom, 0.03125, 1..=2, 1, ui);
             ui.label("|");
-            if self.editsel.rooms.len() == 1 && Some(self.editsel.rooms[0].0) == self.dsel_room {
-                if let Some(room) = self.state.rooms.get_mut(self.dsel_room.unwrap()) {
-                    if let Some(loaded) = room.loaded.as_mut() {
-                        let resp = ui.add_enabled(
-                            !loaded.undo_buf.is_empty(),
-                            egui::Button::new("Undo")
-                        )
-                            .on_hover_text(format!("{} undos", loaded.undo_buf.len()));
+            if let Some(room) = self.editsel.get_single_room_mut(&mut self.state.rooms) {
+                if let Some(loaded) = room.loaded.as_mut() {
+                    let resp = ui.add_enabled(
+                        !loaded.undo_buf.is_empty(),
+                        egui::Button::new("Undo")
+                    )
+                        .on_hover_text(format!("{} undos", loaded.undo_buf.len()));
 
-                        do_undo |= resp.clicked();
+                    do_undo |= resp.clicked();
 
-                        let resp = ui.add_enabled(
-                            !loaded.redo_buf.is_empty(),
-                            egui::Button::new("Redo")
-                        )
-                            .on_hover_text(format!("{} redos", loaded.redo_buf.len()));
+                    let resp = ui.add_enabled(
+                        !loaded.redo_buf.is_empty(),
+                        egui::Button::new("Redo")
+                    )
+                        .on_hover_text(format!("{} redos", loaded.redo_buf.len()));
 
-                        do_redo |= resp.clicked();
-                    }
+                    do_redo |= resp.clicked();
                 }
             }
             self.dummyroomscope_start();
-            if self.editsel.rooms.len() == 1 && Some(self.editsel.rooms[0].0) == self.dsel_room {
-                if let Some(room) = self.state.rooms.get_mut(self.dsel_room.unwrap()) {
-                    if room.transient {
-                        if ui.button("Create this room").clicked() {
-                            room.transient = false;
-                        }
-                    }
+            if let Some(room) = self.editsel.get_single_room_mut(&mut self.state.rooms).filter(|r| r.transient) {
+                if ui.button("Create this room").clicked() {
+                    room.transient = false;
                 }
             }
         });
@@ -284,53 +270,49 @@ impl Map {
                 }
 
                 let hover_single_layer = ui.vertical(|ui|{
-                    let hover_single_layer = self.ui_layer_draw(ui, sam);
-
-                    ui.vertical(|ui| {
-                        if self.dsel_room.is_some() && self.state.rooms.contains_key(self.dsel_room.unwrap()) && self.state.quickroom_template.len() >= 4 {
-                            ui.horizontal(|ui| {
-                                dpad(
-                                    "Quick Nav",
-                                    20. * sam.dpi_scale, 32. * sam.dpi_scale, sam.dpi_scale,
-                                    false,
-                                    true,
-                                    ui,
-                                    |_,clicked,axis,dir| {
-                                        if !clicked {return;}
-                                        quickmove = Some((axis,dir));
-                                    },
-                                );
-
-                                self.templateslot(0, ui, sam);
-                                self.templateslot(1, ui, sam);
-                            });
-
-                            let id = self.dsel_room.unwrap();
-
-                            let icons = dpad_icons(|axis,dir|
-                                if self.get_room_connected(id, axis, dir) {"C"} else {""}
+                    if self.editsel.get_single_room(&self.state.rooms).is_some() && self.state.quickroom_template.len() >= 4 {
+                        ui.horizontal(|ui| {
+                            dpad(
+                                "Quick Nav",
+                                20. * sam.dpi_scale, 32. * sam.dpi_scale, sam.dpi_scale,
+                                false,
+                                true,
+                                ui,
+                                |_,clicked,axis,dir| {
+                                    if !clicked {return;}
+                                    quickmove = Some((axis,dir));
+                                },
                             );
 
-                            ui.horizontal(|ui| {
-                                dpadc(
-                                    "Room Conns",
-                                    20. * sam.dpi_scale, 32. * sam.dpi_scale, sam.dpi_scale,
-                                    icons,
-                                    !self.state.rooms.get(self.dsel_room.unwrap()).unwrap().transient,
-                                    ui,
-                                    |_,clicked,axis,dir| {
-                                        if !clicked {return;}
-                                        makeconn = Some((axis,dir));
-                                    },
-                                );
+                            self.templateslot(0, ui, sam);
+                            self.templateslot(1, ui, sam);
+                        });
 
-                                self.templateslot(2, ui, sam);
-                                self.templateslot(3, ui, sam);
-                            });
-                        }
-                    });
+                        let id = self.editsel.single_room().unwrap();
 
-                    hover_single_layer
+                        let icons = dpad_icons(|axis,dir|
+                            if self.get_room_connected(id, axis, dir) {"C"} else {""}
+                        );
+
+                        ui.horizontal(|ui| {
+                            dpadc(
+                                "Room Conns",
+                                20. * sam.dpi_scale, 32. * sam.dpi_scale, sam.dpi_scale,
+                                icons,
+                                !self.state.rooms.get(id).unwrap().transient,
+                                ui,
+                                |_,clicked,axis,dir| {
+                                    if !clicked {return;}
+                                    makeconn = Some((axis,dir));
+                                },
+                            );
+
+                            self.templateslot(2, ui, sam);
+                            self.templateslot(3, ui, sam);
+                        });
+                    }
+
+                    self.ui_layer_draw(ui, sam)
                 }).inner;
                 
                 let Some(draw_selected_layer) = self.editsel.rooms.first()
@@ -607,22 +589,22 @@ impl Map {
         self.dummyroomscope_end();
 
         if let Some((axis,dir)) = makeconn.filter(|_| quickmove.is_none() ) {
-            if let Some(id) = self.dsel_room.filter(|id| self.state.rooms.contains_key(*id) ) {
+            if let Some(id) = self.editsel.single_room().filter(|id| self.state.rooms.contains_key(*id) ) {
                 let conn = self.get_room_connected(id, axis, dir);
                 self.set_room_connect(id, axis, dir, !conn);
+                ui.ctx().request_repaint();
             }
         }
 
-        if self.editsel.rooms.len() == 1 && Some(self.editsel.rooms[0].0) == self.dsel_room {
-            if let Some(room) = self.state.rooms.get_mut(self.dsel_room.unwrap()) {
-                if let Some(loaded) = room.loaded.as_mut() {
-                    if do_undo && !do_redo {
-                        loaded.undo(&mut room.visible_layers, &mut room.selected_layer);
-                    }
-                    if do_redo && !do_undo {
-                        loaded.redo(&mut room.visible_layers, &mut room.selected_layer);
-                    }
+        if let Some(room) = self.editsel.get_single_room_mut(&mut self.state.rooms) {
+            if let Some(loaded) = room.loaded.as_mut() {
+                if do_undo && !do_redo {
+                    loaded.undo(&mut room.visible_layers, &mut room.selected_layer);
                 }
+                if do_redo && !do_undo {
+                    loaded.redo(&mut room.visible_layers, &mut room.selected_layer);
+                }
+                ui.ctx().request_repaint();
             }
         }
     }
