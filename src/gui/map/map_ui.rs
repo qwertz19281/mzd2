@@ -73,7 +73,7 @@ impl Map {
         if let Some(v) = &self.smartmove_preview {
             if
                 v.base_coord == coord &&
-                v.n_sift_old == self.state.sift_size &&
+                v.n_sift_old == self.state.smart_move_size &&
                 v.axis == axis &&
                 v.dir == dir &&
                 v.op_evo == self.latest_used_opevo &&
@@ -84,12 +84,12 @@ impl Map {
                 regen = false;
             }
         }
-        if self.check_shift_smart1(coord, self.state.sift_size, axis, dir).is_none() {
+        if self.check_shift_smart1(coord, self.state.smart_move_size, axis, dir).is_none() {
             self.smartmove_preview = None;
             return;
         }
         if regen {
-            self.smartmove_preview = self.shift_smart_collect(coord, self.state.sift_size, axis, dir, false, false, true);
+            self.smartmove_preview = self.shift_smart_collect(coord, self.state.smart_move_size, axis, dir, false, false, true);
         }
         if !clicked {return;}
         if let Some(opts) = self.smartmove_preview.as_ref() {
@@ -394,7 +394,7 @@ impl Map {
                             }
 
                             ui.label("| ShiftAway/Collapse Size: ");
-                            dragvalion_up(&mut self.state.sift_size, 0.015625, 0..=16, 1, ui);
+                            dragvalion_up(&mut self.state.smart_move_size, 0.015625, 0..=16, 1, ui);
 
                             ui.checkbox(&mut self.state.smart_awaylock_mode, "SmartMove AwayLock");
                         },
@@ -446,7 +446,7 @@ impl Map {
                                 |_,clicked,axis,dir| {
                                     if !clicked {return;}
                                     // eprintln!("DPAD CLICK {}",describe_direction(axis,dir));
-                                    if let Some(op) = self.create_shift_away(self.state.ssel_coord.unwrap(), self.state.sift_size, axis, dir) {
+                                    if let Some(op) = self.create_shift_away(self.state.ssel_coord.unwrap(), self.state.smart_move_size, axis, dir) {
                                         self.ui_apply_roomop(op, &mut sam.uuidmap);
                                     }
                                 },
@@ -459,7 +459,7 @@ impl Map {
                                 |_,clicked,axis,dir| {
                                     if !clicked {return;}
                                     // eprintln!("DPAD CLICK {}",describe_direction(axis,dir));
-                                    if let Some(op) = self.create_collapse(self.state.ssel_coord.unwrap(), self.state.sift_size, axis, dir, true) {
+                                    if let Some(op) = self.create_collapse(self.state.ssel_coord.unwrap(), self.state.smart_move_size, axis, dir, true) {
                                         self.ui_apply_roomop(op, &mut sam.uuidmap);
                                     }
                                 },

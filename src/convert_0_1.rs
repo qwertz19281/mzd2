@@ -127,7 +127,7 @@ pub fn convert_map(map_path: PathBuf, uuidmap: &mut UUIDMap) -> anyhow::Result<(
         edit_mode: old_state.edit_mode,
         draw_draw_mode: old_state.draw_draw_mode,
         draw_sel: old_state.draw_sel,
-        sift_size: old_state.sift_size,
+        smart_move_size: old_state.sift_size,
         smart_awaylock_mode: old_state.smart_awaylock_mode,
         ds_replace: old_state.ds_replace,
         dsel_whole: old_state.dsel_whole,
