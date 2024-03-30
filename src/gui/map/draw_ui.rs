@@ -147,6 +147,15 @@ impl Map {
         let mut do_undo = false;
         let mut do_redo = false;
 
+        let mut bad_room = false;
+        for (id,_,_) in &self.editsel.rooms {
+            if let Some(locked) = self.state.rooms.get(*id).and_then(|r| r.locked.as_ref() ) {
+                ui.colored_label(Color32::RED, format!("Error loading room:\n{locked}"));
+                bad_room = true;
+            }
+        }
+        if bad_room {return;}
+
         ui.horizontal(|ui| {
             ui.label("Zoom: ");
             dragslider_up(&mut self.state.draw_zoom, 0.03125, 1..=2, 1, ui);

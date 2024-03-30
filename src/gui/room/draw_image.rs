@@ -395,6 +395,8 @@ impl DrawImageGroup {
 
     pub fn try_attach(&mut self, room_id: RoomId, rooms_size: [u32;2], rooms: &RoomMap) -> bool {
         let Some(room) = rooms.get(room_id) else {return false};  
+        if room.locked.is_some() {return false;}
+
         let coord = room.coord;
         let n_layers = room.visible_layers.len(); //TODO don't rely on the unloaded layer value
 
@@ -477,7 +479,24 @@ impl DrawImageGroup {
 
 impl Room {
     pub fn render(&mut self, off: [u32;2], visible_layers: impl Iterator<Item=usize>, bg_color: Option<egui::Color32>, rooms_size: [u32;2], mut dest: impl FnMut(egui::Shape), map_path: &Path, ctx: &egui::Context) {
-        if self.load_tex(map_path,rooms_size,ctx).is_none() {return}
+        self.load_tex(map_path,rooms_size,ctx);
+
+        if let Some(locked) = &self.locked {
+            ctx.fonts(|fonts| {
+                dest(egui::Shape::text(
+                    fonts,
+                    off.add([2,2]).as_f32().into(),
+                    Align2::LEFT_TOP,
+                    format!("Error loading room:\n{locked}"),
+                    FontId::proportional(12.),
+                    Color32::RED,
+                ));
+            });
+            return;
+        }
+
+        if self.get_tex(ctx).is_none() {return};
+
         let Some(loaded) = &self.loaded else {return};
         if loaded.image.img.is_empty() {return}
 
