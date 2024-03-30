@@ -104,9 +104,7 @@ pub struct MapState {
     pub(crate) _serde_template_room: Option<Uuid>,
     pub ctime: chrono::DateTime<chrono::Utc>,
     pub mtime: chrono::DateTime<chrono::Utc>,
-    #[serde(default)]
     pub quickroom_template: Vec<Option<Room>>,
-    #[serde(default)]
     pub set_dssel_merged: bool,
 }
 

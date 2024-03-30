@@ -27,6 +27,7 @@ pub struct Room {
     pub coord: [u8;3],
     pub resuuid: Uuid,
     pub desc_text: String,
+    #[serde(skip)]
     pub tags: Vec<TagState>,
     #[serde(skip)]
     pub op_evo: u64,
@@ -42,7 +43,6 @@ pub struct Room {
     pub mtime: chrono::DateTime<chrono::Utc>,
     #[serde(skip)]
     pub transient: bool,
-    #[serde(default)] // TODO remove default in final disk_format_0.2
     pub editor_hide_layers_above: bool,
 }
 
