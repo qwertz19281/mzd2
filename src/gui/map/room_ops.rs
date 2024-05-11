@@ -4,6 +4,7 @@ use std::fmt::Write;
 use egui::{ColorImage, Color32};
 use image::RgbaImage;
 
+use crate::gui::room::draw_image::DrawImageGroup;
 use crate::gui::room::Room;
 use crate::map::coord_store::CoordStore;
 use crate::util::next_op_gen_evo;
@@ -166,6 +167,9 @@ impl Map {
         if self.dsel_room.is_none() {
             if let Some(coord) = self.state.dsel_coord {
                 if let Some(&id) = self.room_matrix.get(coord) {
+                    if self.dsel_room != Some(id) {
+                        self.editsel = DrawImageGroup::single(id, coord, self.state.rooms_size);
+                    }
                     self.dsel_room = Some(id);
                 }
             }
@@ -177,6 +181,11 @@ impl Map {
                 }
             }
         }
+        if let Some(r) = self.editsel.get_single_room(&self.state.rooms) {
+            if r.transient && self.room_matrix.get(r.coord).is_some() {
+                self.state.rooms.remove(self.editsel.single_room().unwrap());
+            }
+        }
     }
 }
 
@@ -185,28 +194,28 @@ impl Map {
         if self.room_matrix.get(dest).is_some() {return false;}
         let room = self.state.rooms.get_mut(id).unwrap();
         let old_pos = room.coord;
-        room.coord = dest;
-        self.room_matrix.insert(dest, id);
         if old_pos != dest {
-            self.room_matrix.remove(old_pos, true);
+            room.coord = dest;
+            self.room_matrix.insert(dest, id);
+            if self.room_matrix.get(old_pos) == Some(&id) {
+                self.room_matrix.remove(old_pos, true);
+            }
         }
         room.transient = false;
         true
     }
 
-    fn move_room_force(&mut self, id: RoomId, dest: [u8;3]) -> (Option<[u8;3]>,Option<RoomId>) {
-        let old_coord = self.state.rooms.get(id)
-            .map(|r| r.coord )
-            .filter(|&c| self.room_matrix.get(c) == Some(&id) );
+    fn move_room_force(&mut self, id: RoomId, dest: [u8;3]) -> ([u8;3],Option<RoomId>) {
         let prev_at_coord = self.room_matrix.get(dest).cloned();
 
         let room = self.state.rooms.get_mut(id).unwrap();
+        let old_coord = room.coord;
         room.coord = dest;
 
         self.room_matrix.insert(dest, id);
 
-        if old_coord.is_some() && old_coord != Some(dest) {
-            self.room_matrix.remove(old_coord.unwrap(), true);
+        if old_coord != dest && self.room_matrix.get(old_coord) == Some(&id) {
+            self.room_matrix.remove(old_coord, true);
         }
 
         room.transient = false;
@@ -332,7 +341,7 @@ impl Map {
         let op_evo = next_op_gen_evo();
         self.latest_used_opevo = op_evo;
         for (id,room) in self.state.rooms.iter_mut() {
-            if in_sift_range(room.coord, base_coord, axis, dir) {
+            if !room.transient && in_sift_range(room.coord, base_coord, axis, dir) {
                 let removed = self.room_matrix.remove(room.coord, false);
                 assert!(removed == Some(id));
                 room.coord = apply_sift(room.coord, n_sift, axis, dir);
@@ -362,7 +371,7 @@ impl Map {
         let op_evo = next_op_gen_evo();
         self.latest_used_opevo = op_evo;
         for (id,room) in self.state.rooms.iter_mut() {
-            if in_unsift_range(room.coord, n_sift, base_coord, axis, dir) {
+            if !room.transient && in_unsift_range(room.coord, n_sift, base_coord, axis, dir) {
                 let removed = self.room_matrix.remove(room.coord, false);
                 assert_eq!(removed, Some(id));
                 room.coord = apply_unsift(room.coord, n_sift, axis, dir);
