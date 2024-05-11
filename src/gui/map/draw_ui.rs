@@ -132,6 +132,27 @@ impl Map {
         );
     }
 
+    fn adaptive_pushaway(&mut self, coord: [u8;3], from: [u8;3], from_room: RoomId, axis: OpAxis, dir: bool, uuidmap: &mut UUIDMap) {
+        assert_eq!(self.state.rooms.get(from_room).map(|r| r.coord), Some(from));
+        if let Some(v) = self.shift_smart_collect(coord, 1, axis, dir, false, false, false) {
+            if !v.rooms.contains(&from_room) {
+                let op = RoomOp::SiftSmart(v, true);
+                self.ui_apply_roomop(op, uuidmap);
+                return;
+            }
+        }
+        if let Some(v) = self.shift_smart_collect(coord, 1, axis, dir, true, false, false) {
+            if !v.rooms.contains(&from_room) {
+                let op = RoomOp::SiftSmart(v, true);
+                self.ui_apply_roomop(op, uuidmap);
+                return;
+            }
+        }
+        if let Some(op) = self.create_shift_away(coord, 1, axis, dir) {
+            self.ui_apply_roomop(op, uuidmap);
+        }
+    }
+
     pub fn ui_draw(
         &mut self,
         warp_setter: &mut Option<(MapId,RoomId,(u32,u32))>,
@@ -600,7 +621,10 @@ impl Map {
 
         if let Some((axis,dir)) = quickmove {
             if let Some(c) = self.state.dsel_coord {
-                try_side(c, axis, dir, |c2,_,_| {
+                try_side(c, axis, dir, |c2| {
+                    if mods.alt && self.dsel_room.is_some() && self.room_matrix.get(c2).is_some() {
+                        self.adaptive_pushaway(c2, c, self.dsel_room.unwrap(), axis, dir, &mut sam.uuidmap);
+                    }
                     self.state.dsel_coord = Some(c2);
                     self.move_viewpos_centred([c2[0],c2[1]]);
                     self.state.current_level = c2[2];

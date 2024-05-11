@@ -265,7 +265,7 @@ impl Map {
 
     pub fn create_single_move(&self, id: RoomId, axis: OpAxis, dir: bool) -> Option<RoomOp> {
         let coord = self.state.rooms.get(id).map(|i| i.coord )?;
-        try_side(coord, axis, dir, |dest,_,_| {
+        try_side(coord, axis, dir, |dest| {
             self.create_move_room(id, dest)
         }).flatten()
     }
@@ -364,7 +364,7 @@ impl Map {
         for (id,room) in self.state.rooms.iter_mut() {
             if in_unsift_range(room.coord, n_sift, base_coord, axis, dir) {
                 let removed = self.room_matrix.remove(room.coord, false);
-                assert!(removed == Some(id));
+                assert_eq!(removed, Some(id));
                 room.coord = apply_unsift(room.coord, n_sift, axis, dir);
                 room.transient = false;
                 room.op_evo = op_evo;
@@ -472,7 +472,7 @@ impl Map {
             for &id in &all_list {
                 let room = unsafe { self.state.rooms.get_unchecked_mut(id) };
     
-                try_side(room.coord, axis, dir, |aside,_,_| {
+                try_side(room.coord, axis, dir, |aside| {
                     if self.room_matrix.get(aside).is_none() {
                         try_6_sides(aside, |sideside,_,_| {
                             if sideside == aside {return}
@@ -553,7 +553,7 @@ impl Map {
 
         set_dir(room,ax,dir);
 
-        try_side(room.coord, ax, dir, |c2,_,_| {
+        try_side(room.coord, ax, dir, |c2| {
             if let Some(&id) = self.room_matrix.get(c2) {
                 if let Some(room) = self.state.rooms.get_mut(id) {
                     set_dir(room,ax,!dir);
@@ -571,7 +571,7 @@ impl Map {
 
         if !conn(room,ax,dir) {return false;}
 
-        try_side(room.coord, ax, dir, |c2,_,_| {
+        try_side(room.coord, ax, dir, |c2| {
             if let Some(&id) = self.room_matrix.get(c2) {
                 if let Some(room) = self.state.rooms.get(id) {
                     return conn(room,ax,!dir);
@@ -697,14 +697,14 @@ pub(crate) fn try_6_sides(v: [u8;3], mut fun: impl FnMut([u8;3],u8,bool)) {
     }
 }
 
-pub(crate) fn try_side<R>(v: [u8;3], axis: OpAxis, dir: bool, fun: impl FnOnce([u8;3],u8,bool) -> R) -> Option<R> {
+pub(crate) fn try_side<R>(v: [u8;3], axis: OpAxis, dir: bool, fun: impl FnOnce([u8;3]) -> R) -> Option<R> {
     match (axis,dir) {
-        (OpAxis::X, true ) if v[0] != 255 => Some(fun([v[0]+1, v[1]  , v[2]  ], 0,true)),
-        (OpAxis::X, false) if v[0] !=   0 => Some(fun([v[0]-1, v[1]  , v[2]  ], 0,false)),
-        (OpAxis::Y, true ) if v[1] != 255 => Some(fun([v[0]  , v[1]+1, v[2]  ], 1,true)),
-        (OpAxis::Y, false) if v[1] !=   0 => Some(fun([v[0]  , v[1]-1, v[2]  ], 1,false)),
-        (OpAxis::Z, true ) if v[2] != 255 => Some(fun([v[0]  , v[1]  , v[2]+1], 2,true)),
-        (OpAxis::Z, false) if v[2] !=   0 => Some(fun([v[0]  , v[1]  , v[2]-1], 2,false)),
+        (OpAxis::X, true ) if v[0] != 255 => Some(fun([v[0]+1, v[1]  , v[2]  ])),
+        (OpAxis::X, false) if v[0] !=   0 => Some(fun([v[0]-1, v[1]  , v[2]  ])),
+        (OpAxis::Y, true ) if v[1] != 255 => Some(fun([v[0]  , v[1]+1, v[2]  ])),
+        (OpAxis::Y, false) if v[1] !=   0 => Some(fun([v[0]  , v[1]-1, v[2]  ])),
+        (OpAxis::Z, true ) if v[2] != 255 => Some(fun([v[0]  , v[1]  , v[2]+1])),
+        (OpAxis::Z, false) if v[2] !=   0 => Some(fun([v[0]  , v[1]  , v[2]-1])),
         _ => None,
     }
 }

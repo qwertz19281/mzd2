@@ -58,7 +58,7 @@ impl Map {
         }
     }
 
-    fn ui_apply_roomop(&mut self, op: RoomOp, uuidmap: &mut UUIDMap) {
+    pub(super) fn ui_apply_roomop(&mut self, op: RoomOp, uuidmap: &mut UUIDMap) {
         let ur = self.apply_room_op(op, uuidmap);
         self.undo_buf.push_back((ur,next_ur_op_id()));
         self.after_room_op_apply_invalidation(false);
