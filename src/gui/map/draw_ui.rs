@@ -256,13 +256,17 @@ impl Map {
                             room.selected_layer = room.selected_layer.saturating_sub(1);
                             moved = true;
                         }
-                        if ui.input(|i| i.key_down(Key::D) ) {
+                        if ui.input(|i| i.key_down(Key::A) ) {
                             hide_layers_all = true;
                         }
-                        if ui.input(|i| i.key_down(Key::E) ) {
+                        if ui.input(|i| i.key_down(Key::Q) ) {
                             hide_layers_above ^= true;
                         }
-                        if !moved && ui.input(|i| i.key_pressed(Key::Q) ) {
+                        if ui.input(|i| i.key_down(Key::E) ) {
+                            hide_layers_all = false;
+                            hide_layers_above = false;
+                        }
+                        if !moved && ui.input(|i| i.key_pressed(Key::E) || i.key_pressed(Key::D) ) {
                             if let Some(loaded) = &mut room.loaded {
                                 let hov = <[f32;2]>::from(hov).as_u32().div8();
                                 let itre = room.visible_layers.iter().enumerate()

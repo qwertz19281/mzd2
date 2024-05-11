@@ -12,9 +12,9 @@
 
 - W Press: Selected layer up
 - S Press: Selected layer down
-- E Hold: Show/Hide layers above (toggle setting) 
-- D Hold: Hide other layers (all but current)
-- Q Press: Trace and set selected layer (can be use together with E)
+- Q Hold: Show/Hide layers above (toggle setting) 
+- A Hold: Hide other layers (all but current)
+- E Press: Trace and set selected layer (all layers shown)
 
 # Drawing other
 
