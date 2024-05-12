@@ -4,6 +4,8 @@ use ahash::AHasher;
 use egui::color_picker::color_edit_button_srgb;
 use egui::{Align2, Color32, FontId};
 use indexmap::IndexMap;
+use lab::Lab;
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -46,6 +48,12 @@ impl TagState {
         v[0] + RADIUS*2 >= self.pos[0] && v[0] < self.pos[0] + RADIUS*2
         && v[1] + RADIUS*2 >= self.pos[1] && v[1] < self.pos[1] + RADIUS*2
     }
+
+    pub fn room_probe_area(v: [u32;2]) -> ([u32;2],[u32;2]) {
+        let min = [v[0].saturating_sub(RADIUS2), v[1].saturating_sub(RADIUS2)];
+        let max = v.add([RADIUS2,RADIUS2]);
+        (min,max)
+    }
 }
 
 pub(crate) fn get_tag_state(maps: &mut Maps, map: MapId, room: RoomId, tag: &Uuid, f: impl FnOnce(&mut TagState)) -> bool {
@@ -77,6 +85,7 @@ pub fn can_place_tag_here(v: &TagMap, pos: [u32;2]) -> bool {
 
 const RADIUS: u32 = 6;
 const RADIUSF: f32 = RADIUS as _;
+const RADIUS2: u32 = 9;
 
 pub fn render_tags(
     room: &Room,
@@ -100,6 +109,7 @@ pub fn render_tags(
                     Align2::LEFT_CENTER,
                     tag.text.lines().next().unwrap_or(""),
                     FontId::proportional(12. * zoom),
+                    zoom,
                     if hovered {Color32::WHITE} else {color},
                     hovered.then_some(Color32::BLACK),
                     &mut dest,
@@ -169,7 +179,7 @@ impl Map {
                     pos: sub_click_coord,
                     show_text: true,
                     text: Default::default(),
-                    color: [255,0,255], //TODO random color
+                    color: calc_text_color(&room, sub_click_coord, self.state.rooms_size),
                     warp: None,
                 };
                 room.tags.insert(uuid,tag);
@@ -253,4 +263,65 @@ impl Map {
             e.shift_remove();
         }
     }
+}
+
+pub fn calc_text_color(room: &Room, v: [u32;2], rooms_size: [u32;2]) -> [u8;3] {
+    if let Some(loaded) = room.loaded.as_ref() {
+        let (min,max) = TagState::room_probe_area(v);
+        if let Some(avg) = loaded.image.lab_avg(
+            min,
+            max.sub(min),
+            room.visible_layers.iter().enumerate().filter(|&(_,(v,_))| *v != 0 ).map(|(i,_)| i ),
+            rooms_size,
+        ) {
+            const DERIV_RANGE: f32 = 5.;
+            let mut rng = rand::thread_rng();
+            let deriv = [rng.gen_range(-DERIV_RANGE..DERIV_RANGE), rng.gen_range(-DERIV_RANGE..DERIV_RANGE)];
+            return calc_text_color_over_bg(avg, deriv).to_rgb();
+        }
+    }
+    LAB_GRAY.to_rgb()
+}
+
+const LAB_BLACK: Lab = Lab { l: 0., a: 0., b: 0. };
+const LAB_GRAY: Lab = Lab { l: 50., a: 0., b: 0. };
+const LAB_WHITE: Lab = Lab { l: 100., a: 0., b: 0. };
+
+/// off is in Lab: 0.0 ..= 100.0, -100.0 ..= 100.0, -100.0 ..= 100.0
+pub fn calc_text_color_over_bg(bg: Lab, aboff: [f32;2]) -> Lab {
+    let apply_aboff = |mut v: Lab| -> Lab {
+        v.a += aboff[0];
+        v.b += aboff[1];
+        v
+    };
+    fn normalize(v: Lab) -> Lab {
+        Lab::from_rgb(&v.to_rgb())
+    }
+    fn invert(v: Lab) -> Lab {
+        Lab { l: 100. - v.l, a: -v.a, b: -v.b }
+    }
+    fn invert_color(v: Lab) -> Lab {
+        Lab { l: v.l, a: -v.a, b: -v.b }
+    }
+    fn squared_distance2(a: Lab, b: Lab) -> f32 {
+        (a.l - b.l).powi(2)*6. + (a.a - b.a).powi(2) + (a.b - b.b).powi(2)
+    }
+
+    let inv = normalize(apply_aboff(invert_color(bg)));
+    let inv_pure = normalize(apply_aboff(invert(bg)));
+
+    let black = normalize(apply_aboff(LAB_BLACK));
+    let gray = normalize(apply_aboff(LAB_GRAY));
+    let white = normalize(apply_aboff(LAB_WHITE));
+
+    let dark = normalize(Lab { l: 15., a: inv.a, b: inv.b });
+    let bright = normalize(Lab { l: 90., a: inv.a, b: inv.b });
+
+    //return bg;
+    
+    [black,gray,white,inv_pure,dark,inv,bright].into_iter()
+        .map(|v| (v, squared_distance2(v, bg)) )
+        .max_by(|a,b| a.1.total_cmp(&b.1) )
+        .map(|(v,_)| v)
+        .unwrap_or(LAB_GRAY)
 }

@@ -3,7 +3,8 @@ use std::path::Path;
 
 use egui::{Color32, Rounding, Stroke, Pos2, Align2, FontId};
 use egui::epaint::ahash::AHasher;
-use image::{RgbaImage, GenericImage, GenericImageView, ImageBuffer};
+use image::{GenericImage, GenericImageView, ImageBuffer, Pixel as _, RgbaImage};
+use lab::Lab;
 use serde::Deserialize;
 
 use crate::gui::map::{RoomId, RoomMap, DirtyRooms, MapEditMode, LruCache};
@@ -118,6 +119,40 @@ impl DrawImage {
         }
 
         (avgc,ac)
+    }
+
+    pub fn lab_avg(&self, off: [u32;2], size: [u32;2], layers: impl Iterator<Item=usize> + Clone, rooms_size: [u32;2]) -> Option<Lab> {
+        assert_eq!(self.img.height() as usize, rooms_size[1] as usize * self.layers);
+        assert_eq!(self.img.width(), rooms_size[0]);
+
+        let mut dest = Lab::default();
+        let mut mul = 0usize;
+
+        for y in off[1] .. off[1] + size[1] {
+            for x in off[0] .. off[0] + size[0] {
+                let mut pix = image::Rgba([0,0,0,0]);
+                for l in layers.clone().filter(|&v| v < self.layers ) {
+                    let y = l as u32 * rooms_size[1] + y;
+                    if let Some(v) = self.img.get_pixel_checked(x, y) {
+                        pix.blend(v);
+                    }
+                }
+                if pix[3] > 64 {
+                    let lab = Lab::from_rgba(&pix.0);
+                    dest.l += lab.l; dest.a += lab.a; dest.b += lab.b;
+                    mul += 1;
+                }
+            }
+        }
+
+        if mul != 0 {
+            dest.l /= mul as f32;
+            dest.a /= mul as f32;
+            dest.b /= mul as f32;
+            Some(Lab::from_rgb(&dest.to_rgb()))
+        } else {
+            None
+        }
     }
 }
 

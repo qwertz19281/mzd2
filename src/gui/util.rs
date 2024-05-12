@@ -882,6 +882,7 @@ pub fn text_with_bg_color(
     anchor: Align2,
     text: impl ToString,
     font_id: FontId,
+    zoom: f32,
     color: Color32,
     bg_color: Option<Color32>,
     mut dest: impl FnMut(egui::Shape),
@@ -890,8 +891,11 @@ pub fn text_with_bg_color(
     let rect = anchor.anchor_size(pos, galley.size());
     let text = TextShape::new(rect.min, galley, color);
     if let Some(bg_color) = bg_color {
-        let rect = rect.expand(1.);
-        dest(egui::Shape::rect_filled(rect, Rounding::ZERO, bg_color));
+        if rect.width() * rect.height() != 0. {
+            let rect = Rect::from_min_size(rect.min, rect.size()/zoom);
+            let rect = rect.expand(1.);
+            dest(egui::Shape::rect_filled(rect, Rounding::ZERO, bg_color));
+        }
     }
     dest(text.into());
 }
