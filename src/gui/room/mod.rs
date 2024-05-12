@@ -16,7 +16,7 @@ use self::draw_image::DrawImage;
 
 use super::map::RoomId;
 use super::sel_matrix::{sel_entry_dims, SelMatrixLayered};
-use super::tags::TagState;
+use super::tags::TagMap;
 
 pub mod draw_image;
 
@@ -27,8 +27,8 @@ pub struct Room {
     pub coord: [u8;3],
     pub resuuid: Uuid,
     pub desc_text: String,
-    #[serde(skip)]
-    pub tags: Vec<TagState>,
+    #[serde(default, with = "indexmap::map::serde_seq")]
+    pub tags: TagMap,
     #[serde(skip)]
     pub op_evo: u64,
     #[serde(skip)]
@@ -79,7 +79,7 @@ impl Room {
             }),
             uuid,
             resuuid: generate_res_uuid(uuidmap, map_path),
-            tags: vec![],
+            tags: Default::default(),
             coord,
             op_evo: 0,
             locked: None,

@@ -12,6 +12,7 @@ pub enum UUIDTarget {
     Map(MapId),
     Room(MapId,RoomId),
     Resource(MapId,RoomId),
+    Tag(MapId,RoomId,Uuid),
 }
 
 pub type UUIDMap = HashMap<Uuid,UUIDTarget>;

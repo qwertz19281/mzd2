@@ -75,7 +75,7 @@ impl Map {
         match op {
             RoomOp::Move(r,c) => {
                 // move room
-                let old_pos = self.state.rooms.get(r).unwrap().coord;
+                let old_pos = self.state.rooms[r].coord;
                 self.move_room_force(r, c);
 
                 RoomOp::Move(r, old_pos)
@@ -253,7 +253,7 @@ impl Map {
                 self.id,
                 &self.path,
             ));
-            self.state.rooms.get(room_id).unwrap().update_uuidmap(room_id, uuidmap, self.id);
+            self.state.rooms[room_id].update_uuidmap(room_id, uuidmap, self.id);
             self.dirty_rooms.insert(room_id);
             room_id
         })

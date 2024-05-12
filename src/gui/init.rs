@@ -1,11 +1,13 @@
 use std::path::PathBuf;
 
 use scoped_tls_hkt::scoped_thread_local;
+use uuid::Uuid;
 
 use crate::util::uuid::UUIDMap;
 use crate::util::MapId;
 
 use super::dock::Docky;
+use super::tags::get_tag_state;
 use super::{MutQueue, dpi_hack};
 use super::map::RoomId;
 use super::palette::Palette;
@@ -36,7 +38,6 @@ pub struct SharedApp {
     pub top_panel: TopPanel,
     pub maps: Maps,
     pub tilesets: Tilesets,
-    pub warpon: Option<(MapId,RoomId,(u32,u32))>,
     pub palette: Palette,
     pub init_load_paths: Vec<PathBuf>,
     pub sam: SAM,
@@ -47,6 +48,7 @@ pub struct SAM {
     pub dpi_scale: f32,
     pub mut_queue: MutQueue,
     pub uuidmap: UUIDMap,
+    pub warpon: Option<(MapId,RoomId,Uuid)>,
 }
 
 impl SharedApp {
@@ -56,12 +58,12 @@ impl SharedApp {
             dock: Docky::new(),
             maps: Maps::new(),
             tilesets: Tilesets::new(),
-            warpon: None,
             palette: Palette::new(),
             sam: SAM {
                 dpi_scale: 0.,
                 mut_queue: vec![],
                 uuidmap: Default::default(),
+                warpon: None,
             },
             init_load_paths,
         }
@@ -93,10 +95,6 @@ impl eframe::App for SharedApp {
             }
 
             self.handle_filedrop(ctx);
-
-            if let Some(warpon) = self.warpon.as_mut() {
-                // TODO assert maps, remove if map or room doesn't exist anymore
-            }
 
             //ctx.input(|i| eprintln!("MAX TEX SIDE {}", i.max_texture_side));
 

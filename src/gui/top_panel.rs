@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use super::dock::DockTab;
 use super::init::SharedApp;
 use super::map::Map;
+use super::tags::get_tag_state;
 use super::tileset::Tileset;
 use super::util::{dragvalion_up, ArrUtl, RfdUtil};
 
@@ -44,9 +45,14 @@ pub fn top_panel_ui(state: &mut SharedApp, ui: &mut egui::Ui) {
         dragvalion_up(&mut state.top_panel.create_tileset_size[1], 16, 128..=3840, 16, ui);
         dragvalion_up(&mut state.top_panel.create_tileset_quant, 0.03125, 1..=2, 1, ui);
         ui.label("|");
-        if let Some(warpon) = state.warpon {
-            if ui.button(format!("Cancel warp creation: {}","TODO")).clicked() {
-                state.warpon = None;
+        if let Some((map,room,uuid)) = state.sam.warpon {
+            let res = get_tag_state(&mut state.maps, map, room, &uuid, |tag|{
+                if ui.button(format!("Cancel warp creation: {}", tag.text.lines().next().unwrap_or("") )).clicked() {
+                    state.sam.warpon = None;
+                }
+            });
+            if !res {
+                state.sam.warpon = None;
             }
         }
     });

@@ -155,7 +155,6 @@ impl Map {
 
     pub fn ui_draw(
         &mut self,
-        warp_setter: &mut Option<(MapId,RoomId,(u32,u32))>,
         palette: &mut Palette,
         ui: &mut egui::Ui,
         sam: &mut SAM,
@@ -334,7 +333,7 @@ impl Map {
                                 "Room Conns",
                                 20. * sam.dpi_scale, 32. * sam.dpi_scale, sam.dpi_scale,
                                 icons,
-                                !self.state.rooms.get(id).unwrap().transient,
+                                !self.state.rooms[id].transient,
                                 ui,
                                 |_,clicked,axis,dir| {
                                     if !clicked {return;}

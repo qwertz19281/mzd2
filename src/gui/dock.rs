@@ -223,7 +223,6 @@ impl TabViewer for TabV<'_> {
                 let mut map = map.borrow_mut();
                 self.0.dock.last_rendered_map = Some(*id);
                 map.ui_map(
-                    &mut self.0.warpon,
                     &mut self.0.palette,
                     ui,
                     &mut self.0.sam,
@@ -243,7 +242,6 @@ impl TabViewer for TabV<'_> {
             DockTab::Draw => if let Some(map) = self.0.dock.last_focused_map.and_then(|id| self.0.maps.open_maps.get_mut(&id)) {
                 let mut map = map.borrow_mut();
                 map.ui_draw(
-                    &mut self.0.warpon,
                     &mut self.0.palette,
                     ui,
                     &mut self.0.sam,

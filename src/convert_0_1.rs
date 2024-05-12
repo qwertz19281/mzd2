@@ -67,7 +67,7 @@ pub fn convert_map(map_path: PathBuf, uuidmap: &mut UUIDMap) -> anyhow::Result<(
             loaded: None,
             uuid: generate_uuid(uuidmap),
             resuuid: generate_res_uuid(uuidmap, &map_path),
-            tags: old_room.tags,
+            tags: Default::default(),
             coord: old_room.coord,
             op_evo: 0,
             locked: None,

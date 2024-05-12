@@ -1,4 +1,4 @@
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 
 use egui::{Sense, Vec2, Color32, Rounding, PointerButton};
@@ -8,6 +8,7 @@ use crate::gui::rector;
 use crate::gui::init::{SharedApp, SAM};
 use crate::gui::palette::Palette;
 use crate::gui::room::Room;
+use crate::gui::tags::render_tags;
 use crate::gui::texture::basic_tex_shape;
 use crate::gui::util::{alloc_painter_rel, alloc_painter_rel_ds, draw_grid, ArrUtl, dpad, DragOp, dragvalion_up, dragvalion_down, dragslider_up};
 use crate::gui::window_states::map::Maps;
@@ -68,7 +69,7 @@ impl Map {
         if clicked {
             // eprintln!("DPAD CLICK {}",describe_direction(axis,dir));
         }
-        let coord = self.state.rooms.get(self.ssel_room.unwrap()).unwrap().coord;
+        let coord = self.state.rooms[self.ssel_room.unwrap()].coord;
         let mut regen = true;
         if let Some(v) = &self.smartmove_preview {
             if
@@ -144,7 +145,6 @@ impl Map {
 
     pub fn ui_map(
         &mut self,
-        warp_setter: &mut Option<(MapId,RoomId,(u32,u32))>,
         palette: &mut Palette,
         ui: &mut egui::Ui,
         sam: &mut SAM,
@@ -160,6 +160,7 @@ impl Map {
         self.lru_tick();
 
         let mut smart_preview_hovered = false;
+        let mut tag_hovered = None;
 
         let mods = ui.input(|i| i.modifiers );
 
@@ -318,6 +319,9 @@ impl Map {
                                 }
                             }
                         },
+                        MapEditMode::Tags => {
+                            self.ui_tag_header(sam, ui);
+                        }
                         _ => {
                             if let Some(v) = self.ssel_room.filter(|&v| self.state.rooms.contains_key(v) ) {
                                 if ui.button("Delete Room").clicked() {
@@ -413,6 +417,9 @@ impl Map {
                             }
                         }
                     },
+                    MapEditMode::Tags => {
+                        self.ui_tag_props(palette, ui, sam, other_maps);
+                    }
                     _ => {
                         ui.horizontal(|ui| {
                             // dpad(
@@ -567,6 +574,8 @@ impl Map {
                 let click_coord = <[f32;2]>::from(hover_abs).as_u32().div(self.state.rooms_size);
                 let click_coord = [click_coord[0].min(255) as u8, click_coord[1].min(255) as u8, self.state.current_level];
 
+                let sub_click_coord = <[f32;2]>::from(hover_abs).as_u32().rem(self.state.rooms_size);
+
                 match self.state.edit_mode {
                     MapEditMode::DrawSel => {
                         if super_map.response.clicked_by(egui::PointerButton::Primary) {
@@ -601,7 +610,7 @@ impl Map {
                         }
                     },
                     MapEditMode::Tags => {
-                        //TODO
+                        self.ui_tag_mouse_op(&mut super_map, ui, sam, other_maps, click_coord, sub_click_coord, &mut tag_hovered);
                     },
                     MapEditMode::ConnXY | MapEditMode::ConnDown | MapEditMode::ConnUp => {
                         match super_map.drag_decode(PointerButton::Primary, ui) {
@@ -744,6 +753,14 @@ impl Map {
                                 |s| shapes.push(s),
                                 ui.ctx(),
                             );
+                            render_tags(
+                                &room,
+                                [cx,cy].mul(self.state.rooms_size),
+                                super_map.zoom,
+                                |s| shapes.push(s),
+                                ui,
+                                &tag_hovered,
+                            )
                         }
                     }
                 }
@@ -825,9 +842,14 @@ fn rooms_in_view(off: [f32;2], size: [f32;2], rooms_size: [u32;2], mut cb: impl 
     }
 }
 
-enum MapRef<'a> {
+pub(crate) enum MapRef<'a> {
     Direct(&'a Map),
     Ref(std::cell::Ref<'a,Map>)
+}
+
+pub(crate) enum MapRefMut<'a> {
+    Direct(&'a mut Map),
+    Ref(std::cell::RefMut<'a,Map>)
 }
 
 impl Deref for MapRef<'_> {
@@ -835,18 +857,51 @@ impl Deref for MapRef<'_> {
 
     fn deref(&self) -> &Self::Target {
         match self {
-            MapRef::Direct(v) => v,
-            MapRef::Ref(v) => v,
+            Self::Direct(v) => v,
+            Self::Ref(v) => v,
         }
     }
 }
 
-fn get_map_by_id<'a>(this: &'a Map, others: &'a Maps, map_id: MapId) -> Option<MapRef<'a>> {
+impl Deref for MapRefMut<'_> {
+    type Target = Map;
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            Self::Direct(v) => v,
+            Self::Ref(v) => v,
+        }
+    }
+}
+impl DerefMut for MapRefMut<'_> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        match self {
+            Self::Direct(v) => v,
+            Self::Ref(v) => v,
+        }
+    }
+}
+
+pub(crate) fn get_map_by_id<'a>(this: &'a Map, others: &'a Maps, map_id: MapId) -> Option<MapRef<'a>> {
     if map_id == this.id {
         Some(MapRef::Direct(this))
     } else if let Some(m) = others.open_maps.get(&map_id) {
         if let Ok(m) = m.try_borrow() {
             Some(MapRef::Ref(m))
+        } else {
+            None
+        }
+    } else {
+        None
+    }
+}
+
+pub(crate) fn get_map_by_id_mut<'a>(this: &'a mut Map, others: &'a Maps, map_id: MapId) -> Option<MapRefMut<'a>> {
+    if map_id == this.id {
+        Some(MapRefMut::Direct(this))
+    } else if let Some(m) = others.open_maps.get(&map_id) {
+        if let Ok(m) = m.try_borrow_mut() {
+            Some(MapRefMut::Ref(m))
         } else {
             None
         }

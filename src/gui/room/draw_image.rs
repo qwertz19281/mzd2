@@ -404,7 +404,7 @@ impl DrawImageGroup {
 
         if !self.rooms.is_empty() && rooms.contains_key(self.rooms[0].0) {
             let base_coord = self.rooms[0].1;
-            let base_room = rooms.get(self.rooms[0].0).unwrap();
+            let base_room = &rooms[self.rooms[0].0];
             if n_layers != base_room.visible_layers.len() {
                 return false;
             }

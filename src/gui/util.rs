@@ -1,5 +1,6 @@
 use std::ops::RangeInclusive;
 
+use egui::epaint::TextShape;
 use egui::{Shape, Pos2, Rect, Vec2, Sense, PointerButton, Align2, FontId, Color32, Rounding};
 
 use super::init::EFRAME_FRAME;
@@ -873,6 +874,26 @@ pub fn dragslider_up<Num>(value: &mut Num, speed: impl Into<f64>, clamp_range: R
             ui.ctx().request_repaint();
         }
     }
+}
+
+pub fn text_with_bg_color(
+    fonts: &egui::text::Fonts,
+    pos: Pos2,
+    anchor: Align2,
+    text: impl ToString,
+    font_id: FontId,
+    color: Color32,
+    bg_color: Option<Color32>,
+    mut dest: impl FnMut(egui::Shape),
+) {
+    let galley = fonts.layout_no_wrap(text.to_string(), font_id, color);
+    let rect = anchor.anchor_size(pos, galley.size());
+    let text = TextShape::new(rect.min, galley, color);
+    if let Some(bg_color) = bg_color {
+        let rect = rect.expand(1.);
+        dest(egui::Shape::rect_filled(rect, Rounding::ZERO, bg_color));
+    }
+    dest(text.into());
 }
 
 pub trait RfdUtil {
