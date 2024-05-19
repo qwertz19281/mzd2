@@ -212,7 +212,7 @@ impl TabViewer for TabV<'_> {
                 }
             },
             DockTab::Palette => "Palette".into(),
-            DockTab::Lru => "Lru".into(),
+            DockTab::Lru => "LastUsed".into(),
             DockTab::Draw => "Draw".into(),
         }
     }
