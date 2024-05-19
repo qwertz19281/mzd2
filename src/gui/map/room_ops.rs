@@ -632,13 +632,40 @@ impl Map {
             }
         }
 
+        let retrace_ope = next_op_gen_evo();
+        self.latest_used_opevo = retrace_ope;
+
+        flood_spin.push_back(my_room);
+
+        while let Some(next_id) = flood_spin.pop_front() {
+            if !self.state.rooms.contains_key(next_id) {continue;}
+            if self.state.rooms[next_id].op_evo > resetted_ope && self.state.rooms[next_id].op_evo < retrace_ope {
+                self.state.rooms[next_id].op_evo = retrace_ope;
+                let next_coord = self.state.rooms[next_id].coord;
+                try_6_sides(next_coord, |side_coord,ax,dir| {
+                    if let Some(&side_id) = self.room_matrix.get(side_coord) {
+                        flood_spin.push_back(side_id);
+                    } else if keep_fwd_gap && ax == axis && dir == direction {
+                        // We try to keep the gap when shifting
+                        try_6_sides(side_coord, |sside_coord,_,_| {
+                            if sside_coord != next_coord {
+                                if let Some(&sside_id) = self.room_matrix.get(sside_coord) {
+                                    flood_spin.push_back(sside_id);
+                                }
+                            }
+                        });
+                    }
+                });
+            }
+        }
+
         let (mut area_min, mut area_max) = ([255,255,255],[0,0,0]);
 
         let mut abort = false;
 
         all_list.retain(|&id| {
             let Some(room) = self.state.rooms.get(id) else {return false};
-            let retain = room.op_evo >= unconn_cross_ope;
+            let retain = room.op_evo == retrace_ope;
             if retain && !abort {
                 try_side(room.coord, axis, direction, |c2|
                     if let Some(sroom) = self.room_matrix.get(c2).and_then(|&v| self.state.rooms.get(v) ) {
