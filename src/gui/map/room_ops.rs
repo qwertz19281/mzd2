@@ -554,11 +554,15 @@ impl Map {
                         let crossback = downwards && !in_sift_range(side_coord, base_coord, axis, !dir);
                         let set_ope =
                             if upwards {must_ope}
-                            else if connected && crossback {conn_cross_ope}
                             else if connected {conn_ope}
-                            else if crossback {unconn_cross_ope}
                             else {unconn_ope};
-                        let set_ope = self.state.rooms[next_id].op_evo.min(set_ope);
+                        let mut set_ope = self.state.rooms[next_id].op_evo.min(set_ope);
+                        if set_ope == conn_ope && crossback {
+                            set_ope = conn_cross_ope;
+                        }
+                        if set_ope == unconn_ope && crossback {
+                            set_ope = unconn_cross_ope;
+                        }
                         if backlock != Some(side_coord) && self.state.rooms[side_id].op_evo < resetted_ope {
                             debug_assert!(!all_list.iter().all(|&v| v == side_id));
                             all_list.push(side_id);
