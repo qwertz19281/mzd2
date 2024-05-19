@@ -609,18 +609,26 @@ impl Map {
             if start_level >= must_ope {return None;}
 
             flood_spin.push_back(bc_id);
+            self.state.rooms[bc_id].op_evo = resetted_ope;
 
             while let Some(next_id) = flood_spin.pop_front() {
-                if let Some(room) = self.state.rooms.get_mut(next_id) {
-                    if room.op_evo <= start_level && room.op_evo > resetted_ope {
-                        room.op_evo = resetted_ope;
-                        try_6_sides(room.coord, |side_coord,_,_| {
-                            if let Some(&side_room_id) = self.room_matrix.get(side_coord) {
-                                flood_spin.push_back(side_room_id);
-                            }
-                        });
+                if !self.state.rooms.contains_key(next_id) {continue;}
+                let self_ope = self.state.rooms[next_id].op_evo;
+                if self_ope >= must_ope {return None;}
+                try_6_sides(self.state.rooms[next_id].coord, |side_coord,ax,dir| {
+                    if let Some(&side_id) = self.room_matrix.get(side_coord) {
+                        let side_ope = self.state.rooms[side_id].op_evo;
+                        if side_ope <= resetted_ope || side_ope >= must_ope {return;}
+                        let downward = ax == axis && dir != direction;
+                        let is_higher_level = side_ope > start_level;
+                        let is_unconn_opes = side_ope == unconn_cross_ope || side_ope == unconn_ope;
+                        let connected = conn(&self.state.rooms[next_id], ax,dir) && conn(&self.state.rooms[side_id], ax,!dir);
+                        if downward || !(is_higher_level && !(connected && is_unconn_opes)) {
+                            self.state.rooms[side_id].op_evo = resetted_ope;
+                            flood_spin.push_back(side_id);
+                        }
                     }
-                }
+                });
             }
         }
 
