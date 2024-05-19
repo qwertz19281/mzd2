@@ -542,7 +542,7 @@ impl Map {
         while let Some(next_id) = flood_spin.pop_front() {
             if self.state.rooms.contains_key(next_id) {
                 debug_assert!(!self.state.rooms[next_id].transient);
-                if self.state.rooms[next_id].op_evo >= resetted_ope {continue;}
+                //if self.state.rooms[next_id].op_evo >= resetted_ope {continue;}
                 let next_coord = self.state.rooms[next_id].coord;
                 try_6_sides(self.state.rooms[next_id].coord, |side_coord,ax,dir| {
                     if let Some(&side_id) = self.room_matrix.get(side_coord) {
@@ -551,32 +551,39 @@ impl Map {
                         let connected = conn(&self.state.rooms[next_id], ax,dir) && conn(&self.state.rooms[side_id], ax,!dir);
                         let upwards = ax == axis && dir == direction;
                         let downwards = ax == axis && dir != direction;
-                        let crossback = downwards && next_coord == base_coord;
+                        let crossback = downwards && !in_sift_range(side_coord, base_coord, axis, !dir);
                         let set_ope =
                             if upwards {must_ope}
                             else if connected && crossback {conn_cross_ope}
                             else if connected {conn_ope}
-                            else if crossback {unconn_ope}
-                            else {unconn_cross_ope};
+                            else if crossback {unconn_cross_ope}
+                            else {unconn_ope};
+                        let set_ope = self.state.rooms[next_id].op_evo.min(set_ope);
+                        if backlock != Some(side_coord) && self.state.rooms[side_id].op_evo < resetted_ope {
+                            debug_assert!(!all_list.iter().all(|&v| v == side_id));
+                            all_list.push(side_id);
+                        }
                         if set_ope > self.state.rooms[side_id].op_evo {
                             self.state.rooms[side_id].op_evo = set_ope;
                             if backlock != Some(side_coord) {
                                 flood_spin.push_back(side_id);
-                                all_list.push(side_id);
                             }
                         }
-                    } else if keep_fwd_gap {
+                    } else if keep_fwd_gap && ax == axis && dir == direction {
                         // We try to keep the gap when shifting
-                        try_6_sides(self.state.rooms[next_id].coord, |sside_coord,_,_| {
+                        try_6_sides(side_coord, |sside_coord,_,_| {
                             if sside_coord != next_coord {
                                 if let Some(&sside_id) = self.room_matrix.get(sside_coord) {
                                     if let Some(sside) = self.state.rooms.get_mut(sside_id) {
                                         debug_assert_eq!(sside.coord, sside_coord);
+                                        if backlock != Some(sside_coord) && sside.op_evo < resetted_ope {
+                                            debug_assert!(!all_list.iter().all(|&v| v == sside_id));
+                                            all_list.push(sside_id);
+                                        }
                                         if unconn_cross_ope > sside.op_evo {
                                             sside.op_evo = unconn_cross_ope;
                                             if backlock != Some(sside_coord) {
                                                 flood_spin.push_back(sside_id);
-                                                all_list.push(sside_id);
                                             }
                                         }
                                     }
@@ -596,12 +603,12 @@ impl Map {
 
             debug_assert_ne!(start_level, resetted_ope);
             if start_level >= must_ope {return None;}
-            
+
             flood_spin.push_back(bc_id);
 
             while let Some(next_id) = flood_spin.pop_front() {
                 if let Some(room) = self.state.rooms.get_mut(next_id) {
-                    if room.op_evo == start_level {
+                    if room.op_evo <= start_level && room.op_evo > resetted_ope {
                         room.op_evo = resetted_ope;
                         try_6_sides(room.coord, |side_coord,_,_| {
                             if let Some(&side_room_id) = self.room_matrix.get(side_coord) {
