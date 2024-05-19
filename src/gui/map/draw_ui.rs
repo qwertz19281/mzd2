@@ -134,22 +134,29 @@ impl Map {
 
     fn adaptive_pushaway(&mut self, coord: [u8;3], from: [u8;3], from_room: RoomId, axis: OpAxis, dir: bool, uuidmap: &mut UUIDMap) {
         assert_eq!(self.state.rooms.get(from_room).map(|r| r.coord), Some(from));
-        if let Some(v) = self.shift_smart_collect(coord, 1, axis, dir, false, false, false) {
+        // if let Some(v) = self.shift_smart_collect(coord, 1, axis, dir, false, false, false) {
+        //     if !v.rooms.contains(&from_room) {
+        //         let op = RoomOp::SiftSmart(v, true);
+        //         self.ui_apply_roomop(op, uuidmap);
+        //         return;
+        //     }
+        // }
+        // if let Some(v) = self.shift_smart_collect(coord, 1, axis, dir, true, false, false) {
+        //     if !v.rooms.contains(&from_room) {
+        //         let op = RoomOp::SiftSmart(v, true);
+        //         self.ui_apply_roomop(op, uuidmap);
+        //         return;
+        //     }
+        // }
+        // if let Some(op) = self.create_shift_away(coord, 1, axis, dir) {
+        //     self.ui_apply_roomop(op, uuidmap);
+        // }
+        if let Some(v) = self.shift_smart_new(coord, Some(from), true, axis, dir, true) {
             if !v.rooms.contains(&from_room) {
                 let op = RoomOp::SiftSmart(v, true);
                 self.ui_apply_roomop(op, uuidmap);
                 return;
             }
-        }
-        if let Some(v) = self.shift_smart_collect(coord, 1, axis, dir, true, false, false) {
-            if !v.rooms.contains(&from_room) {
-                let op = RoomOp::SiftSmart(v, true);
-                self.ui_apply_roomop(op, uuidmap);
-                return;
-            }
-        }
-        if let Some(op) = self.create_shift_away(coord, 1, axis, dir) {
-            self.ui_apply_roomop(op, uuidmap);
         }
     }
 

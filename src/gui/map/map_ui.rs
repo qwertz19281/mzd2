@@ -77,7 +77,7 @@ impl Map {
                 v.n_sift_old == self.state.smart_move_size &&
                 v.axis == axis &&
                 v.dir == dir &&
-                v.op_evo == self.latest_used_opevo &&
+                v.highest_op_evo == self.latest_used_opevo &&
                 v.away_lock == false &&
                 v.no_new_connect == false &&
                 v.allow_siftshrink == true
@@ -689,8 +689,8 @@ impl Map {
             let view_pos_1 = self.state.view_pos.add(view_size.into());
 
             if let Some(opts) = &self.smartmove_preview {
-                if smart_preview_hovered && opts.op_evo == self.latest_used_opevo {
-                    preview_smart_move = Some(opts.op_evo);
+                if smart_preview_hovered && opts.highest_op_evo == self.latest_used_opevo {
+                    preview_smart_move = Some(opts.highest_op_evo);
                 }
             }
 

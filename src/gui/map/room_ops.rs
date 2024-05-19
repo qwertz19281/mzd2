@@ -11,7 +11,7 @@ use crate::util::next_op_gen_evo;
 use crate::SRc;
 
 use super::uuid::{UUIDMap, UUIDTarget};
-use super::{RoomId, Map, MapState};
+use super::{next_op_gen_evo_n, Map, MapState, RoomId};
 
 pub enum RoomOp {
     Move(RoomId,[u8;3]),
@@ -426,6 +426,7 @@ impl Map {
         // this is the super flood fill
         while let Some((next_id,sidetest)) = flood_spin.pop_front() {
             if let Some(room) = self.state.rooms.get_mut(next_id) {
+                debug_assert!(!room.transient);
                 if away_lock && !in_sift_range(room.coord, base_coord, axis, dir) {continue}
                 if let Some((sidetest_a,sidetest_b)) = sidetest {
                     if !room.dirconn[sidetest_a as usize][sidetest_b as usize] {continue}
@@ -440,7 +441,7 @@ impl Map {
                     try_6_sides(room.coord, |side_coord,sidetest_a,sidetest_b| {
                         if room.dirconn[sidetest_a as usize][sidetest_b as usize] {
                             if let Some(&side_room_id) = self.room_matrix.get(side_coord) {
-                                flood_spin.push_back((side_room_id,Some((sidetest_a,!sidetest_b))));
+                                flood_spin.push_back((side_room_id,Some((sidetest_a.axis_idx() as u8,!sidetest_b))));
                             }
                         }
                     });
@@ -512,12 +513,151 @@ impl Map {
             no_new_connect,
             allow_siftshrink,
             rooms: all_list.into(),
-            op_evo,
+            highest_op_evo: op_evo,
+        })
+    }
+
+    pub(super) fn shift_smart_new(&mut self, base_coord: [u8;3], mut backlock: Option<[u8;3]>, keep_fwd_gap: bool, axis: OpAxis, direction: bool, no_new_connect: bool) -> Option<ShiftSmartCollected> {
+        let my_room = self.check_shift_smart1(base_coord, 1, axis, direction)?;
+
+        let mut flood_spin = VecDeque::<RoomId>::with_capacity(65536);
+        let mut all_list = Vec::with_capacity(65536);
+
+        let [resetted_ope,unconn_cross_ope,unconn_ope,conn_cross_ope,conn_ope,must_ope] = next_op_gen_evo_n::<6>();
+        self.latest_used_opevo = must_ope;
+
+        self.state.rooms.get_mut(my_room)?.op_evo = must_ope;
+
+        flood_spin.push_back(my_room);
+        all_list.push(my_room);
+
+        if let None = backlock.and_then(|c| self.room_matrix.get(c) ).and_then(|&c| self.state.rooms.get_mut(c) ) {
+            backlock = None;
+        }
+
+        let conn = |room: &Room,ax: OpAxis,dir: bool| {
+            room.dirconn[ax.axis_idx()][dir as usize]
+        };
+
+        while let Some(next_id) = flood_spin.pop_front() {
+            if self.state.rooms.contains_key(next_id) {
+                debug_assert!(!self.state.rooms[next_id].transient);
+                if self.state.rooms[next_id].op_evo >= resetted_ope {continue;}
+                let next_coord = self.state.rooms[next_id].coord;
+                try_6_sides(self.state.rooms[next_id].coord, |side_coord,ax,dir| {
+                    if let Some(&side_id) = self.room_matrix.get(side_coord) {
+                        if !self.state.rooms.contains_key(side_id) {return;}
+                        debug_assert_eq!(self.state.rooms[side_id].coord, side_coord);
+                        let connected = conn(&self.state.rooms[next_id], ax,dir) && conn(&self.state.rooms[side_id], ax,!dir);
+                        let upwards = ax == axis && dir == direction;
+                        let downwards = ax == axis && dir != direction;
+                        let crossback = downwards && next_coord == base_coord;
+                        let set_ope =
+                            if upwards {must_ope}
+                            else if connected && crossback {conn_cross_ope}
+                            else if connected {conn_ope}
+                            else if crossback {unconn_ope}
+                            else {unconn_cross_ope};
+                        if set_ope > self.state.rooms[side_id].op_evo {
+                            self.state.rooms[side_id].op_evo = set_ope;
+                            if backlock != Some(side_coord) {
+                                flood_spin.push_back(side_id);
+                                all_list.push(side_id);
+                            }
+                        }
+                    } else if keep_fwd_gap {
+                        // We try to keep the gap when shifting
+                        try_6_sides(self.state.rooms[next_id].coord, |sside_coord,_,_| {
+                            if sside_coord != next_coord {
+                                if let Some(&sside_id) = self.room_matrix.get(sside_coord) {
+                                    if let Some(sside) = self.state.rooms.get_mut(sside_id) {
+                                        debug_assert_eq!(sside.coord, sside_coord);
+                                        if unconn_cross_ope > sside.op_evo {
+                                            sside.op_evo = unconn_cross_ope;
+                                            if backlock != Some(sside_coord) {
+                                                flood_spin.push_back(sside_id);
+                                                all_list.push(sside_id);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    }
+                });
+            }
+        }
+
+        if let Some(bc) = backlock {
+            // here we exclude the rooms that should not move, as defined by backlock
+            let &bc_id = self.room_matrix.get(bc).unwrap();
+
+            let start_level = self.state.rooms[bc_id].op_evo;
+
+            debug_assert_ne!(start_level, resetted_ope);
+            if start_level >= must_ope {return None;}
+            
+            flood_spin.push_back(bc_id);
+
+            while let Some(next_id) = flood_spin.pop_front() {
+                if let Some(room) = self.state.rooms.get_mut(next_id) {
+                    if room.op_evo == start_level {
+                        room.op_evo = resetted_ope;
+                        try_6_sides(room.coord, |side_coord,_,_| {
+                            if let Some(&side_room_id) = self.room_matrix.get(side_coord) {
+                                flood_spin.push_back(side_room_id);
+                            }
+                        });
+                    }
+                }
+            }
+        }
+
+        let (mut area_min, mut area_max) = ([255,255,255],[0,0,0]);
+
+        let mut abort = false;
+
+        all_list.retain(|&id| {
+            let Some(room) = self.state.rooms.get(id) else {return false};
+            let retain = room.op_evo >= unconn_cross_ope;
+            if retain && !abort {
+                try_side(room.coord, axis, direction, |c2|
+                    if let Some(sroom) = self.room_matrix.get(c2).and_then(|&v| self.state.rooms.get(v) ) {
+                        if sroom.op_evo < unconn_cross_ope {
+                            abort = true;
+                        }
+                    }
+                );
+                area_min[0] = area_min[0].min(room.coord[0]); area_max[0] = area_max[0].max(room.coord[0]);
+                area_min[1] = area_min[1].min(room.coord[1]); area_max[1] = area_max[1].max(room.coord[1]);
+                area_min[2] = area_min[2].min(room.coord[2]); area_max[2] = area_max[2].max(room.coord[2]);
+            }
+            retain
+        });
+
+        if abort || !sift_vali((area_min,area_max), 1, axis, direction) {return None;}
+
+        Some(ShiftSmartCollected {
+            base_coord,
+            n_sift_old: 0,
+            n_sift: 1,
+            axis,
+            dir: direction,
+            away_lock: false,
+            no_new_connect,
+            allow_siftshrink: false,
+            rooms: all_list.into(),
+            highest_op_evo: must_ope,
         })
     }
 
     /// try move room and base_coord and all directly connected into a direction
     fn shift_smart_apply(&mut self, o: &ShiftSmartCollected, unconnect_new: bool) {
+        let op_evo = next_op_gen_evo();
+        for &id in &*o.rooms {
+            let Some(room) = self.state.rooms.get_mut(id) else {continue};
+            room.op_evo = op_evo;
+        }
         for &id in &*o.rooms {
             let Some(room) = self.state.rooms.get_mut(id) else {continue};
 
@@ -535,7 +675,7 @@ impl Map {
                         if let Some(&sid) = self.room_matrix.get(side_coord) {
                             // now we have a new neighbor at that side, if not ours, we shall unconnect
                             if let Some(nroom) = self.state.rooms.get_mut(sid) {
-                                if nroom.op_evo != o.op_evo && nroom.dirconn[sidetest_a as usize][!sidetest_b as usize] {
+                                if nroom.op_evo != op_evo && nroom.dirconn[sidetest_a as usize][!sidetest_b as usize] {
                                     nroom.dirconn[sidetest_a as usize][!sidetest_b as usize] = false;
                                     let room = unsafe { self.state.rooms.get_unchecked_mut(id) };
                                     room.dirconn[sidetest_a as usize][sidetest_b as usize] = false;
@@ -549,7 +689,8 @@ impl Map {
         for &id in &*o.rooms {
             let Some(room) = self.state.rooms.get_mut(id) else {continue};
 
-            self.room_matrix.insert(room.coord, id);
+            let res = self.room_matrix.insert(room.coord, id);
+            debug_assert!(res.is_none());
         }
     }
 
@@ -588,6 +729,24 @@ impl Map {
             }
             true
         }).unwrap_or(false)
+    }
+
+    pub fn get_room_and_connected(&self, room_id: RoomId, ax: OpAxis, dir: bool) -> Option<([u8;3],RoomId,bool)> {
+        let conn = |room: &Room,ax: OpAxis,dir: bool| {
+            room.dirconn[ax.axis_idx()][dir as usize]
+        };
+
+        let Some(room) = self.state.rooms.get(room_id) else {return None};
+
+        try_side(room.coord, ax, dir, |c2| {
+            if let Some(&id) = self.room_matrix.get(c2) {
+                if let Some(sroom) = self.state.rooms.get(id) {
+                    let conn = conn(room,ax,dir) && conn(sroom,ax,!dir);
+                    return Some((c2,id,conn));
+                }
+            }
+            None
+        }).unwrap_or(None)
     }
 }
 
@@ -685,24 +844,24 @@ fn apply_unsift(v: [u8;3], n_sift: u8, axis: OpAxis, dir: bool) -> [u8;3] {
     apply_sift(v, n_sift, axis, !dir)
 }
 
-pub(crate) fn try_6_sides(v: [u8;3], mut fun: impl FnMut([u8;3],u8,bool)) {
+pub(crate) fn try_6_sides(v: [u8;3], mut fun: impl FnMut([u8;3],OpAxis,bool)) {
     if v[0] != 255 {
-        fun([v[0]+1, v[1]  , v[2]  ], 0,true);
+        fun([v[0]+1, v[1]  , v[2]  ], OpAxis::X,true);
     }
     if v[0] !=   0 {
-        fun([v[0]-1, v[1]  , v[2]  ], 0,false);
+        fun([v[0]-1, v[1]  , v[2]  ], OpAxis::X,false);
     }
     if v[1] != 255 {
-        fun([v[0]  , v[1]+1, v[2]  ], 1,true);
+        fun([v[0]  , v[1]+1, v[2]  ], OpAxis::Y,true);
     }
     if v[1] !=   0 {
-        fun([v[0]  , v[1]-1, v[2]  ], 1,false);
+        fun([v[0]  , v[1]-1, v[2]  ], OpAxis::Y,false);
     }
     if v[2] != 255 {
-        fun([v[0]  , v[1]  , v[2]+1], 2,true);
+        fun([v[0]  , v[1]  , v[2]+1], OpAxis::Z,true);
     }
     if v[2] !=   0 {
-        fun([v[0]  , v[1]  , v[2]-1], 2,false);
+        fun([v[0]  , v[1]  , v[2]-1], OpAxis::Z,false);
     }
 }
 
@@ -729,7 +888,7 @@ pub struct ShiftSmartCollected {
     pub(super) no_new_connect: bool,
     pub(super) allow_siftshrink: bool,
     pub(super) rooms: SRc<[RoomId]>,
-    pub(super) op_evo: u64,
+    pub(super) highest_op_evo: u64,
 }
 
 impl ShiftSmartCollected {

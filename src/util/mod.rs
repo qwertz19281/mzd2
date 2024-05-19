@@ -122,6 +122,20 @@ pub fn next_op_gen_evo() -> u64 {
     }
 }
 
+pub fn next_op_gen_evo_n<const N: usize>() -> [u64;N] {
+    assert!(N <= 255 && N > 0 && N as u8 as usize == N);
+    let next = OP_GEN_EVO.fetch_add(N as i64, Relaxed);
+    if (next > 0) & (next.overflowing_add_unsigned(N as u64).0 > next) {
+        let mut out = [next as u64;N];
+        for i in 0 .. N {
+            out[i] = out[i].overflowing_add(i as u64).0;
+        }
+        out
+    } else {
+        panic!("OpEvo Overflow");
+    }
+}
+
 static UR_OP_ID: AtomicI64 = AtomicI64::new(64);
 
 pub fn next_ur_op_id() -> u64 {
