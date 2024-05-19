@@ -161,6 +161,7 @@ impl Map {
 
     pub fn after_room_op_apply_invalidation(&mut self, redo: bool) {
         self.smartmove_preview = None;
+        self.picomap_tex.dirty();
         if !redo {
             self.redo_buf.clear();
         }
