@@ -27,7 +27,9 @@ pub fn templicon<S>(
         Sense::click(),
         dpi,
     );
-    
+
+    let mut hovr = None;
+
     let mut shapes = vec![];
     'r: {
         let dest_rect = rector(0, 0, icon_width, icon_height);
@@ -54,6 +56,16 @@ pub fn templicon<S>(
         let visible_layers = room.visible_layers.iter().enumerate()
             .filter(|(_,(v,_))| *v != 0)
             .map(|(i,_)| i);
+
+        {
+            let mut mesh = egui::Mesh::with_texture(tex.id());
+
+            for i in visible_layers.clone() {
+                mesh.add_rect_with_uv(rector(0,0,rooms_size[0],rooms_size[1]), loaded.image.layer_uv(i, rooms_size), Color32::WHITE);
+            }
+
+            hovr = Some((tex.clone(),mesh));
+        }
         
         for i in visible_layers {
             mesh.add_rect_with_uv(dest_rect, loaded.image.layer_uv(i, rooms_size), Color32::WHITE);
@@ -83,4 +95,17 @@ pub fn templicon<S>(
     }
 
     p.extend_rel_fixtex(shapes);
+
+    if let Some((_tex,mesh)) = hovr {
+        p.response.on_hover_ui_at_pointer(|ui| {
+            let p = alloc_painter_rel(
+                ui,
+                rooms_size.as_f32().into(),
+                Sense::click(),
+                1.,
+            );
+
+            p.extend_rel_fixtex(vec![egui::Shape::Mesh(mesh)])
+        });
+    }
 }
