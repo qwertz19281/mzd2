@@ -1,10 +1,12 @@
 use std::cell::RefCell;
 use std::collections::VecDeque;
+use std::hash::{Hash, Hasher};
+use std::ops::Deref;
 
 use egui::{TextureOptions, Rounding};
-use image::RgbaImage;
+use image::{imageops, RgbaImage};
 
-use crate::util::MapId;
+use crate::util::{next_palette_id, MapId};
 use crate::SRc;
 
 use super::init::SharedApp;
@@ -25,7 +27,7 @@ pub struct Palette {
 impl Palette {
     pub fn new() -> Self {
         Self {
-            paletted: (0..10).map(|_| PaletteItem { uv: RECT_0_0_1_1, src: SRc::new(SelImg::empty()) }).collect(),
+            paletted: (0..10).map(|_| PaletteItem::empty() ).collect(),
             selected: 0,
             lru: Default::default(),
             lru_scroll_back: true,
@@ -40,8 +42,19 @@ impl Palette {
                 self.lru.pop_back();
             }
         }
+        // TODO use something like indexmap that supports deque: hashlink?
+        self.lru.retain(|v| v.img_hash != item.img_hash || v.img != item.img );
         self.lru.push_back(item);
         self.lru_scroll_back = true;
+    }
+
+    pub fn mutated_selected(&mut self, f: impl FnOnce(&mut SelImg)) {
+        let mut new = self.paletted[self.selected as usize].clone();
+        let img = SRc::make_mut(&mut new.src);
+        img.texture = RefCell::new(TextureCell::new("PalTex", PAL_TEX_OPTS));
+        f(img);
+        new.img_hash = hash_img(&new.img);
+        self.replace_selected(new);
     }
 
     pub fn do_keyboard_numbers(&mut self, ui: &mut egui::Ui) {
@@ -69,22 +82,34 @@ impl Palette {
 pub struct PaletteItem {
     pub src: SRc<SelImg>,
     pub uv: egui::Rect,
+    img_hash: u64,
 }
 
 impl PaletteItem {
     pub fn basic(src: SRc<SelImg>) -> Self {
         Self {
+            img_hash: hash_img(&src.img),
             src,
             uv: RECT_0_0_1_1,
         }
     }
-    // divided by 8
-    pub fn quantis8(&self) -> [u32;2] {
-        let (w,h) = self.src.img.dimensions();
-        [w/8,h/8]
+
+    fn empty() -> Self {
+        Self::basic(SRc::new(SelImg::empty()))
     }
-    pub fn is_empty(&self) -> bool {
-        self.src.img.is_empty()
+}
+
+fn hash_img(v: &RgbaImage) -> u64 {
+    let mut hasher = ahash::AHasher::default();
+    v.hash(&mut hasher);
+    hasher.finish()
+}
+
+impl Deref for PaletteItem {
+    type Target = SRc<SelImg>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.src
     }
 }
 
@@ -200,6 +225,7 @@ fn xbounds_iter(len: u32) -> impl Iterator<Item = (u32,u32)> {
 #[derive(Clone)]
 pub struct SelImg {
     pub img: RgbaImage,
+    /// The order of the entries in this vec is undefined, and reordering should be avoided
     pub sels: Vec<([u16;2],SelEntry)>,
     pub texture: RefCell<TextureCell>,
     pub src_room_off: Option<[u16;2]>,
@@ -222,6 +248,57 @@ impl SelImg {
     pub fn is_empty(&self) -> bool {
         self.img.is_empty()
     }
+
+    // divided by 8
+    pub fn quantis8(&self) -> [u32;2] {
+        let (w,h) = self.img.dimensions();
+        [w/8,h/8]
+    }
+
+    pub fn rot90(&mut self) {
+        self.texture.borrow_mut().dirty();
+        sels_transform(self.quantis8().as_u16_clamped(), &mut self.sels, true, [true,false]);
+        self.img = imageops::rotate90(&self.img);
+    }
+
+    pub fn rot270(&mut self) {
+        self.texture.borrow_mut().dirty();
+        sels_transform(self.quantis8().as_u16_clamped(), &mut self.sels, true, [false,true]);
+        self.img = imageops::rotate270(&self.img);
+    }
+
+    pub fn flip(&mut self, flip: [bool;2]) {
+        self.texture.borrow_mut().dirty();
+        sels_transform(self.quantis8().as_u16_clamped(), &mut self.sels, false, flip);
+        match flip {
+            [true,true] => imageops::rotate180_in_place(&mut self.img),
+            [true,false] => imageops::flip_horizontal_in_place(&mut self.img),
+            [false,true] => imageops::flip_vertical_in_place(&mut self.img),
+            _ => {},
+        }
+    }
+}
+
+fn sels_transform(mut size: [u16;2],v: &mut [([u16;2],SelEntry)],  swap: bool, flip: [bool;2]) -> [u16;2] {
+    if swap {
+        size.reverse();
+    }
+    for (pos,v) in v {
+        if swap {
+            pos.reverse();
+            v.size.reverse();
+            v.start.reverse();
+        }
+        if flip[0] {
+            pos[0] = size[0] - 1 - pos[0];
+            v.start[0] = v.size[0] - 1 - v.start[0];
+        }
+        if flip[1] {
+            pos[1] = size[1] - 1 - pos[1];
+            v.start[1] = v.size[1] - 1 - v.start[1];
+        }
+    }
+    size
 }
 
 const PAL_TEX_OPTS: TextureOptions = TextureOptions {

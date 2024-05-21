@@ -18,15 +18,19 @@ pub struct TilesetId {
 
 static ID_GEN_SRC: AtomicI64 = AtomicI64::new(64);
 
+fn next_egui_id() -> u64 {
+    let next = ID_GEN_SRC.fetch_add(1, Relaxed);
+    if next > 0 {
+        next as _
+    } else {
+        panic!("Id Overflow");
+    }
+}
+
 impl TilesetId {
     pub fn new() -> Self {
-        let next = ID_GEN_SRC.fetch_add(1, Relaxed);
-        if next > 0 {
-            Self {
-                i: egui::Id::new(next)
-            }
-        } else {
-            panic!("Id Overflow");
+        Self {
+            i: egui::Id::new(next_egui_id())
         }
     }
 
@@ -43,15 +47,9 @@ pub struct MapId {
 
 impl MapId {
     pub fn new() -> Self {
-        let next = ID_GEN_SRC.fetch_add(1, Relaxed);
-        let next2 = ID_GEN_SRC.fetch_add(1, Relaxed);
-        if next > 0 && next2 > 0 {
-            Self {
-                i_map: egui::Id::new(next),
-                i_draw: egui::Id::new(next2),
-            }
-        } else {
-            panic!("Id Overflow");
+        Self {
+            i_map: egui::Id::new(next_egui_id()),
+            i_draw: egui::Id::new(next_egui_id()),
         }
     }
 
@@ -155,6 +153,17 @@ pub fn next_tex_id() -> u64 {
         next as u64
     } else {
         panic!("TexId Overflow");
+    }
+}
+
+static PALETTE_ID: AtomicI64 = AtomicI64::new(64);
+
+pub fn next_palette_id() -> u64 {
+    let next = PALETTE_ID.fetch_add(1, Relaxed);
+    if next > 0 {
+        next as u64
+    } else {
+        panic!("PaletteId Overflow");
     }
 }
 

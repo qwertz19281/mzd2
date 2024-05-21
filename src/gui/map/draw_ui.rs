@@ -621,6 +621,16 @@ impl Map {
                     }
                 }
 
+                if ui.input(|i| i.key_pressed(Key::O) ) {
+                    palette.mutated_selected(|v| v.rot90() );
+                } else if ui.input(|i| i.key_pressed(Key::I) ) {
+                    palette.mutated_selected(|v| v.rot270() );
+                } else if ui.input(|i| i.key_pressed(Key::K) ) {
+                    palette.mutated_selected(|v| v.flip([true,false]) );
+                } else if ui.input(|i| i.key_pressed(Key::L) ) {
+                    palette.mutated_selected(|v| v.flip([false,true]) );
+                }
+
                 reg.extend_rel_fixtex(shapes);
             });
         }

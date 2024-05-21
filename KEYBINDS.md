@@ -7,6 +7,10 @@
   - Press shift to invert DSelOnly (whether selecting should snap to seltrix)
 - Middle Mouse + Ctrl: CSE (define seltrix)
 - Alt + Left Mouse, then Alt + Middle Mouse: Quick move of selection (separate from palette slot, clears previous area)
+- O: rotate currente palette clockwise
+- I: rotate currente palette counterclockwise
+- K: flip current palette horizontally
+- L: flip current palette vertically
 
 # Drawing Layer keys
 

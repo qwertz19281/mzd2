@@ -13,7 +13,7 @@ pub struct SelMatrix {
 }
 
 /// SelEntry is relative to that one SelEntry, while SelPt is "absolute" (relative to whole img)
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Hash, PartialEq)]
 pub struct SelEntry {
     /// The offset of this point to the top-left of the selgroup
     pub start: [u8;2],
@@ -68,6 +68,51 @@ impl SelMatrix {
                 }
             }
         }
+    }
+
+    /// swap: whether to swap x and y axis
+    /// 
+    /// swapxy happens before flip(x/y)
+    pub fn transformed(&self, swap: bool, flip: [bool;2]) -> Self {
+        let mut dest = Self::new_empty(self.dims);
+        if swap {
+            dest.dims.reverse();
+        }
+
+        let mut src_entries = self.entries.iter();
+        let dest_entries = SRc::make_mut(&mut dest.entries);
+        assert_eq!(src_entries.size_hint().0, self.dims[0] as usize * self.dims[1] as usize);
+        assert_eq!(dest_entries.len(), self.dims[0] as usize * self.dims[1] as usize);
+        for sy in 0 .. self.dims[1] {
+            for sx in 0 .. self.dims[0] {
+                let (mut dx,mut dy) = (sx,sy);
+                if swap {
+                    (dx,dy) = (dy,dx);
+                }
+                if flip[0] {
+                    dx = self.dims[0] - 1 - dx;
+                }
+                if flip[1] {
+                    dy = self.dims[1] - 1 - dy;
+                }
+
+                let mut v = src_entries.next().unwrap().clone();
+
+                if swap {
+                    v.size.reverse();
+                    v.start.reverse();
+                }
+                if flip[0] {
+                    v.start[0] = v.size[0] - 1 - v.start[0];
+                }
+                if flip[1] {
+                    v.start[1] = v.size[1] - 1 - v.start[1];
+                }
+
+                dest_entries[dy as usize * self.dims[1] as usize + dx as usize] = v;
+            }
+        }
+        dest
     }
 }
 
@@ -233,6 +278,19 @@ impl SelMatrixLayered {
             }
         }
         Ok(dest)
+    }
+
+    pub fn transformed(&self, swap: bool, flip: [bool;2]) -> Self {
+        let mut dims = self.dims;
+        if swap {
+            dims.reverse();
+        }
+
+        let layers = self.layers.iter()
+            .map(|v| v.transformed(swap, flip) )
+            .collect();
+
+        Self { dims, layers }
     }
 }
 
