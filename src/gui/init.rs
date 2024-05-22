@@ -6,7 +6,7 @@ use uuid::Uuid;
 use crate::util::uuid::UUIDMap;
 use crate::util::MapId;
 
-use super::dock::Docky;
+use super::dock::{DockTab, Docky};
 use super::tags::get_tag_state;
 use super::{MutQueue, dpi_hack};
 use super::map::RoomId;
@@ -49,6 +49,8 @@ pub struct SAM {
     pub mut_queue: MutQueue,
     pub uuidmap: UUIDMap,
     pub warpon: Option<(MapId,RoomId,Uuid)>,
+    pub set_focus_to: Option<DockTab>,
+    pub warp_dsel: bool,
 }
 
 impl SharedApp {
@@ -64,6 +66,8 @@ impl SharedApp {
                 mut_queue: vec![],
                 uuidmap: Default::default(),
                 warpon: None,
+                set_focus_to: None,
+                warp_dsel: false,
             },
             init_load_paths,
         }

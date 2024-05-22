@@ -26,9 +26,11 @@ pub type TagMap = IndexMap<Uuid,TagState,BuildHasherDefault<AHasher>>;
 pub struct TagState {
     pos: [u32;2],
     show_text: bool,
+    show_always: bool,
     pub text: String,
     #[serde(with = "parse_color")]
     color: [u8;3],
+    warp_enabled: bool,
     warp: Option<WarpDest>,
 }
 
@@ -178,14 +180,32 @@ impl Map {
                 let tag = TagState {
                     pos: sub_click_coord,
                     show_text: true,
+                    show_always: false,
                     text: Default::default(),
                     color: calc_text_color(&room, sub_click_coord, self.state.rooms_size),
+                    warp_enabled: true,
                     warp: None,
                 };
                 room.tags.insert(uuid,tag);
                 sam.uuidmap.insert(uuid, UUIDTarget::Tag(self.id, id, uuid));
                 self.tag_sel = Some((id, uuid));
                 *hovered = Some((id, uuid));
+            } else if let Some((_,uuid)) = hovered {
+                // try to warp
+                let Some(tag) = room.tags.get(uuid) else {return};
+                let Some(dest) = &tag.warp else {return};
+                let Some(&UUIDTarget::Room(map_id,room_id)) = sam.uuidmap.get(&dest.dest_room) else {return};
+                let Some(mut map) = get_map_by_id_mut(self, other_maps, map_id) else {return};
+                let Some(room) = map.state.rooms.get(room_id) else {return};
+                let coord = room.coord;
+                map.move_viewpos_centred([coord[0],coord[1]]);
+                map.state.current_level = coord[2];
+                map.picomap_tex.dirty();
+                if sam.warp_dsel {
+                    map.dsel_room = Some(room_id);
+                    map.dsel_updated();
+                }
+                sam.set_focus_to = Some(super::dock::DockTab::Map(map_id));
             }
         } else if super_map.response.clicked_by(egui::PointerButton::Primary) {
             if mods.ctrl {
@@ -251,11 +271,18 @@ impl Map {
             let tag = e.get_mut();
 
             ui.checkbox(&mut tag.show_text, "Show Text");
-            ui.label("| Text Color: ");
+            ui.checkbox(&mut tag.show_always, "Always");
+            ui.label("| Color: ");
             color_edit_button_srgb(ui, &mut tag.color);
             ui.label("|");
-            if ui.button("Start Warp").clicked() {
+            ui.checkbox(&mut tag.warp_enabled, "Warp");
+            if ui.button("Start").clicked() {
                 sam.warpon = Some((self.id, id, uuid));
+            }
+            if tag.warp.is_some() {
+                if ui.button("Remove").clicked() {
+                    tag.warp = None;
+                }
             }
         }
         ui.label("|");

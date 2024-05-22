@@ -93,6 +93,12 @@ impl SharedApp {
                 }
             }
         }
+        if let Some(v) = self.sam.set_focus_to.take() {
+            if let Some((a,b,c)) = state.find_tab(&v) {
+                state.set_active_tab((a,b,c));
+                state.set_focused_node_and_surface((a,b));
+            }
+        }
         self.probe_active();
         let state = self.dock.state.as_mut().unwrap();
 
