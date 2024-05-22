@@ -21,6 +21,8 @@ use super::{next_ur_op_id, zoomf, Map, MapEditMode, RoomId};
 impl Map {
     fn ui_create_room(&mut self, coord: [u8;3], uuidmap: &mut UUIDMap) -> Option<RoomId> {
         if let Some(roomcreate_op) = self.create_create_room(coord, uuidmap) {
+            let mut msg = String::new();
+            debug_assert!(self.validate_apply(&roomcreate_op, &mut msg), "Debug assert validate apply ui_create_room: {}", msg);
             let ur = self.apply_room_op(roomcreate_op, uuidmap);
             let room_id = match &ur {
                 &RoomOp::Del(id) => id,
@@ -38,6 +40,8 @@ impl Map {
 
     fn ui_add_room(&mut self, room: Room, uuidmap: &mut UUIDMap) -> Option<RoomId> {
         if let Some(roomcreate_op) = self.create_add_room(room) {
+            let mut msg = String::new();
+            debug_assert!(self.validate_apply(&roomcreate_op, &mut msg), "Debug assert validate apply ui_add_room: {}", msg);
             let ur = self.apply_room_op(roomcreate_op, uuidmap);
             let room_id = match &ur {
                 &RoomOp::Del(id) => id,
@@ -60,6 +64,8 @@ impl Map {
     }
 
     pub(super) fn ui_apply_roomop(&mut self, op: RoomOp, uuidmap: &mut UUIDMap) {
+        let mut msg = String::new();
+        debug_assert!(self.validate_apply(&op, &mut msg), "Debug assert validate apply ui_create_room: {}", msg);
         let ur = self.apply_room_op(op, uuidmap);
         self.undo_buf.push_back((ur,next_ur_op_id()));
         self.after_room_op_apply_invalidation(false);
@@ -162,6 +168,10 @@ impl Map {
         let mut smart_preview_hovered = false;
         let mut tag_hovered = None;
 
+        if cfg!(all(debug_assertions, feature = "super_validate")) {
+            debug_map_hatter(self);
+        }
+
         let mods = ui.input(|i| i.modifiers );
 
         // on close of the map, palette textures should be unchained
@@ -187,6 +197,11 @@ impl Map {
                     ui.add(egui::TextEdit::singleline(&mut self.state.title).desired_width(200. * sam.dpi_scale));
                     ui.label("| Zoom: ");
                     dragslider_up(&mut self.state.map_zoom, 0.03125, -1..=1, 1, ui);
+                    if self.matrix_debug_corrupt_flag {
+                        if ui.button("!Room matrix corruption!").clicked() {
+                            self.matrix_debug_corrupt_flag = false;
+                        }
+                    }
                 });
                 ui.horizontal(|ui| {
                     ui.radio_value(&mut self.state.edit_mode, MapEditMode::DrawSel, "Draw Sel");
@@ -908,4 +923,54 @@ pub(crate) fn get_map_by_id_mut<'a>(this: &'a mut Map, others: &'a Maps, map_id:
     } else {
         None
     }
+}
+
+fn debug_map_hatter(map: &mut Map) {
+    if map.matrix_debug_corrupt_flag {return;}
+    for (room_id,room) in &map.state.rooms {
+        let in_map = map.room_matrix.get(room.coord);
+        if in_map != Some(&room_id) && !room.transient {
+            let mut wrong_room_info = "".to_owned();
+            if let Some(wrong_room) = in_map.and_then(|&w| map.state.rooms.get(w)) {
+                wrong_room_info = format!(
+                    "\n\nWrongRoomCoord: {:?}, WrongRoomUUID: {} WrongRoomTransient: {}",
+                    wrong_room.coord, wrong_room.uuid, wrong_room.transient
+                );
+            }
+            gui_error("Room matrix corruption", format!(
+                "A room doesn't have the right data in the coord store!\n\nRoomId: {:?} RoomCoord: {:?}, RoomUUID: {}, RoomTransient: {}\n\nCoordStore: {:?} (should be Some({:?})){}",
+                room_id, room.coord, room.uuid, room.transient,
+                in_map, room_id,
+                wrong_room_info,
+            ));
+            map.matrix_debug_corrupt_flag = true;
+        }
+    }
+    map.room_matrix.debug_walk(|coord, &id| {
+        if let Some(room) = map.state.rooms.get(id) {
+            if room.coord != coord {
+                gui_error("Room matrix corruption", format!(
+                    "The room in coord store at {:?} has the wrong coord!\n\nRoomId: {:?}, RoomUUID: {}\n\nCoord: {:?}, RoomCoord: {:?}",
+                    coord,
+                    id, room.uuid,
+                    coord, room.coord,
+                ));
+                map.matrix_debug_corrupt_flag = true;
+            }
+            if room.transient {
+                gui_error("Room matrix corruption", format!(
+                    "The room in coord store at {:?} is transient!\n\nRoomId: {:?}, RoomUUID: {}",
+                    coord,
+                    id, room.uuid,
+                ));
+                map.matrix_debug_corrupt_flag = true;
+            }
+        } else {
+            gui_error("Room matrix corruption", format!(
+                "The room in coord store at {:?} doesn't exist! Invalid Room Id: {:?}",
+                coord, id
+            ));
+            map.matrix_debug_corrupt_flag = true;
+        }
+    });
 }

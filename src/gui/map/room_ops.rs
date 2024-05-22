@@ -76,7 +76,8 @@ impl Map {
             RoomOp::Move(r,c) => {
                 // move room
                 let old_pos = self.state.rooms[r].coord;
-                self.move_room_force(r, c);
+                let (_,prev) = self.move_room_force(r, c);
+                debug_assert!(prev.is_none());
 
                 RoomOp::Move(r, old_pos)
             },
@@ -338,13 +339,13 @@ impl Map {
 
     /// create a gap next to base_coord with n size
     fn shift_away(&mut self, base_coord: [u8;3], n_sift: u8, axis: OpAxis, dir: bool) -> bool {
-        if !self.check_shift_away(base_coord, n_sift, axis, dir) {return false;}
+        if !self.check_shift_away(base_coord, n_sift, axis, dir) {debug_assert!(false);return false;}
         let op_evo = next_op_gen_evo();
         self.latest_used_opevo = op_evo;
         for (id,room) in self.state.rooms.iter_mut() {
             if !room.transient && in_sift_range(room.coord, base_coord, axis, dir) {
                 let removed = self.room_matrix.remove(room.coord, false);
-                assert!(removed == Some(id));
+                debug_assert_eq!(removed, Some(id));
                 room.coord = apply_sift(room.coord, n_sift, axis, dir);
                 room.transient = false;
                 room.op_evo = op_evo;
@@ -352,7 +353,8 @@ impl Map {
         }
         for (id,room) in self.state.rooms.iter_mut() {
             if room.op_evo == op_evo {
-                self.room_matrix.insert(room.coord, id);
+                let prev = self.room_matrix.insert(room.coord, id);
+                debug_assert!(prev.is_none());
             }
         }
         true
@@ -368,13 +370,13 @@ impl Map {
     }
 
     fn collapse(&mut self, base_coord: [u8;3], n_sift: u8, axis: OpAxis, dir: bool, unconnect_new: bool) -> bool {
-        if !self.check_collapse(base_coord, n_sift, axis, dir) {return false;}
+        if !self.check_collapse(base_coord, n_sift, axis, dir) {debug_assert!(false);return false;}
         let op_evo = next_op_gen_evo();
         self.latest_used_opevo = op_evo;
         for (id,room) in self.state.rooms.iter_mut() {
             if !room.transient && in_unsift_range(room.coord, n_sift, base_coord, axis, dir) {
                 let removed = self.room_matrix.remove(room.coord, false);
-                assert_eq!(removed, Some(id));
+                debug_assert_eq!(removed, Some(id));
                 room.coord = apply_unsift(room.coord, n_sift, axis, dir);
                 room.transient = false;
                 room.op_evo = op_evo;
@@ -382,7 +384,8 @@ impl Map {
         }
         for (id,room) in self.state.rooms.iter_mut() {
             if room.op_evo == op_evo {
-                self.room_matrix.insert(room.coord, id);
+                let prev = self.room_matrix.insert(room.coord, id);
+                debug_assert!(prev.is_none());
 
                 if unconnect_new {
                     room.dirconn[axis.axis_idx()][(!dir) as usize] = false;
@@ -706,10 +709,11 @@ impl Map {
             room.op_evo = op_evo;
         }
         for &id in &*o.rooms {
-            let Some(room) = self.state.rooms.get_mut(id) else {continue};
+            let Some(room) = self.state.rooms.get_mut(id) else {debug_assert!(false);continue};
 
+            debug_assert!(!room.transient);
             let removed = self.room_matrix.remove(room.coord, false);
-            assert!(removed == Some(id));
+            debug_assert_eq!(removed, Some(id));
 
             room.coord = apply_sift(room.coord, o.n_sift, o.axis, o.dir);
             room.transient = false;
@@ -736,8 +740,8 @@ impl Map {
         for &id in &*o.rooms {
             let Some(room) = self.state.rooms.get_mut(id) else {continue};
 
-            let res = self.room_matrix.insert(room.coord, id);
-            debug_assert!(res.is_none());
+            let prev = self.room_matrix.insert(room.coord, id);
+            debug_assert!(prev.is_none());
         }
     }
 

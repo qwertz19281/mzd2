@@ -552,6 +552,19 @@ impl Room {
         }
         
         dest(egui::Shape::Mesh(mesh));
+
+        if cfg!(all(debug_assertions, feature = "super_validate")) {
+            ctx.fonts(|fonts| {
+                dest(egui::Shape::text(
+                    fonts,
+                    Pos2 { x: (off[0]+rooms_size[0]) as f32 - 8., y: off[1] as f32 + 8. }, //TODO multiply dpi?
+                    Align2::RIGHT_TOP,
+                    self.op_evo,
+                    FontId::monospace(16.),
+                    Color32::DARK_GRAY,
+                ));
+            });
+        }
     }
 
     pub fn render_conns(&self, mode: MapEditMode, off: [u32;2], rooms_size: [u32;2], mut dest: impl FnMut(egui::Shape), ctx: &egui::Context) {

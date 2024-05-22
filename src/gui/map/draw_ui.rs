@@ -214,6 +214,16 @@ impl Map {
             }
         });
 
+        if cfg!(all(debug_assertions, feature = "super_validate")) {
+            ui.horizontal(|ui| {
+                ui.label(format!("Coord: {:?}", self.state.dsel_coord));
+                ui.label(format!("| ID: {:?}", self.dsel_room));
+                if let Some(room) = self.dsel_room.and_then(|id| self.state.rooms.get(id) ) {
+                    ui.label(format!("| UUID: {}", room.uuid));
+                }
+            });
+        }
+
         ui.horizontal(|ui| {
             // ui.radio_value(&mut self.state.draw_mode, DrawOp::Draw, "Draw");
             // ui.radio_value(&mut self.state.draw_mode, DrawOp::Sel, "Sel");

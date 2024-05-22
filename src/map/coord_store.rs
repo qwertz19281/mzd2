@@ -129,6 +129,26 @@ impl<T> CoordStore<T> {
             OpAxis::Z => self.laser.laser_z[z as usize],
         }
     }
+
+    pub(crate) fn debug_walk(&self, mut f: impl FnMut([u8;3],&T)) {
+        for z1 in 0 .. 16u8 {
+        for y1 in 0 .. 16u8 {
+        for x1 in 0 .. 16u8 {
+            if let Some(sub) = self.v[z1 as usize][y1 as usize][x1 as usize].as_ref() {
+                for z2 in 0 .. 16u8 {
+                for y2 in 0 .. 16u8 {
+                for x2 in 0 .. 16u8 {
+                    if let Some(cell) = &sub.v[z2 as usize][y2 as usize][x2 as usize] {
+                        f([x1*16+x2, y1*16+y2, z1*16+z2], cell);
+                    }
+                }
+                }
+                }
+            }
+        }
+        }
+        }
+    }
 }
 
 impl Laser {
