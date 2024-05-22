@@ -6,7 +6,7 @@ use std::ops::Deref;
 use egui::{TextureOptions, Rounding};
 use image::{imageops, RgbaImage};
 
-use crate::util::{next_palette_id, MapId};
+use crate::util::MapId;
 use crate::SRc;
 
 use super::init::SharedApp;
@@ -121,7 +121,7 @@ pub fn palette_ui(state: &mut SharedApp, ui: &mut egui::Ui) {
 
     let full_w = PALETTE_SHOW_DIMS + PALETTE_GAP * 2 + (PALETTE_SHOW_DIMS + PALETTE_GAP) * plen - PALETTE_GAP;
 
-    let mut reg = alloc_painter_rel(
+    let reg = alloc_painter_rel(
         ui,
         egui::vec2(full_w as f32, PALETTE_SHOW_DIMS as f32), egui::Sense::click(),
         1.,

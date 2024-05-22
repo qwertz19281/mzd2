@@ -8,7 +8,7 @@ use crate::util::uuid::UUIDMap;
 use crate::util::MapId;
 
 use super::dock::{DockTab, Docky};
-use super::tags::{get_tag_state, WarpUR};
+use super::tags::WarpUR;
 use super::{MutQueue, dpi_hack};
 use super::map::RoomId;
 use super::palette::Palette;
@@ -19,15 +19,14 @@ use super::window_states::tileset::Tilesets;
 pub fn launch_gui(args: crate::cli::Args) {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
+            .with_title("mzd 2.0")
             .with_inner_size([1080.0, 600.0])
             .with_drag_and_drop(true),
         ..Default::default()
     };
 
-    //let app = Box::leak(Box::new(egui::mutex::Mutex::new(AppState::create())));
-    
     eframe::run_native(
-        "mzd 2.0",
+        "com.github.qwertz19281.mzd2",
         options,
         Box::new(|_| {
             Box::new(SharedApp::new(args.load_paths))

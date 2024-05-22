@@ -8,9 +8,7 @@ use crate::gui::key_manager::KMKey;
 use crate::gui::palette::{Palette, PaletteItem};
 use crate::gui::room::draw_image::DrawImageGroup;
 use crate::gui::room::Room;
-use crate::gui::texture::RECT_0_0_1_1;
 use crate::gui::util::{alloc_painter_rel, dpad, dpad_icons, dpadc, dragslider_up, draw_grid, ArrUtl, DragOp};
-use crate::util::MapId;
 use crate::SRc;
 
 use super::room_ops::{try_side, OpAxis, RoomOp};

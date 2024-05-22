@@ -2,7 +2,7 @@ use std::ffi::OsStr;
 use std::io::Cursor;
 use std::path::{Path, PathBuf};
 
-use egui::{Vec2, TextureOptions, Color32, PointerButton};
+use egui::{Color32, Key, PointerButton, TextureOptions, Vec2};
 use image::RgbaImage;
 use serde::{Deserialize, Serialize};
 
@@ -137,8 +137,8 @@ impl Tileset {
 
         let mods = ui.input(|i| i.modifiers );
 
-        let kp_plus = ui.input(|i| i.key_down(egui::Key::Plus));
-        let kp_minus = ui.input(|i| i.key_down(egui::Key::Minus));
+        let kp_plus = ui.input(|i| i.key_down(Key::Plus));
+        let kp_minus = ui.input(|i| i.key_down(Key::Minus));
         let sel_stage = kp_plus | kp_minus;
 
         let mut hack_render_mode = None;
@@ -250,6 +250,16 @@ impl Tileset {
                 _ => {},
             }
         });
+
+        if ui.input(|i| i.key_pressed(Key::O) ) {
+            palette.mutated_selected(|v| v.rot90() );
+        } else if ui.input(|i| i.key_pressed(Key::I) ) {
+            palette.mutated_selected(|v| v.rot270() );
+        } else if ui.input(|i| i.key_pressed(Key::K) ) {
+            palette.mutated_selected(|v| v.flip([true,false]) );
+        } else if ui.input(|i| i.key_pressed(Key::L) ) {
+            palette.mutated_selected(|v| v.flip([false,true]) );
+        }
 
         let mut shapes = vec![];
 

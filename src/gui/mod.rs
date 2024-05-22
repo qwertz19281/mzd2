@@ -63,7 +63,7 @@ convtable!(
 );
 
 /// Call only one, returns old dpi
-pub fn dpi_hack(ctx: &egui::Context, frame: &mut eframe::Frame) -> f32 {
+pub fn dpi_hack(ctx: &egui::Context, _: &mut eframe::Frame) -> f32 {
     let scale = ctx.pixels_per_point();
     
     let mut fontdef = egui::FontDefinitions::default();

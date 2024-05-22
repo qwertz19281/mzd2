@@ -248,10 +248,10 @@ impl Map {
 
     pub fn ui_tag_props(
         &mut self,
-        palette: &mut Palette,
+        _: &mut Palette,
         ui: &mut egui::Ui,
-        sam: &mut SAM,
-        other_maps: &Maps,
+        _: &mut SAM,
+        _: &Maps,
     ) {
         let Some((id,uuid)) = self.tag_sel else {return};
         let Some(room) = self.state.rooms.get_mut(id) else {return};
@@ -380,7 +380,7 @@ impl WarpUR {
 
     fn apply(&self, maps: &mut Maps, sam: &mut SAM) -> bool {
         let Some(&UUIDTarget::Map(map_id)) = sam.uuidmap.get(&self.map) else {return false};
-        let Some(mut map) = maps.open_maps.get_mut(&map_id) else {return false};
+        let Some(map) = maps.open_maps.get_mut(&map_id) else {return false};
         let map = map.get_mut();
 
         fn get_room_id(v: &Uuid, uuidmap: &mut UUIDMap, state: &MapState) -> Option<RoomId> {
