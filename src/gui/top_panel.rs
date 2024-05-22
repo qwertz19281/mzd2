@@ -46,6 +46,15 @@ pub fn top_panel_ui(state: &mut SharedApp, ui: &mut egui::Ui) {
         dragvalion_up(&mut state.top_panel.create_tileset_quant, 0.03125, 1..=2, 1, ui);
         ui.label("|");
         ui.checkbox(&mut state.sam.warp_dsel, "WarpDSel");
+        if ui.button("WarpBack").clicked() {
+            state.sam.do_undo(&mut state.maps, &state.dock);
+        }
+        if ui.button("WarpFwd").clicked() {
+            state.sam.do_redo(&mut state.maps, &state.dock);
+        }
+        if ui.button("StorePos").clicked() {
+            state.sam.add_current_pos(&mut state.maps, &state.dock);
+        }
         if let Some((map,room,uuid)) = state.sam.warpon {
             let res = get_tag_state(&mut state.maps, map, room, &uuid, |tag|{
                 if ui.button(format!("Cancel warp creation: {}", tag.text.lines().next().unwrap_or("") )).clicked() {

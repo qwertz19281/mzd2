@@ -7,7 +7,7 @@ use super::palette::{lru_ui, palette_ui};
 
 pub struct Docky {
     state: Option<DockState<DockTab>>,
-    last_focused_map: Option<MapId>,
+    pub(crate) last_focused_map: Option<MapId>,
     last_focused_tileset: Option<TilesetId>,
     last_rendered_map: Option<MapId>,
     last_rendered_tileset: Option<TilesetId>,

@@ -450,8 +450,10 @@ impl Map {
         this
     }
 
-    fn update_level(&mut self, new_z: u8) {
-        self.picomap_tex.dirty();
+    pub fn update_level(&mut self, new_z: u8) {
+        if self.state.current_level != new_z {
+            self.picomap_tex.dirty();
+        }
         self.state.current_level = new_z;
     }
 

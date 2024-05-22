@@ -9,9 +9,11 @@ use rand::Rng;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::util::uuid::{generate_uuid, UUIDTarget};
+use crate::gui::map::MapState;
+use crate::util::uuid::{generate_uuid, UUIDMap, UUIDTarget};
 use crate::util::MapId;
 
+use super::dock::Docky;
 use super::init::SAM;
 use super::map::map_ui::get_map_by_id_mut;
 use super::map::{Map, RoomId};
@@ -197,6 +199,7 @@ impl Map {
                 let Some(&UUIDTarget::Room(map_id,room_id)) = sam.uuidmap.get(&dest.dest_room) else {return};
                 let Some(mut map) = get_map_by_id_mut(self, other_maps, map_id) else {return};
                 let Some(room) = map.state.rooms.get(room_id) else {return};
+                sam.push_to_undo(WarpUR::current(&map, false), false);
                 let coord = room.coord;
                 map.move_viewpos_centred([coord[0],coord[1]]);
                 map.state.current_level = coord[2];
@@ -206,6 +209,7 @@ impl Map {
                     map.dsel_updated();
                 }
                 sam.set_focus_to = Some(super::dock::DockTab::Map(map_id));
+                sam.push_to_undo(WarpUR::current(&map, true), false);
             }
         } else if super_map.response.clicked_by(egui::PointerButton::Primary) {
             if mods.ctrl {
@@ -351,4 +355,183 @@ pub fn calc_text_color_over_bg(bg: Lab, aboff: [f32;2]) -> Lab {
         .max_by(|a,b| a.1.total_cmp(&b.1) )
         .map(|(v,_)| v)
         .unwrap_or(LAB_GRAY)
+}
+
+pub struct WarpUR {
+    pre: bool,
+    map: Uuid,
+    dsel: Option<Uuid>,
+    ssel: Option<Uuid>,
+    current_level: u8,
+    view_pos: [f32;2],
+}
+
+impl WarpUR {
+    fn current(map: &Map, pre: bool) -> Self {
+        Self {
+            pre,
+            map: map.state.uuid,
+            dsel: map.dsel_room.and_then(|r| map.state.rooms.get(r) ).map(|r| r.uuid ),
+            ssel: map.ssel_room.and_then(|r| map.state.rooms.get(r) ).map(|r| r.uuid ),
+            current_level: map.state.current_level,
+            view_pos: map.state.view_pos,
+        }
+    }
+
+    fn apply(&self, maps: &mut Maps, sam: &mut SAM) -> bool {
+        let Some(&UUIDTarget::Map(map_id)) = sam.uuidmap.get(&self.map) else {return false};
+        let Some(mut map) = maps.open_maps.get_mut(&map_id) else {return false};
+        let map = map.get_mut();
+
+        fn get_room_id(v: &Uuid, uuidmap: &mut UUIDMap, state: &MapState) -> Option<RoomId> {
+            let room_id = uuidmap.get(v)
+                .and_then(|v| match v {
+                    UUIDTarget::Room(map, room) => Some(*room), // TODO do we need to assert the the map is this map?
+                    _ => None,
+                })
+                .filter(|&v| state.rooms.contains_key(v));
+
+            room_id
+        }
+
+        let old_dsel = map.dsel_room;
+        if let Some(dsel) = self.dsel {
+            if let Some(id) = get_room_id(&dsel,  &mut sam.uuidmap, &map.state) {
+                map.dsel_room = Some(id);
+            }
+        } else {
+            map.dsel_room = None;
+        }
+
+        let old_ssel = map.ssel_room;
+        if let Some(ssel) = self.ssel {
+            if let Some(id) = get_room_id(&ssel, &mut sam.uuidmap, &map.state) {
+                map.ssel_room = Some(id);
+            }
+        } else {
+            map.ssel_room = None;
+        }
+
+        if old_dsel != map.dsel_room {
+            map.dsel_updated();
+        }
+        if old_ssel != map.ssel_room {
+            map.ssel_updated();
+        }
+
+        if map.state.current_level != self.current_level {
+            map.picomap_tex.dirty();
+        }
+        map.state.view_pos = self.view_pos;
+        map.update_level(self.current_level);
+
+        sam.set_focus_to = Some(super::dock::DockTab::Map(map_id));
+
+        true
+    }
+}
+
+impl SAM {
+    pub fn push_to_undo(&mut self, value: WarpUR, redo: bool) {
+        if !redo {
+            self.warp_redo.clear();
+        }
+        if let Some(v) = self.warp_undo.back() {
+            if 
+                !value.pre && v.map == value.map
+                && (
+                    !v.pre
+                    || (
+                        v.current_level == value.current_level && v.view_pos.as_i64().div8() == value.view_pos.as_i64().div8()
+                    )
+                )
+            {
+                self.warp_undo.pop_back();
+            }
+        }
+        self.undo_push_back(value);
+    }
+
+    fn undo_push_back(&mut self, value: WarpUR) {
+        if let Some(v) = self.warp_undo.back() {
+            if !value.pre && !v.pre
+                && v.map == value.map && v.current_level == value.current_level
+                && v.view_pos.as_i64().div8() == value.view_pos.as_i64().div8()
+            {
+                return;
+            }
+        }
+        self.warp_undo.push_back(value);
+    }
+
+    fn redo_push_back(&mut self, value: WarpUR) {
+        if let Some(v) = self.warp_redo.back() {
+            if !value.pre && !v.pre
+                && v.map == value.map && v.current_level == value.current_level
+                && v.view_pos.as_i64().div8() == value.view_pos.as_i64().div8()
+            {
+                return;
+            }
+        }
+        self.warp_redo.push_back(value);
+    }
+
+    pub fn do_undo(&mut self, maps: &mut Maps, dock: &Docky) {
+        if self.warp_redo.is_empty() && !self.warp_undo.is_empty() {
+            self.add_current_pos(maps, dock)
+        }
+        if let Some(v) = self.warp_undo.pop_back() {
+            if self.is_too_similar(&v, maps, dock) {
+                self.redo_push_back(v);
+                return self.do_undo(maps, dock);
+            }
+            if v.apply(maps, self) {
+                self.redo_push_back(v);
+            } else {
+                self.undo_push_back(v);
+            }
+        }
+    }
+
+    pub fn do_redo(&mut self, maps: &mut Maps, dock: &Docky) {
+        if self.warp_undo.is_empty() && !self.warp_redo.is_empty() {
+            self.add_current_pos_to_redo(maps, dock)
+        }
+        if let Some(v) = self.warp_redo.pop_back() {
+            if self.is_too_similar(&v, maps, dock) {
+                self.undo_push_back(v);
+                return self.do_redo(maps, dock);
+            }
+            if v.apply(maps, self) {
+                self.undo_push_back(v);
+            } else {
+                self.redo_push_back(v);
+            }
+        }
+    }
+
+    fn snap_current(&self, maps: &Maps, dock: &Docky, pre: bool) -> Option<WarpUR> {
+        let Some(current_map) = dock.last_focused_map.and_then(|v| maps.open_maps.get(&v) ) else {return None};
+        let map = current_map.borrow();
+        Some(WarpUR::current(&*map, pre))
+    }
+
+    fn is_too_similar(&self, v: &WarpUR, maps: &Maps, dock: &Docky) -> bool {
+        let Some(current_map) = dock.last_focused_map.and_then(|v| maps.open_maps.get(&v) ) else {return false};
+        let m = current_map.borrow();
+        let m = &m.state;
+        v.map == m.uuid && v.current_level == m.current_level && v.view_pos.as_i64().div8() == m.view_pos.as_i64().div8()
+    }
+
+    pub fn add_current_pos(&mut self, maps: &mut Maps, dock: &Docky) {
+        if let Some(v) = self.snap_current(maps, dock, false) {
+            self.undo_push_back(v);
+        }
+    }
+
+    fn add_current_pos_to_redo(&mut self, maps: &mut Maps, dock: &Docky) {
+        if let Some(v) = self.snap_current(maps, dock, false) {
+            self.redo_push_back(v);
+        }
+    }
 }

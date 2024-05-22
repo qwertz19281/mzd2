@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use std::path::PathBuf;
 
 use scoped_tls_hkt::scoped_thread_local;
@@ -7,7 +8,7 @@ use crate::util::uuid::UUIDMap;
 use crate::util::MapId;
 
 use super::dock::{DockTab, Docky};
-use super::tags::get_tag_state;
+use super::tags::{get_tag_state, WarpUR};
 use super::{MutQueue, dpi_hack};
 use super::map::RoomId;
 use super::palette::Palette;
@@ -51,6 +52,8 @@ pub struct SAM {
     pub warpon: Option<(MapId,RoomId,Uuid)>,
     pub set_focus_to: Option<DockTab>,
     pub warp_dsel: bool,
+    pub warp_undo: VecDeque<WarpUR>,
+    pub warp_redo: VecDeque<WarpUR>,
 }
 
 impl SharedApp {
@@ -68,6 +71,8 @@ impl SharedApp {
                 warpon: None,
                 set_focus_to: None,
                 warp_dsel: false,
+                warp_undo: Default::default(),
+                warp_redo: Default::default(),
             },
             init_load_paths,
         }
