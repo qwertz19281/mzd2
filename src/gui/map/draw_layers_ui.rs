@@ -1,6 +1,7 @@
 use egui::{FontId, TextEdit};
 
 use crate::gui::init::SAM;
+use crate::gui::room::Layer;
 use crate::gui::sel_matrix::SelMatrix;
 
 use super::Map;
@@ -21,7 +22,7 @@ impl Map {
 
         let mods = ui.input(|i| i.modifiers );
 
-        let n_layers = room.visible_layers.len();
+        let n_layers = room.layers.len();
 
         ui.scope(|ui| {
             ui.style_mut().override_text_style = Some(egui::TextStyle::Monospace);
@@ -35,7 +36,7 @@ impl Map {
             ui.vertical(|ui| {
                 ui.checkbox(&mut room.editor_hide_layers_above, "Editor hide layers above"); //should be transferred from prev room in quickmove dummy create
 
-                for (layer,(visible,text)) in room.visible_layers.iter_mut().enumerate() {
+                for (layer,Layer { vis: visible, label: text }) in room.layers.iter_mut().enumerate() {
                     let selected = layer == room.selected_layer;
 
                     ui.horizontal(|ui| {
@@ -97,7 +98,7 @@ impl Map {
 
             match op {
                 Oper::Add(_) | Oper::Del(_) | Oper::Swap(_,_) => {
-                    loaded.pre_img_draw(&room.visible_layers, room.selected_layer);
+                    loaded.pre_img_draw(&room.layers, room.selected_layer);
                     loaded.dirty_file = true;
                     room.transient = false;
                     self.dirty_rooms.insert(*room_id);
@@ -127,16 +128,16 @@ impl Map {
                     room.selected_layer = a+1;
                 }
             },
-            Oper::SetVis(a, v) => room.visible_layers[a].0 = v as u8,
+            Oper::SetVis(a, v) => room.layers[a].vis = v as u8,
             Oper::SetDraw(v) => {
                 room.selected_layer = v;
                 if mods.ctrl | mods.shift {
-                    room.visible_layers[room.selected_layer].0 = 1;
-                    for v in &mut room.visible_layers[room.selected_layer+1..] {v.0 = 0;}
-                    for v in &mut room.visible_layers[..room.selected_layer] {v.0 = 1;}
+                    room.layers[room.selected_layer].vis = 1;
+                    for v in &mut room.layers[room.selected_layer+1..] {v.vis = 0;}
+                    for v in &mut room.layers[..room.selected_layer] {v.vis = 1;}
                 }
                 if mods.ctrl {
-                    for v in &mut room.visible_layers[..room.selected_layer] {v.0 = 0;}
+                    for v in &mut room.layers[..room.selected_layer] {v.vis = 0;}
                 }
                 self.draw_state.draw_cancel();
                 self.dsel_state.clear_selection();
@@ -149,23 +150,23 @@ impl Map {
             let room = self.state.rooms.get_mut(*room_id)?;
             let loaded = room.loaded.as_mut()?;
 
-            assert_eq!(room.visible_layers.len(), n_layers);
+            assert_eq!(room.layers.len(), n_layers);
             assert_eq!(loaded.sel_matrix.layers.len(), n_layers);
 
             match op {
                 Oper::Noop => {},
                 Oper::Del(a) => {
-                    room.visible_layers.remove(a);
+                    room.layers.remove(a);
                     loaded.image.remove_layer(self.state.rooms_size, a);
                     loaded.sel_matrix.layers.remove(a);
                 },
                 Oper::Swap(a, b) => {
-                    room.visible_layers.swap(a, b);
+                    room.layers.swap(a, b);
                     loaded.image.swap_layers(self.state.rooms_size, a, b);
                     loaded.sel_matrix.layers.swap(a, b);
                 },
                 Oper::Add(a) => {
-                    room.visible_layers.insert(a+1, (1,"".to_owned()));
+                    room.layers.insert(a+1, Layer::new_visible());
                     loaded.image.insert_layer(self.state.rooms_size, a+1);
                     loaded.sel_matrix.layers.insert(a+1, SelMatrix::new_empty(loaded.sel_matrix.dims));
                 },
@@ -181,8 +182,8 @@ impl Map {
             ui.ctx().request_repaint();
         }
 
-        room.selected_layer = room.selected_layer.min(room.visible_layers.len().saturating_sub(1));
-        loaded.image.layers = room.visible_layers.len();
+        room.selected_layer = room.selected_layer.min(room.layers.len().saturating_sub(1));
+        loaded.image.layers = room.layers.len();
 
         if hovered_layer.is_some_and(|v| v >= n_layers) {
             hovered_layer = None;

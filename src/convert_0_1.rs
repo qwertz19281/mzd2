@@ -11,7 +11,7 @@ use crate::gui::draw_state::DrawMode;
 use crate::gui::dsel_state::DSelMode;
 use crate::gui::map::{MapEditMode, MapState, RoomId, RoomMap};
 use crate::gui::room::draw_image::DrawImage;
-use crate::gui::room::Room;
+use crate::gui::room::{Layer, Room};
 use crate::gui::sel_matrix::{SelEntry, SelMatrix, SelMatrixLayered};
 use crate::gui::tags::TagState;
 use crate::gui::util::ArrUtl;
@@ -71,8 +71,7 @@ pub fn convert_map(map_path: PathBuf, uuidmap: &mut UUIDMap) -> anyhow::Result<(
             coord: old_room.coord,
             op_evo: 0,
             locked: None,
-            visible_layers: old_room.visible_layers.into_iter().map(|v| (v as u8,"".to_owned())).collect(),
-            layers: Default::default(),
+            layers: old_room.visible_layers.into_iter().map(|v| Layer { vis: v as u8, label: Default::default() }).collect(),
             selected_layer: old_room.selected_layer,
             dirconn: old_room.dirconn,
             desc_text: old_room.desc_text,

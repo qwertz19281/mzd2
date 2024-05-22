@@ -302,7 +302,7 @@ pub fn calc_text_color(room: &Room, v: [u32;2], rooms_size: [u32;2]) -> [u8;3] {
         if let Some(avg) = loaded.image.lab_avg(
             min,
             max.sub(min),
-            room.visible_layers.iter().enumerate().filter(|&(_,(v,_))| *v != 0 ).map(|(i,_)| i ),
+            room.layers.iter().enumerate().filter(|&(_,l)| l.vis != 0 ).map(|(i,_)| i ),
             rooms_size,
         ) {
             const DERIV_RANGE: f32 = 5.;

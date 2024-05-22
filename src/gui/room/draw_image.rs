@@ -269,7 +269,7 @@ impl DrawImageGroup {
 
             let opi_0 = op_0.sub(roff);
 
-            loaded.pre_img_draw(&room.visible_layers, room.selected_layer);
+            loaded.pre_img_draw(&room.layers, room.selected_layer);
 
             imgcopy(
                 &mut loaded.image.img,
@@ -320,7 +320,7 @@ impl DrawImageGroup {
 
             let (opi_0,opi_1) = (op_0.sub(roff),op_1.sub(roff));
 
-            loaded.pre_img_draw(&room.visible_layers, room.selected_layer);
+            loaded.pre_img_draw(&room.layers, room.selected_layer);
 
             for y in opi_0[1] .. opi_1[1] {
                 for x in opi_0[0] .. opi_1[0] {
@@ -392,7 +392,7 @@ impl DrawImageGroup {
     pub fn render(&self, rooms: &mut RoomMap, rooms_size: [u32;2], only_show_layer: Option<usize>, hide_above: bool, hide_below: bool, mut dest: impl FnMut(egui::Shape), map_path: &Path, ctx: &egui::Context) {
         let Some(visible_layers) = self.rooms.first()
             .and_then(|&(r,_,_)| rooms.get(r) )
-            .map(|r| r.visible_layers.clone() )
+            .map(|r| r.layers.clone() )
         else {return};
 
         for &(room_id,_,roff) in &self.rooms {
@@ -414,7 +414,7 @@ impl DrawImageGroup {
                 room.render(
                     roff,
                     visible_layers.iter().enumerate()
-                        .filter(|&(_,(v,_))| *v != 0 )
+                        .filter(|&(_,l)| l.vis != 0 )
                         .map(|(i,_)| i )
                         .filter(|i| if hide_above {*i <= selected_layer} else {true})
                         .filter(|i| if hide_below {*i >= selected_layer} else {true}),
@@ -433,14 +433,14 @@ impl DrawImageGroup {
         if room.locked.is_some() {return false;}
 
         let coord = room.coord;
-        let n_layers = room.visible_layers.len(); //TODO don't rely on the unloaded layer value
+        let n_layers = room.layers.len(); //TODO don't rely on the unloaded layer value
 
         let mut attached = false;
 
         if !self.rooms.is_empty() && rooms.contains_key(self.rooms[0].0) {
             let base_coord = self.rooms[0].1;
             let base_room = &rooms[self.rooms[0].0];
-            if n_layers != base_room.visible_layers.len() {
+            if n_layers != base_room.layers.len() {
                 return false;
             }
             if 

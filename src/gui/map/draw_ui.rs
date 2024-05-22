@@ -284,7 +284,7 @@ impl Map {
                             moved = true;
                         }
                         if ui.input(|i| i.key_pressed(Key::W) ) {
-                            room.selected_layer = (room.selected_layer+1).min(room.visible_layers.len().saturating_sub(1));
+                            room.selected_layer = (room.selected_layer+1).min(room.layers.len().saturating_sub(1));
                             moved = true;
                         }
                         if ui.input(|i| i.key_pressed(Key::S) ) {
@@ -304,9 +304,9 @@ impl Map {
                         if !moved && ui.input(|i| i.key_pressed(Key::E) || i.key_pressed(Key::D) ) {
                             if let Some(loaded) = &mut room.loaded {
                                 let hov = <[f32;2]>::from(hov).as_u32().div8();
-                                let itre = room.visible_layers.iter().enumerate()
-                                    .filter(|(i,(sel,_))|
-                                        *sel != 0 &&
+                                let itre = room.layers.iter().enumerate()
+                                    .filter(|(i,l)|
+                                        l.vis != 0 &&
                                         if hide_layers_above | hide_layers_all {*i <= room.selected_layer} else {true}
                                     )
                                     .map(|(i,_)| i);
@@ -684,10 +684,10 @@ impl Map {
         if let Some(room) = self.editsel.get_single_room_mut(&mut self.state.rooms) {
             if let Some(loaded) = room.loaded.as_mut() {
                 if do_undo && !do_redo {
-                    loaded.undo(&mut room.visible_layers, &mut room.selected_layer);
+                    loaded.undo(&mut room.layers, &mut room.selected_layer);
                 }
                 if do_redo && !do_undo {
-                    loaded.redo(&mut room.visible_layers, &mut room.selected_layer);
+                    loaded.redo(&mut room.layers, &mut room.selected_layer);
                 }
                 ui.ctx().request_repaint();
             }

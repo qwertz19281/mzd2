@@ -53,8 +53,8 @@ pub fn templicon<S>(
         //     dest(egui::Shape::rect_filled(dest_rect, egui::Rounding::ZERO, bg_color))
         // }
 
-        let visible_layers = room.visible_layers.iter().enumerate()
-            .filter(|(_,(v,_))| *v != 0)
+        let visible_layers = room.layers.iter().enumerate()
+            .filter(|(_,l)| l.vis != 0)
             .map(|(i,_)| i);
 
         {

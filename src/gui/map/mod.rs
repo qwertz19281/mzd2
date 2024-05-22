@@ -24,7 +24,7 @@ use super::dsel_state::del::DelState;
 use super::dsel_state::{DSelMode, DSelState};
 use super::key_manager::KMKey;
 use super::palette::PaletteItem;
-use super::room::{Layer, Room};
+use super::room::Room;
 use super::room::draw_image::DrawImageGroup;
 use super::texture::TextureCell;
 use super::util::ArrUtl;
@@ -123,16 +123,6 @@ slotmap::new_key_type! {
 
 impl Map {
     pub fn save_map(&mut self, uuidmap: &mut UUIDMap) {
-        for (_,room) in &mut self.state.rooms {
-            room.layers = room.visible_layers.iter().map(|(a,b)| Layer { vis: *a, label: b.clone() }).collect();
-        }
-
-        for room in &mut self.state.quickroom_template {
-            if let Some(room) = room {
-                room.layers = room.visible_layers.iter().map(|(a,b)| Layer { vis: *a, label: b.clone() }).collect();
-            }
-        }
-
         let mut errors = vec![];
         let mut cleanup_res = vec![];
 

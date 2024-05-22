@@ -2,8 +2,6 @@
 
 ### Features
 
-- Tags, with warp function
-- warping cross-maps
 - room titles and search
 - select multiple rooms on map
 
@@ -11,6 +9,8 @@
 
 ### Features
 
+- Tags, with warp function
+- warping cross-maps
 - Quick room switching
 - Improved key and mouse bindings for draw/tileset
 - New last used palette tab
