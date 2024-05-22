@@ -35,7 +35,10 @@ pub struct Room {
     pub locked: Option<String>,
     #[serde(skip)]
     pub loaded: Option<RoomLoaded>,
+    #[serde(skip_serializing)]
     pub visible_layers: Vec<(u8,String)>,
+    #[serde(default)]
+    pub layers: Vec<Layer>,
     pub selected_layer: usize,
     #[serde(with = "dirconn_serde")]
     pub dirconn: [[bool;2];3],
@@ -44,6 +47,12 @@ pub struct Room {
     #[serde(skip)]
     pub transient: bool,
     pub editor_hide_layers_above: bool,
+}
+
+#[derive(Deserialize,Serialize)]
+pub struct Layer {
+    pub vis: u8,
+    pub label: String,
 }
 
 pub struct RoomLoaded {
@@ -84,6 +93,7 @@ impl Room {
             op_evo: 0,
             locked: None,
             visible_layers: vec![(1,"".to_owned());initial_layers],
+            layers: Default::default(),
             selected_layer: 0,
             dirconn: Default::default(),
             desc_text: Default::default(),
@@ -129,6 +139,7 @@ impl Room {
             op_evo: 0,
             locked: None,
             visible_layers: self.visible_layers.clone(),
+            layers: Default::default(),
             selected_layer: self.selected_layer,
             dirconn: Default::default(),
             desc_text: self.desc_text.clone(),
