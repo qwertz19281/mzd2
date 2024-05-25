@@ -149,7 +149,7 @@ impl Map {
         // if let Some(op) = self.create_shift_away(coord, 1, axis, dir) {
         //     self.ui_apply_roomop(op, uuidmap);
         // }
-        if let Some(v) = self.shift_smart_new(coord, Some(from), true, axis, dir, true) {
+        if let Some(v) = self.shift_smart_new_collect(coord, Some(from), self.state.quick_shift_keep_gap, axis, dir, true) {
             if !v.rooms.contains(&from_room) {
                 let op = RoomOp::SiftSmart(v, true);
                 self.ui_apply_roomop(op, uuidmap);
@@ -233,6 +233,10 @@ impl Map {
             ui.label("|");
             ui.checkbox(&mut self.state.ds_replace, "DrawReplace");
             ui.checkbox(&mut self.state.dsel_whole, "DSelWhole");
+            if let Some(room) = self.dsel_room.and_then(|id| self.state.rooms.get_mut(id) ) {
+                ui.checkbox(&mut room.editor_hide_layers_above, "EditorHideLayersAbove"); //should be transferred from prev room in quickmove dummy create
+            }
+            ui.checkbox(&mut self.state.quick_shift_keep_gap, "QuickShiftKeepGap");
         });
 
         self.editsel.ensure_loaded(

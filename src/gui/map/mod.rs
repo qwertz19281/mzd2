@@ -108,6 +108,7 @@ pub struct MapState {
     pub mtime: chrono::DateTime<chrono::Utc>,
     pub quickroom_template: Vec<Option<Room>>,
     pub set_dssel_merged: bool,
+    pub quick_shift_keep_gap: bool,
 }
 
 #[derive(Deserialize)]
@@ -413,6 +414,7 @@ impl Map {
                 mtime: current_time,
                 quickroom_template: std::iter::repeat_with(|| None).take(4).collect(),
                 set_dssel_merged: false,
+                quick_shift_keep_gap: true,
             },
             path,
             dirty_rooms: Default::default(),

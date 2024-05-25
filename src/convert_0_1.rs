@@ -138,6 +138,7 @@ pub fn convert_map(map_path: PathBuf, uuidmap: &mut UUIDMap) -> anyhow::Result<(
         mtime: map_mtime,
         quickroom_template: std::iter::repeat_with(|| None).take(4).collect(),
         set_dssel_merged: false,
+        quick_shift_keep_gap: true,
     };
 
     uuidmap.insert(new_map_state.uuid, UUIDTarget::Map(new_map_id));

@@ -521,7 +521,7 @@ impl Map {
         })
     }
 
-    pub(super) fn shift_smart_new(&mut self, base_coord: [u8;3], mut backlock: Option<[u8;3]>, keep_fwd_gap: bool, axis: OpAxis, direction: bool, no_new_connect: bool) -> Option<ShiftSmartCollected> {
+    pub(super) fn shift_smart_new_collect(&mut self, base_coord: [u8;3], mut backlock: Option<[u8;3]>, keep_fwd_gap: bool, axis: OpAxis, direction: bool, no_new_connect: bool) -> Option<ShiftSmartCollected> {
         let my_room = self.check_shift_smart1(base_coord, 1, axis, direction)?;
 
         let mut flood_spin = VecDeque::<RoomId>::with_capacity(65536);

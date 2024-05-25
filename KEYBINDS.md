@@ -62,3 +62,10 @@ In ConnDraw you, while clicking, move cursor from room A to room B, to (dis)conn
 
 - Left Mouse: Connect
 - Right Mouse: Disconnect
+
+# Tags
+
+- Left Mouse: Select tag
+- Left Mouse Double Click: either create new tag on empty space, or do warp if applicable
+- Right Mouse: Set warp destination, if setwarp is active
+- Ctrl + Left Mouse: Move currently selected tag to this position

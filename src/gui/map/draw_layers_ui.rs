@@ -34,18 +34,16 @@ impl Map {
             };
 
             ui.vertical(|ui| {
-                ui.checkbox(&mut room.editor_hide_layers_above, "Editor hide layers above"); //should be transferred from prev room in quickmove dummy create
-
-                for (layer,Layer { vis: visible, label: text }) in room.layers.iter_mut().enumerate() {
+                for (layer,Layer { vis, label }) in room.layers.iter_mut().enumerate() {
                     let selected = layer == room.selected_layer;
 
                     ui.horizontal(|ui| {
-                        let result = ui.add(egui::Button::new(if *visible != 0 {"👁"} else {" "}).min_size(min_size));
+                        let result = ui.add(egui::Button::new(if *vis != 0 {"👁"} else {" "}).min_size(min_size));
                         if result.hovered() {
                             hovered_layer = Some(layer);
                         }
                         if result.clicked() {
-                            op = Oper::SetVis(layer,*visible == 0);
+                            op = Oper::SetVis(layer,*vis == 0);
                         }
 
                         let result = ui.add(egui::Button::new(if selected {"✏"} else {" "}).min_size(min_size));
@@ -86,7 +84,11 @@ impl Map {
                             }
                         }
 
-                        ui.add(TextEdit::singleline(text).desired_width(150. * sam.dpi_scale));
+                        ui.scope(|ui| {
+                            ui.style_mut().override_text_style = Some(egui::TextStyle::Body);
+
+                            ui.add(TextEdit::singleline(label).desired_width(150. * sam.dpi_scale));
+                        });
                     });
                 }
             });
