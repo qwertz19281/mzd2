@@ -1,6 +1,7 @@
-use egui::FontId;
+use egui::{FontId, TextEdit};
 
 use crate::gui::init::SAM;
+use crate::gui::room::Layer;
 use crate::gui::sel_matrix::SelMatrix;
 
 use super::Map;
@@ -17,9 +18,11 @@ impl Map {
 
         if self.editsel.rooms.is_empty() {return None;}
         let room_id = self.editsel.rooms[0].0;
-        let Some(room) = self.state.rooms.get_mut(room_id) else {return None};
+        let room = self.state.rooms.get_mut(room_id)?;
 
-        let n_layers = room.visible_layers.len();
+        let mods = ui.input(|i| i.modifiers );
+
+        let n_layers = room.layers.len();
 
         ui.scope(|ui| {
             ui.style_mut().override_text_style = Some(egui::TextStyle::Monospace);
@@ -31,16 +34,16 @@ impl Map {
             };
 
             ui.vertical(|ui| {
-                for (layer,&visible) in room.visible_layers.iter().enumerate() {
+                for (layer,Layer { vis, label }) in room.layers.iter_mut().enumerate() {
                     let selected = layer == room.selected_layer;
 
                     ui.horizontal(|ui| {
-                        let result = ui.add(egui::Button::new(if visible {"👁"} else {" "}).min_size(min_size));
+                        let result = ui.add(egui::Button::new(if *vis != 0 {"👁"} else {" "}).min_size(min_size));
                         if result.hovered() {
                             hovered_layer = Some(layer);
                         }
                         if result.clicked() {
-                            op = Oper::SetVis(layer,!visible);
+                            op = Oper::SetVis(layer,*vis == 0);
                         }
 
                         let result = ui.add(egui::Button::new(if selected {"✏"} else {" "}).min_size(min_size));
@@ -76,14 +79,41 @@ impl Map {
                             if result.hovered() {
                                 hovered_layer = Some(layer);
                             }
-                            if result.double_clicked() {
+                            if result.clicked() {
                                 op = Oper::Del(layer);
                             }
                         }
+
+                        ui.scope(|ui| {
+                            ui.style_mut().override_text_style = Some(egui::TextStyle::Body);
+
+                            ui.add(TextEdit::singleline(label).desired_width(150. * sam.dpi_scale));
+                        });
                     });
                 }
             });
         });
+
+        for (room_id,_,_) in &self.editsel.rooms {
+            let room = self.state.rooms.get_mut(*room_id)?;
+            let loaded = room.loaded.as_mut()?;
+
+            match op {
+                Oper::Add(_) | Oper::Del(_) | Oper::Swap(_,_) => {
+                    loaded.pre_img_draw(&room.layers, room.selected_layer);
+                    loaded.dirty_file = true;
+                    room.transient = false;
+                    self.dirty_rooms.insert(*room_id);
+                    self.imglru.pop(room_id);
+                    if let Some(t) = &mut loaded.image.tex {
+                        t.dirty();
+                    }
+                }
+                _ => {},
+            }
+        }
+
+        let room = self.state.rooms.get_mut(room_id)?;
 
         match op {
             Oper::Noop => {},
@@ -100,55 +130,62 @@ impl Map {
                     room.selected_layer = a+1;
                 }
             },
-            Oper::SetVis(a, v) => room.visible_layers[a] = v,
-            Oper::SetDraw(v) => room.selected_layer = v,
+            Oper::SetVis(a, v) => room.layers[a].vis = v as u8,
+            Oper::SetDraw(v) => {
+                room.selected_layer = v;
+                if mods.ctrl | mods.shift {
+                    room.layers[room.selected_layer].vis = 1;
+                    for v in &mut room.layers[room.selected_layer+1..] {v.vis = 0;}
+                    for v in &mut room.layers[..room.selected_layer] {v.vis = 1;}
+                }
+                if mods.ctrl {
+                    for v in &mut room.layers[..room.selected_layer] {v.vis = 0;}
+                }
+                self.draw_state.draw_cancel();
+                self.dsel_state.clear_selection();
+                self.del_state.del_cancel();
+                self.move_mode_palette = None;
+            },
         }
 
         for (room_id,_,_) in &self.editsel.rooms {
-            let Some(room) = self.state.rooms.get_mut(*room_id) else {return None};
+            let room = self.state.rooms.get_mut(*room_id)?;
+            let loaded = room.loaded.as_mut()?;
 
-            assert_eq!(room.visible_layers.len(), n_layers);
-            assert_eq!(room.sel_matrix.layers.len(), n_layers);
+            assert_eq!(room.layers.len(), n_layers);
+            assert_eq!(loaded.sel_matrix.layers.len(), n_layers);
 
             match op {
                 Oper::Noop => {},
                 Oper::Del(a) => {
-                    room.visible_layers.remove(a);
-                    room.image.remove_layer(self.state.rooms_size, a);
-                    room.sel_matrix.layers.remove(a);
-                    if let Some(t) = &mut room.image.tex {
-                        t.dirty();
-                    }
+                    room.layers.remove(a);
+                    loaded.image.remove_layer(self.state.rooms_size, a);
+                    loaded.sel_matrix.layers.remove(a);
                 },
                 Oper::Swap(a, b) => {
-                    room.visible_layers.swap(a, b);
-                    room.image.swap_layers(self.state.rooms_size, a, b);
-                    room.sel_matrix.layers.swap(a, b);
-                    if let Some(t) = &mut room.image.tex {
-                        t.dirty();
-                    }
+                    room.layers.swap(a, b);
+                    loaded.image.swap_layers(self.state.rooms_size, a, b);
+                    loaded.sel_matrix.layers.swap(a, b);
                 },
                 Oper::Add(a) => {
-                    room.visible_layers.insert(a+1, true);
-                    room.image.insert_layer(self.state.rooms_size, a+1);
-                    room.sel_matrix.layers.insert(a+1, SelMatrix::new_empty(room.sel_matrix.dims));
-                    if let Some(t) = &mut room.image.tex {
-                        t.dirty();
-                    }
+                    room.layers.insert(a+1, Layer::new_visible());
+                    loaded.image.insert_layer(self.state.rooms_size, a+1);
+                    loaded.sel_matrix.layers.insert(a+1, SelMatrix::new_empty(loaded.sel_matrix.dims));
                 },
                 Oper::SetVis(_, _) => {},
                 Oper::SetDraw(_) => {},
             }
         }
 
-        let Some(room) = self.state.rooms.get_mut(room_id) else {return None};
+        let room = self.state.rooms.get_mut(room_id)?;
+        let loaded = room.loaded.as_mut()?;
 
         if !matches!(op, Oper::Noop) {
             ui.ctx().request_repaint();
         }
 
-        room.selected_layer = room.selected_layer.min(room.visible_layers.len().saturating_sub(1));
-        room.image.layers = room.visible_layers.len();
+        room.selected_layer = room.selected_layer.min(room.layers.len().saturating_sub(1));
+        loaded.image.layers = room.layers.len();
 
         if hovered_layer.is_some_and(|v| v >= n_layers) {
             hovered_layer = None;

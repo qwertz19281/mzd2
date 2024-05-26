@@ -45,7 +45,7 @@ pub fn ensure_texture_from_image<'a> (
     if tex.is_some() && !force && force_region.is_some() {
         let region = force_region.unwrap();
         if let Some(region) = effective_bounds2(region, ([0,0],image.dimensions().into())) {
-            let image_part = color_image_of_image_area(&image, region.0, region.1.sub(region.0));
+            let image_part = color_image_of_image_area(image, region.0, region.1.sub(region.0));
             let tex_manager = ctx.tex_manager();
             let mut tex_manager = tex_manager.write();
             tex_manager.set(tex.as_ref().unwrap().id(), ImageDelta {
@@ -57,7 +57,7 @@ pub fn ensure_texture_from_image<'a> (
     } else if force && tex.is_some() {
         let max_side = ctx.input(|i| i.max_texture_side);
         assert!(image.width() as usize <= max_side && image.height() as usize <= max_side);
-        let image = color_image_of_image(&image);
+        let image = color_image_of_image(image);
         let tex_manager = ctx.tex_manager();
         let mut tex_manager = tex_manager.write();
         tex_manager.set(tex.as_ref().unwrap().id(), ImageDelta {
@@ -66,7 +66,7 @@ pub fn ensure_texture_from_image<'a> (
             pos: None,
         });
     } else if tex.is_none() || force {
-        *tex = Some(ctx.load_texture(name, color_image_of_image(&image), opts));
+        *tex = Some(ctx.load_texture(name, color_image_of_image(image), opts));
     }
 
     tex.as_mut().unwrap()
@@ -158,7 +158,7 @@ pub fn ensure_texture2<'a> (
 
     if force && tex.is_some() {
         let max_side = ctx.input(|i| i.max_texture_side);
-        assert!(image_size[0] as usize <= max_side && image_size[1] as usize <= max_side);
+        assert!(image_size[0] <= max_side && image_size[1] <= max_side);
         let image = image();
         assert_color_image(&image);
         //assert_eq!(image.size, image_size);

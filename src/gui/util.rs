@@ -1,7 +1,9 @@
 use std::ops::RangeInclusive;
 
+use egui::epaint::TextShape;
 use egui::{Shape, Pos2, Rect, Vec2, Sense, PointerButton, Align2, FontId, Color32, Rounding};
 
+use super::init::EFRAME_FRAME;
 use super::map::room_ops::OpAxis;
 use super::{StupidInto, line2, rector};
 
@@ -242,6 +244,7 @@ pub trait ArrUtl: Clone {
     fn as_u8(self) -> [u8;2];
     fn as_u8_clamped(self) -> [u8;2];
     fn as_u16(self) -> [u16;2];
+    fn as_u16_clamped(self) -> [u16;2];
     fn as_u32(self) -> [u32;2];
     fn as_u64(self) -> [u64;2];
     fn as_usize(self) -> [usize;2];
@@ -253,6 +256,10 @@ pub trait ArrUtl: Clone {
     fn as_isize(self) -> [isize;2];
     fn as_f32(self) -> [f32;2];
     fn as_f64(self) -> [f64;2];
+    fn debug_assert_range(self, range: std::ops::RangeInclusive<Self::Unit>) -> Self;
+    fn assert_range(self, range: std::ops::RangeInclusive<Self::Unit>) -> Self;
+
+    fn debug_assert_positive(self) -> Self;
 }
 
 pub trait NumUtl: Clone {
@@ -288,10 +295,10 @@ macro_rules! marco_arrutl {
                     self.mul([8u8 as _,8u8 as _])
                 }
                 fn div8(self) -> Self {
-                    debug_assert!(
-                        self[0] as u64 % 8 == 0 &&
-                        self[1] as u64 % 8 == 0
-                    );
+                    // debug_assert!(
+                    //     self[0] as u64 % 8 == 0 &&
+                    //     self[1] as u64 % 8 == 0
+                    // );
                     self.div([8u8 as _,8u8 as _])
                 }
 
@@ -325,6 +332,13 @@ macro_rules! marco_arrutl {
                     [
                         (self[0] as i64).clamp(-128,127) as i8,
                         (self[1] as i64).clamp(-128,127) as i8,
+                    ]
+                }
+
+                fn as_u16_clamped(self) -> [u16;2] {
+                    [
+                        (self[0] as i64).clamp(0,65535) as u16,
+                        (self[1] as i64).clamp(0,65535) as u16,
                     ]
                 }
 
@@ -363,6 +377,21 @@ macro_rules! marco_arrutl {
                 }
                 fn as_f64(self) -> [f64;2] {
                     [self[0] as _, self[1] as _]
+                }
+
+                fn debug_assert_positive(self) -> Self {
+                    debug_assert!(self[0] >= 0u8 as _ && self[1] >= 0u8 as _, "Coord must be non-negative");
+                    self
+                }
+
+                fn debug_assert_range(self, range: std::ops::RangeInclusive<Self::Unit>) -> Self {
+                    debug_assert!(self[0] >= *range.start() && self[0] <= *range.end() && self[1] >= *range.start() && self[1] <= *range.end(), "Coord must be in range: {} ..= {}", range.start(), range.end());
+                    self
+                }
+
+                fn assert_range(self, range: std::ops::RangeInclusive<Self::Unit>) -> Self {
+                    assert!(self[0] >= *range.start() && self[0] <= *range.end() && self[1] >= *range.start() && self[1] <= *range.end(), "Coord must be in range: {} ..= {}", range.start(), range.end());
+                    self
                 }
             }
         )*
@@ -554,6 +583,36 @@ pub fn dpad(
     inv_icons: bool,
     visible: bool,
     ui: &mut egui::Ui,
+    fun: impl FnMut(&mut egui::Ui,bool,OpAxis,bool),
+) {
+    let icons = if inv_icons {
+        ["→","←","↓","↑","-","+"]
+    } else {
+        ["←","→","↑","↓","+","-"]
+    };
+
+    dpadc(desc, text_size, base_size, dpi, icons, visible, ui, fun)
+}
+
+pub fn dpad_icons<'a>(mut dir_icon: impl FnMut(OpAxis,bool) -> &'a str) -> [&'a str;6] {
+    [
+        dir_icon(OpAxis::X,false),
+        dir_icon(OpAxis::X,true),
+        dir_icon(OpAxis::Y,false),
+        dir_icon(OpAxis::Y,true),
+        dir_icon(OpAxis::Z,true),
+        dir_icon(OpAxis::Z,false),
+    ]
+}
+
+pub fn dpadc(
+    desc: impl ToString,
+    text_size: f32,
+    base_size: f32,
+    dpi: f32,
+    icons: [&str;6],
+    visible: bool,
+    ui: &mut egui::Ui,
     mut fun: impl FnMut(&mut egui::Ui,bool,OpAxis,bool),
 ) {
     let pa = alloc_painter_rel(
@@ -686,12 +745,6 @@ pub fn dpad(
         }
     }
 
-    let icons = if inv_icons {
-        ["→","←","↓","↑","-","+"]
-    } else {
-        ["←","→","↑","↓","+","-"]
-    };
-
     let border2 = border;
 
     ui.ctx().fonts(|fonts| {
@@ -754,71 +807,121 @@ pub fn dpad(
             ),
             egui::Shape::line_segment(line2(0, text_size, base_size*2., text_size+base_size*2.), akw_stroke),
             egui::Shape::line_segment(line2(base_size*2., text_size, 0, text_size+base_size*2.), akw_stroke),
-            egui::Shape::rect_stroke(rector(0, text_size, base_size*2., text_size+base_size*2.), Rounding::none(), akw_stroke),
-            egui::Shape::rect_stroke(rector(base_size*2., text_size, base_size*3., text_size+base_size), Rounding::none(), akw_stroke),
-            egui::Shape::rect_stroke(rector(base_size*2., text_size+base_size, base_size*3., text_size+base_size*2.), Rounding::none(), akw_stroke),
+            egui::Shape::rect_stroke(rector(0, text_size, base_size*2., text_size+base_size*2.), Rounding::ZERO, akw_stroke),
+            egui::Shape::rect_stroke(rector(base_size*2., text_size, base_size*3., text_size+base_size), Rounding::ZERO, akw_stroke),
+            egui::Shape::rect_stroke(rector(base_size*2., text_size+base_size, base_size*3., text_size+base_size*2.), Rounding::ZERO, akw_stroke),
         ]);
     });
 
     pa.extend_rel(shapes);
 }
 
-pub fn dragvalion_down<Num>(value: &mut Num, speed: impl Into<f64>, clamp_range: RangeInclusive<Num>, stepu: Num, ui: &mut egui::Ui) where Num: egui::emath::Numeric + NumUtl + Clone {
+pub fn dragvalion_down<Num>(value: &mut Num, speed: impl Into<f64>, clamp_range: RangeInclusive<Num>, stepu: Num, ui: &mut egui::Ui) where Num: egui::emath::Numeric + NumUtl {
     let resp = ui.add(egui::DragValue::new(value).speed(speed).clamp_range(clamp_range.clone()));
     if resp.hovered() {
-        let delta = ui.input(|i| i.scroll_delta );
+        let delta = ui.input(|i| i.raw_scroll_delta );
         if delta.y < -0.9 {
-            *value = value.clone().sat_add(stepu.clone(), clamp_range.clone());
+            *value = value.sat_add(stepu, clamp_range.clone());
             ui.ctx().request_repaint();
         }
         if delta.y > 0.9 {
-            *value = value.clone().sat_sub(stepu.clone(), clamp_range.clone());
+            *value = value.sat_sub(stepu, clamp_range.clone());
             ui.ctx().request_repaint();
         }
     }
 }
 
-pub fn dragvalion_up<Num>(value: &mut Num, speed: impl Into<f64>, clamp_range: RangeInclusive<Num>, stepu: Num, ui: &mut egui::Ui) where Num: egui::emath::Numeric + NumUtl + Clone {
+pub fn dragvalion_up<Num>(value: &mut Num, speed: impl Into<f64>, clamp_range: RangeInclusive<Num>, stepu: Num, ui: &mut egui::Ui) where Num: egui::emath::Numeric + NumUtl {
     let resp = ui.add(egui::DragValue::new(value).speed(speed).clamp_range(clamp_range.clone()));
     if resp.hovered() {
-        let delta = ui.input(|i| i.scroll_delta );
+        let delta = ui.input(|i| i.raw_scroll_delta );
         if delta.y < -0.9 {
-            *value = value.clone().sat_sub(stepu.clone(), clamp_range.clone());
+            *value = value.sat_sub(stepu, clamp_range.clone());
             ui.ctx().request_repaint();
         }
         if delta.y > 0.9 {
-            *value = value.clone().sat_add(stepu.clone(), clamp_range.clone());
+            *value = value.sat_add(stepu, clamp_range.clone());
             ui.ctx().request_repaint();
         }
     }
 }
 
-pub fn dragslider_down<Num>(value: &mut Num, speed: impl Into<f64>, clamp_range: RangeInclusive<Num>, stepu: Num, ui: &mut egui::Ui) where Num: egui::emath::Numeric + NumUtl + Clone {
+pub fn dragslider_down<Num>(value: &mut Num, speed: impl Into<f64>, clamp_range: RangeInclusive<Num>, stepu: Num, ui: &mut egui::Ui) where Num: egui::emath::Numeric + NumUtl {
     let resp = ui.add(egui::Slider::new(value, clamp_range.clone()).drag_value_speed(speed.into()));
     if resp.hovered() {
-        let delta = ui.input(|i| i.scroll_delta );
+        let delta = ui.input(|i| i.raw_scroll_delta );
         if delta.y < -0.9 {
-            *value = value.clone().sat_add(stepu.clone(), clamp_range.clone());
+            *value = value.sat_add(stepu, clamp_range.clone());
             ui.ctx().request_repaint();
         }
         if delta.y > 0.9 {
-            *value = value.clone().sat_sub(stepu.clone(), clamp_range.clone());
+            *value = value.sat_sub(stepu, clamp_range.clone());
             ui.ctx().request_repaint();
         }
     }
 }
 
-pub fn dragslider_up<Num>(value: &mut Num, speed: impl Into<f64>, clamp_range: RangeInclusive<Num>, stepu: Num, ui: &mut egui::Ui) where Num: egui::emath::Numeric + NumUtl + Clone {
+pub fn dragslider_up<Num>(value: &mut Num, speed: impl Into<f64>, clamp_range: RangeInclusive<Num>, stepu: Num, ui: &mut egui::Ui) where Num: egui::emath::Numeric + NumUtl {
     let resp = ui.add(egui::Slider::new(value, clamp_range.clone()).drag_value_speed(speed.into()));
     if resp.hovered() {
-        let delta = ui.input(|i| i.scroll_delta );
+        let delta = ui.input(|i| i.raw_scroll_delta );
         if delta.y < -0.9 {
-            *value = value.clone().sat_sub(stepu.clone(), clamp_range.clone());
+            *value = value.sat_sub(stepu, clamp_range.clone());
             ui.ctx().request_repaint();
         }
         if delta.y > 0.9 {
-            *value = value.clone().sat_add(stepu.clone(), clamp_range.clone());
+            *value = value.sat_add(stepu, clamp_range.clone());
             ui.ctx().request_repaint();
         }
+    }
+}
+
+pub fn text_with_bg_color(
+    fonts: &egui::text::Fonts,
+    pos: Pos2,
+    anchor: Align2,
+    text: impl ToString,
+    font_id: FontId,
+    zoom: f32,
+    color: Color32,
+    bg_color: Option<Color32>,
+    mut dest: impl FnMut(egui::Shape),
+) {
+    let galley = fonts.layout_no_wrap(text.to_string(), font_id, color);
+    let rect = anchor.anchor_size(pos, galley.size());
+    let text = TextShape::new(rect.min, galley, color);
+    if let Some(bg_color) = bg_color {
+        if rect.width() * rect.height() != 0. {
+            let rect = Rect::from_min_size(rect.min, rect.size()/zoom);
+            let rect = rect.expand(1.);
+            dest(egui::Shape::rect_filled(rect, Rounding::ZERO, bg_color));
+        }
+    }
+    dest(text.into());
+}
+
+pub trait RfdUtil {
+    fn try_set_parent(self) -> Self;
+}
+
+impl RfdUtil for rfd::FileDialog {
+    fn try_set_parent(self) -> Self {
+        if !EFRAME_FRAME.is_set() {
+            return self;
+        }
+        EFRAME_FRAME.with(|f|
+            self.set_parent(f)
+        )
+    }
+}
+
+impl RfdUtil for rfd::MessageDialog {
+    fn try_set_parent(self) -> Self {
+        if !EFRAME_FRAME.is_set() {
+            return self;
+        }
+        EFRAME_FRAME.with(|f|
+            self.set_parent(f)
+        )
     }
 }

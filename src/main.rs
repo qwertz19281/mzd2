@@ -1,5 +1,5 @@
-use mzd2::gui::init::launch_gui;
+use mzd2::cli::cli;
 
 fn main() {
-    launch_gui()
+    cli();
 }

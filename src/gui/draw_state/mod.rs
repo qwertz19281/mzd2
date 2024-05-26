@@ -17,7 +17,7 @@ pub struct DrawState {
     current_dest: HashSet<[i16;2]>,
     current_dest2: Vec<[i16;2]>,
     prev_tik: Option<[i16;2]>,
-    src: Option<PaletteItem>,
+    pub(crate) src: Option<PaletteItem>,
     mode: DrawMode,
     replace: bool,
 }
@@ -57,7 +57,7 @@ impl DrawState {
     }
 
     // draw_mouse_down should be called before
-    pub fn draw_hover_at_pos(&self, pos: [f32;2], src: &PaletteItem, mut dest: impl FnMut(Shape)) { // TODO the dest fn should scale and translate the shape
+    pub fn draw_hover_at_pos(&self, pos: [f32;2], src: &PaletteItem, mut dest: impl FnMut(Shape), ctx: &egui::Context) { // TODO the dest fn should scale and translate the shape
         let blend = egui::Color32::from_rgba_unmultiplied(255, 255, 255, 64);
         
         if self.active() {
@@ -65,12 +65,15 @@ impl DrawState {
             let src = self.src.as_ref().unwrap();
             let size = src.src.img.dimensions();
 
-            if let Some(tex) = &src.texture {
+            if !src.is_empty() {
+                let mut tex = src.src.texture.borrow_mut();
+                let tex = tex.ensure_image(&src.src.img, ctx);
+
                 if self.replace {
                     for &q in self.current_dest.iter().chain(self.current_dest2.iter()) {
                         let q = q.as_i32().mul8();
                         let rect = rector(q[0], q[1], q[0] + size.0 as i32, q[1] + size.1 as i32);
-                        dest(egui::Shape::rect_filled(rect, Rounding::none(), Color32::BLACK))
+                        dest(egui::Shape::rect_filled(rect, Rounding::ZERO, Color32::BLACK))
                     }
                 }
 
@@ -95,10 +98,13 @@ impl DrawState {
 
             let stroke = egui::Stroke::new(1.5, Color32::BLUE);
 
-            dest(egui::Shape::rect_stroke(rect, Rounding::none(), stroke));
+            if !src.is_empty() {
+                let mut tex = src.src.texture.borrow_mut();
+                let tex = tex.ensure_image(&src.src.img, ctx);
 
-            if let Some(tex) = &src.texture {
-                dest(egui::Shape::Mesh(basic_tex_shape_c(tex.id(), rect, blend)));
+                dest(egui::Shape::Mesh(basic_tex_shape_c(tex.id(), rect, blend))); // TODO ignores the PaletteItem UV
+            } else {
+                dest(egui::Shape::rect_stroke(rect, Rounding::ZERO, stroke));
             }
         }
     }

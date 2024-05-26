@@ -25,7 +25,7 @@ impl DelState {
             active: None,
             selected: Default::default(),
             prev_tik: None,
-            del_mode: DrawMode::TileEraseDirect,
+            del_mode: DrawMode::Direct,
             whole_selentry: true,
         }
     }
@@ -61,17 +61,17 @@ impl DelState {
                 }
 
                 let stroke = egui::Stroke::new(1.5, Color32::BLUE);
-                dest(egui::Shape::rect_stroke(rect, Rounding::none(), stroke));
+                dest(egui::Shape::rect_stroke(rect, Rounding::ZERO, stroke));
             }
             return;
         }
         
         let mut render_rect = |[x,y]: [u16;2]| {
             let rect = rector(x as u32 * 8, y as u32 * 8, (x+1) as u32 * 8, (y+1) as u32 * 8);
-            dest(egui::Shape::rect_filled(rect, Rounding::none(), Color32::from_rgba_unmultiplied(255,0,0,64)));
+            dest(egui::Shape::rect_filled(rect, Rounding::ZERO, Color32::from_rgba_unmultiplied(255,0,0,64)));
         };
         
-        for (&a,_) in &self.selected {
+        for &a in self.selected.keys() {
             render_rect(a);
         }
     }
@@ -83,23 +83,27 @@ impl DelState {
     }
 
     pub fn del_mouse_up(&mut self, write: &mut (impl SelEntryWrite + ImgWrite)) {
-        for (&a,_) in &self.selected {
-            let draw_src_off = a.as_u32().mul8();
-
-            if let Some(se) = write.get_mut(a.as_u32()) {
-                *se = SelEntry {
-                    start: [0,0],
-                    size: [0,0],
-                };
-            }
-
-            write.img_erase(
-                draw_src_off,
-                [8,8],
-            );
+        for a in self.selected.keys() {
+            Self::delete_in(a.as_u32(), write);
         }
 
         self.del_cancel();
+    }
+
+    pub fn delete_in(pos: [u32;2], write: &mut (impl SelEntryWrite + ImgWrite)) {
+        let draw_src_off = pos.mul8();
+
+        if let Some(se) = write.get_mut(pos) {
+            *se = SelEntry {
+                start: [0,0],
+                size: [0,0],
+            };
+        }
+
+        write.img_erase(
+            draw_src_off,
+            [8,8],
+        );
     }
 
     pub fn active(&self) -> bool {
@@ -113,7 +117,7 @@ impl DelState {
         if self.prev_tik == Some(dest) {return;}
         self.prev_tik = Some(dest);
 
-        if matches!(self.del_mode,DrawMode::TileEraseRect) {
+        if matches!(self.del_mode, DrawMode::Rect | DrawMode::TileEraseRect) {
             self.selected.clear();
         }
 
@@ -133,10 +137,10 @@ impl DelState {
         };
 
         match self.del_mode {
-            DrawMode::TileEraseDirect => {
+            DrawMode::Direct | DrawMode::TileEraseDirect => {
                 add_sel_entry(dest);
             },
-            DrawMode::TileEraseRect => {
+            DrawMode::Rect | DrawMode::TileEraseRect => {
                 fn range_se(a: u16, b: u16) -> Range<u16> {
                     if b > a {
                         a .. b+1

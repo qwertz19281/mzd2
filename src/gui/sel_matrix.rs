@@ -1,21 +1,23 @@
-use serde::{Deserialize, Serialize};
+use crate::SRc;
 
 use super::map::{RoomMap, DirtyRooms, LruCache};
 use super::room::draw_image::{DrawImageGroup, DrawImage};
 use super::util::ArrUtl;
 
-#[derive(Clone, Deserialize,Serialize)]
+const SEL_MATRIX_FILE_HEADER: &[u8] = b"#!80c2014a-5cfd-4b23-b767-f5b295edf15e\n";
+
+#[derive(Clone, PartialEq)]
 pub struct SelMatrix {
     pub dims: [u32;2],
-    #[serde(serialize_with = "ser_selentry")]
-    #[serde(deserialize_with = "deser_selentry")]
-    pub entries: Vec<SelEntry>,
+    pub entries: SRc<Vec<SelEntry>>,
 }
 
 /// SelEntry is relative to that one SelEntry, while SelPt is "absolute" (relative to whole img)
-#[derive(Clone, Debug, Deserialize,Serialize)]
+#[derive(Clone, Debug, Hash, PartialEq)]
 pub struct SelEntry {
-    pub start: [i8;2],
+    /// The offset of this point to the top-left of the selgroup
+    pub start: [u8;2],
+    /// The size of the selgroup (self.start >= 0 && self.start < self.size)
     pub size: [u8;2],
     //tile_hash: u32,
 }
@@ -33,7 +35,7 @@ impl SelMatrix {
 
         Self {
             dims: [w,h],
-            entries,
+            entries: SRc::new(entries),
         }
     }
 
@@ -48,7 +50,7 @@ impl SelMatrix {
 
         Self {
             dims: [w,h],
-            entries,
+            entries: SRc::new(entries),
         }
     }
 
@@ -58,35 +60,79 @@ impl SelMatrix {
             for x in 0 .. dims[0] {
                 if let Some(se) = self.get_mut([x,y]) {
                     if se.start == [0,0] && se.size == [1,1] {
-                        let [qx,qy] = [x,y].quant(interval.as_u32());
+                        let qstart = [x,y].quant(interval.as_u32());
 
-                        se.start = [(qx as i32 - x as i32) as i8, ( qy as i32 - y as i32) as i8];
-                        se.size = interval.as_u32().vmin(dims.sub([qx,qy])).as_u8_clamped();
+                        se.start = [x,y].as_i32().sub(qstart.as_i32()).debug_assert_positive().as_u8_clamped();
+                        se.size = interval.as_u32().vmin(dims.sub(qstart)).as_u8_clamped();
                     }
                 }
             }
         }
+    }
+
+    /// swap: whether to swap x and y axis
+    /// 
+    /// swapxy happens before flip(x/y)
+    pub fn transformed(&self, swap: bool, flip: [bool;2]) -> Self {
+        let mut dest = Self::new_empty(self.dims);
+        if swap {
+            dest.dims.reverse();
+        }
+
+        let mut src_entries = self.entries.iter();
+        let dest_entries = SRc::make_mut(&mut dest.entries);
+        assert_eq!(src_entries.size_hint().0, self.dims[0] as usize * self.dims[1] as usize);
+        assert_eq!(dest_entries.len(), self.dims[0] as usize * self.dims[1] as usize);
+        for sy in 0 .. self.dims[1] {
+            for sx in 0 .. self.dims[0] {
+                let (mut dx,mut dy) = (sx,sy);
+                if swap {
+                    (dx,dy) = (dy,dx);
+                }
+                if flip[0] {
+                    dx = self.dims[0] - 1 - dx;
+                }
+                if flip[1] {
+                    dy = self.dims[1] - 1 - dy;
+                }
+
+                let mut v = src_entries.next().unwrap().clone();
+
+                if swap {
+                    v.size.reverse();
+                    v.start.reverse();
+                }
+                if flip[0] {
+                    v.start[0] = v.size[0] - 1 - v.start[0];
+                }
+                if flip[1] {
+                    v.start[1] = v.size[1] - 1 - v.start[1];
+                }
+
+                dest_entries[dy as usize * self.dims[1] as usize + dx as usize] = v;
+            }
+        }
+        dest
     }
 }
 
 impl SelEntry {
     // off in eighth-pixel
     pub fn to_sel_pt(&self, at_off: [u32;2]) -> SelPt {
-        let oo = [at_off[0] as i32, at_off[1] as i32];
         SelPt {
-            start: self.start.as_i32().add(oo).as_u16(),
+            start: at_off.as_i32().sub(self.start.as_i32()).debug_assert_range(0..=65535).as_u16_clamped(),
             size: self.size,
         }
     }
 
     pub fn to_sel_pt_fixedi(&self, at_off: [i32;2], bound_limits: ([i32;2],[i32;2])) -> SelPt {
-        let p0 = self.start.as_i32().add(at_off);
+        let p0 = at_off.sub(self.start.as_i32());
         let p1 = p0.add(self.size.as_i32());
 
         let (p0,p1) = effective_bounds2i((p0,p1), bound_limits);
 
         SelPt {
-            start: p0.as_u16(),
+            start: p0.debug_assert_range(0..=65535).as_u16_clamped(),
             size: p1.sub(p0).as_u8_clamped(),
         }
     }
@@ -95,32 +141,27 @@ impl SelEntry {
         (self.size[0] == 0) | (self.size[1] == 0)
     }
 
-    fn enc(&self) -> [u8;4] {
+    fn enc(&self) -> [u8;8] {
         [
-            unsafe {
-                std::mem::transmute(self.start[0])
-            },
-            unsafe {
-                std::mem::transmute(self.start[1])
-            },
+            self.start[0],
+            self.start[1],
             self.size[0],
             self.size[1],
+            0,0,0,0,
         ]
     }
 
     fn dec(v: &[u8]) -> Self {
-        assert!(v.len() >= 4);
+        assert!(v.len() >= 8);
         Self {
-            start: [
-                unsafe {
-                    std::mem::transmute(v[0])
-                },
-                unsafe {
-                    std::mem::transmute(v[1])
-                },
-            ],
+            start: [v[0],v[1]],
             size: [v[2],v[3]],
         }
+    }
+
+    pub fn clampfix(&self, pos_in_clamp_space: [i32;2], clamp_space: ([i32;2],[i32;2])) -> Self {
+        let pt = self.to_sel_pt_fixedi(pos_in_clamp_space, clamp_space);
+        pt.to_sel_entryi(pos_in_clamp_space)
     }
 }
 
@@ -134,19 +175,25 @@ pub struct SelPt {
 impl SelPt {
     /// self_off: the offset at which the SelPt is in the image, which needs to be subtracted
     pub fn to_sel_entry(&self, self_off: [u32;2]) -> SelEntry {
-        let oo = [self_off[0] as i32, self_off[1] as i32];
         SelEntry {
-            start: [(self.start[0] as i32 - oo[0]) as i8, (self.start[1] as i32 - oo[1]) as i8],
+            start: self_off.as_i32().sub(self.start.as_i32()).debug_assert_positive().as_u8_clamped(),
+            size: self.size,
+        }
+    }
+
+    pub fn to_sel_entryi(&self, self_off: [i32;2]) -> SelEntry {
+        SelEntry {
+            start: self_off.as_i32().sub(self.start.as_i32()).debug_assert_positive().as_u8_clamped(),
             size: self.size,
         }
     }
 }
 
 pub fn sel_entry_dims(full: [u32;2]) -> [u32;2] {
-    [full[0] / 8, full[1] / 8]
+    full.div8()
 }
 
-#[derive(Clone, Deserialize,Serialize)]
+#[derive(Clone, PartialEq)]
 pub struct SelMatrixLayered {
     pub dims: [u32;2],
     pub layers: Vec<SelMatrix>,
@@ -154,6 +201,8 @@ pub struct SelMatrixLayered {
 
 impl SelMatrixLayered {
     pub fn new([w,h]: [u32;2], initial_layers: usize) -> Self {
+        assert!(w != 0 && h != 0);
+
         let layers = (0..initial_layers)
             .map(|_| SelMatrix::new_empty([w,h]) ).collect();
 
@@ -168,16 +217,80 @@ impl SelMatrixLayered {
         self.layers.insert(idx, layer);
     }
 
-    pub fn get_traced(&self, pos: [u32;2], on_layers: impl DoubleEndedIterator<Item=(usize,bool)>) -> Option<&SelEntry> {
-        for (layer_idx,layer) in on_layers.rev() {
-            if !layer {continue};
+    pub fn get_traced(&self, pos: [u32;2], on_layers: impl DoubleEndedIterator<Item=usize>) -> Option<(usize,&SelEntry)> {
+        for layer_idx in on_layers.rev() {
             if let Some(entry) = self.layers.get(layer_idx).and_then(|layer| layer.get(pos) ) {
                 if !entry.is_empty() {
-                    return Some(entry);
+                    return Some((layer_idx,entry));
                 }
             }
         }
         None
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.dims[0] == 0 || self.dims[1] == 0
+    }
+
+    pub fn ser(&self, dest: impl std::io::Write) -> anyhow::Result<()> {
+        Self::ser_sm(self.dims, &self.layers, dest)
+    }
+
+    pub fn ser_sm(dims: [u32;2], layers: &[SelMatrix], mut dest: impl std::io::Write) -> anyhow::Result<()> {
+        dest.write_all(SEL_MATRIX_FILE_HEADER)?;
+        dest.write_all(&dims[0].to_le_bytes())?;
+        dest.write_all(&dims[1].to_le_bytes())?;
+        dest.write_all(&(layers.len() as u64).to_le_bytes())?;
+        for layer in layers {
+            for entry in &*layer.entries {
+                dest.write_all(&entry.enc())?;
+            }
+        }
+        Ok(())
+    }
+
+    pub fn deser(mut src: impl std::io::Read, expected_size: [u32;2]) -> anyhow::Result<Self> {
+        let mut match_header = [0u8;SEL_MATRIX_FILE_HEADER.len()];
+        let mut w = [0u8;4];
+        let mut h = [0u8;4];
+        let mut len = [0u8;8];
+        src.read_exact(&mut match_header)?;
+        if SEL_MATRIX_FILE_HEADER != match_header {
+            anyhow::bail!("Invalid seltrix file header");
+        }
+        src.read_exact(&mut w)?;
+        src.read_exact(&mut h)?;
+        src.read_exact(&mut len)?;
+        let size = [u32::from_le_bytes(w), u32::from_le_bytes(h)];
+        let len = u64::from_le_bytes(len) as usize;
+        if size != expected_size {
+            anyhow::bail!("sel matrix size mismatch");
+        }
+        // if len != expected_n_layers {
+        //     anyhow::bail!("sel matrix layers mismatch");
+        // }
+        let mut dest = Self::new(size, len);
+        for layer in &mut dest.layers {
+            for entry in SRc::make_mut(&mut layer.entries) {
+                let mut dec = [0u8;8];
+                src.read_exact(&mut dec)?;
+                *entry = SelEntry::dec(&dec);
+            }
+        }
+        Ok(dest)
+    }
+
+    pub fn transformed(&self, swap: bool, flip: [bool;2]) -> Self {
+        let mut dims = self.dims;
+        if swap {
+            dims.reverse();
+        }
+
+        let layers = self.layers.iter()
+            .map(|v| v.transformed(swap, flip) )
+            .collect();
+
+        Self { dims, layers }
     }
 }
 
@@ -219,41 +332,6 @@ pub fn deoverlap_layered(i: impl Iterator<Item=(usize,SelPt)>, matrix: &[SelMatr
     collect
 }
 
-fn ser_selentry<S>(se: &Vec<SelEntry>, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: serde::Serializer
-{
-    let mut sdest = vec![0;se.len()*8];
-    let mut sd1 = &mut sdest[..];
-    for s in se {
-        let sob = s.enc();
-        assert!(sd1.len() >= 8);
-        hex::encode_to_slice(sob, &mut sd1[..8]).unwrap();
-        sd1 = &mut sd1[8..];
-    }
-    let str = unsafe { String::from_utf8_unchecked(sdest) };
-    str.serialize(serializer)
-}
-
-fn deser_selentry<'de,D>(deserializer: D) -> Result<Vec<SelEntry>, D::Error>
-where
-    D: serde::Deserializer<'de>
-{
-    let str = String::deserialize(deserializer)?;
-
-    let mut entries = Vec::with_capacity(str.len()/8);
-
-    assert!(str.len()%8 == 0);
-
-    for s in str.as_bytes().chunks_exact(8) {
-        let mut sob = [0;4];
-        hex::decode_to_slice(s, &mut sob).unwrap();
-        entries.push(SelEntry::dec(&sob));
-    }
-
-    Ok(entries)
-}
-
 fn effective_bounds2i((aoff,aoff2): ([i32;2],[i32;2]), (boff,boff2): ([i32;2],[i32;2])) -> ([i32;2],[i32;2]) {
     fn axis_op(aoff: i32, aoff2: i32, boff: i32, boff2: i32) -> (i32,i32) {
         let s0 = aoff.max(boff);
@@ -281,6 +359,7 @@ pub trait SelEntryWrite: SelEntryRead {
 
     fn set_and_fix(&mut self, pos: [u32;2], v: SelEntry);
 
+    // TODO must be rewritten so sels can hold selsize top-left <0 as they can hold bottom-right >w/h
     fn set_and_fixi(&mut self, pos: [i32;2], v: SelEntry) {
         if pos[0] >= 0 && pos[1] >= 0 {
             self.set_and_fix(pos.as_u32(), v);
@@ -326,7 +405,7 @@ impl SelEntryWrite for SelMatrix {
         let [w,h] = self.dims;
         //let (x,y) = (x / 8, y / 8);
         if x >= w || y >= h {return None;}
-        self.entries.get_mut(y as usize * w as usize + x as usize)
+        SRc::make_mut(&mut self.entries).get_mut(y as usize * w as usize + x as usize)
     }
 
     fn fill(&mut self, [x0,y0]: [u32;2], [x1,y1]: [u32;2]) {
@@ -334,8 +413,8 @@ impl SelEntryWrite for SelMatrix {
         for y in y0 .. y1 {
             for x in x0 .. x1 {
                 if let Some(se) = self.get_mut([x,y]) {
-                    se.start = [(x0 as i32 - x as i32) as i8, ( y0 as i32 - y as i32) as i8]; //TODO handle tile sizes >256 (fail or panic)
-                    se.size = [(x1 - x0) as u8, (y1 - y0) as u8];
+                    se.start = [x,y].as_i32().sub([x0,y0].as_i32()).as_u8_clamped(); //TODO handle tile sizes >256 (fail or panic)
+                    se.size = [x1,y1].as_i32().sub([x0,y0].as_i32()).as_u8_clamped();
                 }
             }
         }
@@ -345,10 +424,8 @@ impl SelEntryWrite for SelMatrix {
         let dims = self.dims.as_i32();
 
         if let Some(e) = self.get_mut(pos) {
-            let vspt = v.to_sel_pt_fixedi(pos.as_i32(), ([0,0],dims));
-            let vspt = vspt.to_sel_entry(pos);
-
-            *e = vspt;
+            let pt = v.to_sel_pt_fixedi(pos.as_i32(), ([0,0],dims));
+            *e = pt.to_sel_entry(pos);
         }
     }
 }
@@ -376,8 +453,9 @@ impl SelEntryRead for DIGMatrixAccess<'_,'_> {
             
             if x >= roff[0] && x < roff[0]+rooms_size[0] && y >= roff[1] && y < roff[1]+rooms_size[1] {
                 let Some(room) = self.rooms.get(room_id) else {continue};
+                let Some(loaded) = &room.loaded else {continue};
 
-                return room.sel_matrix.layers[self.layer].get([x-roff[0],y-roff[1]]);
+                return loaded.sel_matrix.layers[self.layer].get([x-roff[0],y-roff[1]]);
             }
         }
         None
@@ -392,8 +470,9 @@ impl SelEntryRead for DIGMatrixAccessMut<'_,'_> {
             
             if x >= roff[0] && x < roff[0]+rooms_size[0] && y >= roff[1] && y < roff[1]+rooms_size[1] {
                 let Some(room) = self.rooms.get(room_id) else {continue};
+                let Some(loaded) = &room.loaded else {continue};
 
-                return room.sel_matrix.layers[self.layer].get([x-roff[0],y-roff[1]]);
+                return loaded.sel_matrix.layers[self.layer].get([x-roff[0],y-roff[1]]);
             }
         }
         None
@@ -407,9 +486,14 @@ impl SelEntryWrite for DIGMatrixAccessMut<'_,'_> {
             let roff = roff.div8();
             
             if x >= roff[0] && x < roff[0]+rooms_size[0] && y >= roff[1] && y < roff[1]+rooms_size[1] {
-                if !self.rooms.contains_key(room_id) {continue};
+                let Some(room) = self.rooms.get_mut(room_id) else {continue};
+                let Some(loaded) = &mut room.loaded else {continue};
+                loaded.pre_img_draw(&room.layers, room.selected_layer);
+                room.transient = false;
+                self.dirty_map.0.insert(room_id);
+                self.dirty_map.1.pop(&room_id);
 
-                return self.rooms.get_mut(room_id).unwrap().sel_matrix.layers[self.layer].get_mut([x-roff[0],y-roff[1]]);
+                return self.rooms.get_mut(room_id).unwrap().loaded.as_mut().unwrap().sel_matrix.layers[self.layer].get_mut([x-roff[0],y-roff[1]]);
             }
         }
         None
@@ -422,8 +506,15 @@ impl SelEntryWrite for DIGMatrixAccessMut<'_,'_> {
             let Some((o1,o2)) = effective_bounds2((roff,roff.add(rooms_size)), ([x0,y0],[x1,y1])) else {continue};
 
             let Some(room) = self.rooms.get_mut(room_id) else {continue};
+            let Some(loaded) = &mut room.loaded else {continue};
 
-            room.sel_matrix.layers[self.layer].fill(o1, o2);
+            loaded.pre_img_draw(&room.layers, room.selected_layer);
+
+            loaded.sel_matrix.layers[self.layer].fill(o1, o2);
+
+            room.transient = false;
+            self.dirty_map.0.insert(room_id);
+            self.dirty_map.1.pop(&room_id);
         }
     }
 
@@ -433,9 +524,16 @@ impl SelEntryWrite for DIGMatrixAccessMut<'_,'_> {
             let roff = roff.div8();
             
             if pos[0] >= roff[0] && pos[0] < roff[0]+rooms_size[0] && pos[1] >= roff[1] && pos[1] < roff[1]+rooms_size[1] {
-                let Some(room) = self.rooms.get_mut(room_id) else {break};
+                let Some(room) = self.rooms.get_mut(room_id) else {continue};
+                let Some(loaded) = &mut room.loaded else {continue};
 
-                room.sel_matrix.layers[self.layer].set_and_fix(pos.sub(roff), v);
+                loaded.pre_img_draw(&room.layers, room.selected_layer);
+
+                loaded.sel_matrix.layers[self.layer].set_and_fix(pos.sub(roff), v);
+
+                room.transient = false;
+                self.dirty_map.0.insert(room_id);
+                self.dirty_map.1.pop(&room_id);
 
                 break;
             }

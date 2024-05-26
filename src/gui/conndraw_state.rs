@@ -43,7 +43,7 @@ impl ConnDrawState {
                     set_dir(room,ax,dir);
                 }
             }
-            try_side(coord, ax, dir, |c2,_,_| {
+            try_side(coord, ax, dir, |c2| {
                 if let Some(&id) = matrix.get(c2) {
                     if let Some(room) = rooms.get_mut(id) {
                         set_dir(room,ax,!dir);

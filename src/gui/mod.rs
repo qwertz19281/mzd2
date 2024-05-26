@@ -5,6 +5,7 @@ use egui::Vec2;
 use self::init::SharedApp;
 
 pub mod init;
+pub mod dock;
 pub mod top_panel;
 pub mod window_states;
 pub mod tileset;
@@ -19,6 +20,7 @@ pub mod sel_matrix;
 pub mod util;
 pub mod filedrop;
 pub mod conndraw_state;
+pub mod key_manager;
 
 pub type MutQueue = Vec<Box<dyn FnOnce(&mut SharedApp)>>;
 
@@ -61,12 +63,12 @@ convtable!(
 );
 
 /// Call only one, returns old dpi
-pub fn dpi_hack(ctx: &egui::Context, frame: &mut eframe::Frame) -> f32 {
+pub fn dpi_hack(ctx: &egui::Context, _: &mut eframe::Frame) -> f32 {
     let scale = ctx.pixels_per_point();
     
     let mut fontdef = egui::FontDefinitions::default();
 
-    for (_,font) in &mut fontdef.font_data {
+    for font in fontdef.font_data.values_mut() {
         font.tweak.scale *= scale;
     }
 
@@ -101,13 +103,15 @@ pub fn dpi_hack(ctx: &egui::Context, frame: &mut eframe::Frame) -> f32 {
             s.interact_size *= scale;
             s.item_spacing *= scale;
             marge(&mut s.menu_margin, scale);
-            s.scroll_bar_inner_margin *= scale;
-            s.scroll_bar_outer_margin *= scale;
-            s.scroll_bar_width *= scale;
-            s.scroll_handle_min_length *= scale;
+            s.menu_width *= scale;
+            s.scroll.bar_inner_margin *= scale;
+            s.scroll.bar_outer_margin *= scale;
+            s.scroll.bar_width *= scale;
+            s.scroll.handle_min_length *= scale;
+            s.scroll.floating_width *= scale;
+            s.scroll.floating_allocated_width *= scale;
             s.slider_width *= scale;
             s.text_edit_width *= scale;
-            s.tooltip_width *= scale;
             s.tooltip_width *= scale;
             marge(&mut s.window_margin, scale);
         }

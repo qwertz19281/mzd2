@@ -40,7 +40,7 @@ impl CSEState {
         }
 
         let stroke = egui::Stroke::new(1.5, Color32::BLUE);
-        dest(egui::Shape::rect_stroke(rect, Rounding::none(), stroke));
+        dest(egui::Shape::rect_stroke(rect, Rounding::ZERO, stroke));
     }
 
     pub fn cse_mouse_up(&mut self, pos: [f32;2], dest: &mut impl SelEntryWrite) {

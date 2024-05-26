@@ -28,6 +28,7 @@ pub struct DSelState {
     dsel_mode: DSelMode,
     sel_area: ([u16;2],[u16;2]),
     whole_selentry: bool,
+    move_mode: bool,
 }
 
 impl DSelState {
@@ -41,11 +42,12 @@ impl DSelState {
             dsel_mode: DSelMode::Direct,
             sel_area: ([65535,65535],[0,0]),
             whole_selentry: true,
+            move_mode: false,
         }
     }
     ///
     /// add: true = add to sel, false = remove from sel
-    pub fn dsel_mouse_down(&mut self, pos: [f32;2], src: &impl SelEntryRead, mode: DSelMode, add: bool, stage: bool, new: bool, whole_selentry: bool) {
+    pub fn dsel_mouse_down(&mut self, pos: [f32;2], src: &impl SelEntryRead, mode: DSelMode, add: bool, stage: bool, new: bool, whole_selentry: bool, move_mode: bool) {
         if new {
             self.dsel_cancel();
             if !stage {
@@ -55,6 +57,7 @@ impl DSelState {
             self.dsel_mode = mode;
             self.whole_selentry = whole_selentry;
             self.staging_mode = add;
+            self.move_mode = move_mode;
         }
         // if srcid != self.src_id {
         //     self.clear_selection();
@@ -86,22 +89,22 @@ impl DSelState {
                 }
 
                 let stroke = egui::Stroke::new(1.5, Color32::BLUE);
-                dest(egui::Shape::rect_stroke(rect, Rounding::none(), stroke));
+                dest(egui::Shape::rect_stroke(rect, Rounding::ZERO, stroke));
             }
             return;
         }
         
         let mut render_rect = |[x,y]: [u16;2]| {
             let rect = rector(x as u32 * 8, y as u32 * 8, (x+1) as u32 * 8, (y+1) as u32 * 8);
-            dest(egui::Shape::rect_filled(rect, Rounding::none(), Color32::from_rgba_unmultiplied(255,0,0,64)));
+            dest(egui::Shape::rect_filled(rect, Rounding::ZERO, Color32::from_rgba_unmultiplied(255,0,0,64)));
         };
         
-        for (&a,_) in &self.selected {
+        for &a in self.selected.keys() {
             if !self.staging_mode && self.selected_staging.contains_key(&a) {continue;}
             render_rect(a);
         }
         if self.staging_mode {
-            for (&a,_) in &self.selected_staging {
+            for &a in self.selected_staging.keys() {
                 if self.selected.contains_key(&a) {continue;}
                 render_rect(a);
             }
@@ -110,15 +113,16 @@ impl DSelState {
 
     pub fn dsel_cancel(&mut self) {
         self.active = None;
-        self.selected.clear();
+        self.selected_staging.clear();
         self.prev_tik = None;
     }
 
     pub fn clear_selection(&mut self) {
         // self.src_id = SrcID::None;
         self.dsel_cancel();
-        self.selected_staging.clear();
+        self.selected.clear();
         self.sel_area = ([65535,65535],[0,0]);
+        self.move_mode = false;
     }
 
     pub fn dsel_mouse_up(&mut self, _: [f32;2], img: &impl ImgRead) -> SelImg {
@@ -149,6 +153,8 @@ impl DSelState {
             let draw_src_off = a.as_u32().mul8();
             let draw_dest_off = a.sub(min).as_u32().mul8();
 
+            let b = b.clampfix(a.as_i32(), (min.as_i32(),max.as_i32().add([1,1])) );
+
             sels.push((
                 a.sub(min),
                 b.clone(),
@@ -165,10 +171,9 @@ impl DSelState {
 
         self.dsel_cancel();
 
-        SelImg {
-            img: dest_img,
-            sels,
-        }
+        // eprintln!("{:?}",&sels);
+
+        SelImg::new(dest_img,sels,self.move_mode.then_some(min))
     }
 
     pub fn active(&self) -> bool {
@@ -230,7 +235,7 @@ impl DSelState {
     fn calc_sel_area(&mut self) {
         self.sel_area = ([65535,65535],[0,0]);
 
-        for (&k,_) in &self.selected {
+        for &k in self.selected.keys() {
             self.sel_area.0 = self.sel_area.0.vmin(k);
             self.sel_area.1 = self.sel_area.1.vmax(k);
         }
