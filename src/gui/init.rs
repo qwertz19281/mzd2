@@ -16,10 +16,13 @@ use super::top_panel::{TopPanel, top_panel_ui};
 use super::window_states::map::Maps;
 use super::window_states::tileset::Tilesets;
 
+const CRATE_NAME: Option<&str> = option_env!("CARGO_PKG_NAME");
+const CRATE_VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
+
 pub fn launch_gui(args: crate::cli::Args) {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_title("mzd 2.0")
+            .with_title(format!("{} {}", CRATE_NAME.unwrap_or("mzd2"), CRATE_VERSION.unwrap_or("")))
             .with_inner_size([1080.0, 600.0])
             .with_drag_and_drop(true),
         ..Default::default()
