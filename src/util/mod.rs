@@ -214,3 +214,27 @@ pub fn seltrix_resource_path(map_path: impl Into<PathBuf>, resource_uuid: &Uuid)
     dir.push(format!("{}.sel",resource_uuid));
     dir
 }
+
+const SER_IDENT: &[u8;256] = &[b' ';256];
+
+pub fn json_ser_with_ident<T>(v: &T, ident: Option<u8>) -> anyhow::Result<Vec<u8>> where T: serde::Serialize {
+    let mut dest = Vec::with_capacity(1024);
+
+    if let Some(ident) = ident {
+        let ident = match ident {
+            255 => &[b'\t';1],
+            _ => &SER_IDENT[..ident as usize],
+        };
+
+        let mut ser = serde_json::Serializer::with_formatter(
+            &mut dest,
+            serde_json::ser::PrettyFormatter::with_indent(ident),
+        );
+
+        v.serialize(&mut ser)?;
+    } else {
+        serde_json::to_writer(&mut dest, v)?; 
+    }
+
+    Ok(dest)
+}

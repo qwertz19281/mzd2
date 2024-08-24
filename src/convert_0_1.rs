@@ -114,6 +114,7 @@ pub fn convert_map(map_path: PathBuf, uuidmap: &mut UUIDMap) -> anyhow::Result<(
 
     let new_map_state = MapState {
         mzd_format: 2,
+        json_ident: None,
         uuid: generate_uuid(uuidmap),
         title: old_state.title,
         map_zoom: old_state.map_zoom,

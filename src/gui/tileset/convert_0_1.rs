@@ -33,6 +33,7 @@ pub(super) fn try_convert_tileset(epath: &Path, tpath: &Path) -> anyhow::Result<
 
     let new_state = TilesetState {
         mzd_format: 2,
+        json_ident: None,
         title: old_state.title,
         zoom: old_state.zoom,
         voff: old_state.voff,

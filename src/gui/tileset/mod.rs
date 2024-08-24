@@ -7,7 +7,7 @@ use image::RgbaImage;
 use serde::{Deserialize, Serialize};
 
 use crate::gui::util::dragslider_up;
-use crate::util::{TilesetId, attached_to_path, ResultExt, gui_error, write_png};
+use crate::util::{attached_to_path, gui_error, json_ser_with_ident, write_png, ResultExt, TilesetId};
 use crate::SRc;
 
 use super::draw_state::{DrawMode, DrawState};
@@ -46,6 +46,8 @@ pub struct Tileset {
 #[derive(Deserialize,Serialize)]
 pub struct TilesetState {
     pub mzd_format: u64,
+    #[serde(default)]
+    pub json_ident: Option<u8>,
     pub title: String,
     pub zoom: u32,
     pub voff: [f32;2],
@@ -338,7 +340,8 @@ impl Tileset {
         self.edit_path = true;
         let edit_path = attached_to_path(&self.path, ".mzdtileset");
 
-        let Some(ser) = serde_json::to_vec(&self.state).unwrap_gui("Error saving tileset metadata") else {return false};
+        let Some(ser) = json_ser_with_ident(&self.state, self.state.json_ident)
+            .unwrap_gui("Error saving tileset metadata") else {return false};
 
         let mut sml_buf = Vec::with_capacity(1024*1024);
         if
@@ -415,6 +418,7 @@ impl Tileset {
         } else {
             state = TilesetState {
                 mzd_format: 2,
+                json_ident: None,
                 title: path.file_name().unwrap().to_string_lossy().into_owned(),
                 zoom: 1,
                 validate_size: img_size,
@@ -458,6 +462,7 @@ impl Tileset {
             id: TilesetId::new(),
             state: TilesetState {
                 mzd_format: 2,
+                json_ident: None,
                 title: path.file_name().unwrap().to_string_lossy().into_owned(),
                 zoom: 1,
                 validate_size: size,

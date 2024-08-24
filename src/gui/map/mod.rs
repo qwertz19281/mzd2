@@ -79,6 +79,8 @@ pub type UROrphanMap = SlotMap<UROrphanId,Room>;
 #[derive(Deserialize,Serialize)]
 pub struct MapState {
     pub mzd_format: u64,
+    #[serde(default)]
+    pub json_ident: Option<u8>,
     pub uuid: Uuid,
     pub title: String,
     pub map_zoom: i32,
@@ -193,8 +195,10 @@ impl Map {
         self.state._serde_ssel_room = self.ssel_room.and_then(|r| self.state.rooms.get(r) ).map(|r| r.uuid );
         self.state._serde_template_room = self.template_room.and_then(|r| self.state.rooms.get(r) ).map(|r| r.uuid );
 
-        let ser = serde_json::to_vec(&self.state)?;
-        std::fs::write(&self.path, ser)?;
+        let dest = json_ser_with_ident(&self.state, self.state.json_ident)?;
+
+        std::fs::write(&self.path, dest)?;
+
         Ok(())
     }
 
@@ -389,6 +393,7 @@ impl Map {
             id: MapId::new(),
             state: MapState {
                 mzd_format: 2,
+                json_ident: None,
                 uuid: generate_uuid(uuidmap),
                 title,
                 map_zoom: 0,
