@@ -215,16 +215,11 @@ impl<T> CoordStoreSub<T> {
 
 #[inline]
 pub fn init_3d_array<T>() -> [[[Option<T>;16];16];16] {
-    unsafe {
-        let mut m_uninit: MaybeUninit<[[[Option<T>;16];16];16]> = MaybeUninit::uninit();
-
-        for entry in &mut *(m_uninit.as_mut_ptr() as *mut [MaybeUninit<[[Option<T>;16];16]>;16]) {
-            for entry in &mut *(entry.as_mut_ptr() as *mut [MaybeUninit<[Option<T>;16]>;16]) {
-                for entry in &mut *(entry.as_mut_ptr() as *mut [MaybeUninit<Option<T>>;16]) {
-                    entry.write(None);
-                }
-            }
-        }
-        m_uninit.assume_init()
-    }
+    std::array::from_fn(|_|
+        std::array::from_fn(|_|
+            std::array::from_fn(|_|
+                None
+            )
+        )
+    )
 }
