@@ -1,6 +1,7 @@
 use egui::{Color32, Key, PointerButton};
 use image::RgbaImage;
 
+use crate::gui::doc::DOC_ROOMDRAW;
 use crate::gui::draw_state::DrawMode;
 use crate::gui::dsel_state::del::DelState;
 use crate::gui::init::SAM;
@@ -8,7 +9,7 @@ use crate::gui::key_manager::KMKey;
 use crate::gui::palette::{Palette, PaletteItem};
 use crate::gui::room::draw_image::DrawImageGroup;
 use crate::gui::room::Room;
-use crate::gui::util::{alloc_painter_rel, dpad, dpad_icons, dpadc, dragslider_up, draw_grid, ArrUtl, DragOp};
+use crate::gui::util::{alloc_painter_rel, dpad, dpad_icons, dpadc, dragslider_up, draw_grid, ArrUtl, DragOp, ResponseUtil};
 use crate::SRc;
 
 use super::room_ops::{try_side, OpAxis, RoomOp};
@@ -260,7 +261,7 @@ impl Map {
             ui.horizontal(|ui| {
                 let size_v = self.editsel.region_size.as_f32().into();
         
-                let reg = alloc_painter_rel(
+                let mut reg = alloc_painter_rel(
                     ui,
                     size_v,
                     egui::Sense::drag(),
@@ -646,6 +647,8 @@ impl Map {
                 }
 
                 reg.extend_rel_fixtex(shapes);
+
+                reg.response.doc2(DOC_ROOMDRAW);
             });
         }
 

@@ -35,6 +35,7 @@ rand = "0.8"
 indexmap = { version = "2.2", features = ["serde"] }
 ahash = "0.8"
 lab = "0.11"
+egui_commonmark = "0.13"
 
 [features]
 #default = ["super_validate"] # Enable for extra validations. debug_assertions also has the be enabled. On big maps, this has severe performance impact

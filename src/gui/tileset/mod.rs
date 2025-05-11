@@ -10,6 +10,7 @@ use crate::gui::util::dragslider_up;
 use crate::util::{attached_to_path, gui_error, json_ser_with_ident, write_png, ResultExt, TilesetId};
 use crate::SRc;
 
+use super::doc::DOC_TILESETDRAW;
 use super::draw_state::{DrawMode, DrawState};
 use super::dsel_state::cse::CSEState;
 use super::dsel_state::del::DelState;
@@ -22,7 +23,7 @@ use super::rector;
 use super::init::{SharedApp, SAM};
 use super::sel_matrix::{sel_entry_dims, SelMatrix, SelMatrixLayered};
 use super::texture::{RECT_0_0_1_1, TextureCell};
-use super::util::{alloc_painter_rel_ds, ArrUtl, draw_grid, DragOp};
+use super::util::{alloc_painter_rel_ds, draw_grid, ArrUtl, DragOp, ResponseUtil};
 
 mod convert_0_1;
 
@@ -322,6 +323,8 @@ impl Tileset {
         }
 
         reg.extend_rel_fixtex(shapes);
+
+        reg.response.doc2(DOC_TILESETDRAW);
 
         // let hover_pos = reg.hover_pos_rel();
     }

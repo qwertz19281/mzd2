@@ -7,8 +7,8 @@
   - Press shift to invert DSelOnly (whether selecting should snap to seltrix)
 - Middle Mouse + Ctrl: CSE (define seltrix)
 - Alt + Left Mouse, then Alt + Middle Mouse: Quick move of selection (separate from palette slot, clears previous area)
-- O: rotate currente palette clockwise
-- I: rotate currente palette counterclockwise
+- O: rotate current palette clockwise
+- I: rotate current palette counterclockwise
 - K: flip current palette horizontally
 - L: flip current palette vertically
 
@@ -24,6 +24,7 @@
 
 - ArrowKeys/PgUp/PgDown: Quickswitch room
 - ArrowKeys/PgUp/PgDown + Ctrl: Toggle connection in this direction
+- ArrowKeys/PgUp/PgDown + Alt: Displacing Quickswitch (adaptive algo)
 - Ctrl+Z/Y: Undo/Redo
 
 # Layers: Select Draw Layer

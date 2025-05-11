@@ -1,8 +1,10 @@
+use std::borrow::Cow;
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 
 use egui::{Sense, Vec2, Color32, Rounding, PointerButton};
 
+use crate::gui::doc::DOC_MAP;
 use crate::gui::room::draw_image::DrawImageGroup;
 use crate::gui::rector;
 use crate::gui::init::{SharedApp, SAM};
@@ -10,7 +12,7 @@ use crate::gui::palette::Palette;
 use crate::gui::room::Room;
 use crate::gui::tags::render_tags;
 use crate::gui::texture::basic_tex_shape;
-use crate::gui::util::{alloc_painter_rel, alloc_painter_rel_ds, draw_grid, ArrUtl, dpad, DragOp, dragvalion_up, dragvalion_down, dragslider_up};
+use crate::gui::util::{alloc_painter_rel, alloc_painter_rel_ds, dpad, dragslider_up, dragvalion_down, dragvalion_up, draw_grid, ArrUtl, DragOp, ResponseUtil, STATUS_BAR};
 use crate::gui::window_states::map::Maps;
 use crate::util::{MapId, gui_error};
 
@@ -806,6 +808,12 @@ impl Map {
             }
 
             super_map.extend_rel_fixtex(shapes);
+
+            super_map.response.doc2(DOC_MAP);
+
+            if super_map.response.hovered() {
+                STATUS_BAR.replace(Cow::Owned(self.map_status_line(tag_hovered.is_some(), sam)));
+            }
         }
 
         for (room_id,_,_) in &self.editsel.rooms {
@@ -822,6 +830,39 @@ impl Map {
             view_pos[0].clamp(0., self.state.rooms_size[0] as f32 * 254.), // 265-2 is minimum size of view
             view_pos[1].clamp(0., self.state.rooms_size[1] as f32 * 254.),
         ];
+    }
+
+    fn map_status_line(&self, tag_hovered: bool, sam: &SAM) -> String {
+        let mode = match self.state.edit_mode {
+            MapEditMode::DrawSel => "DrawSel",
+            MapEditMode::RoomSel => "RoomSel",
+            MapEditMode::ConnXY | MapEditMode::ConnDown | MapEditMode::ConnUp=> "Connect",
+            MapEditMode::Tags => "Tags",
+        };
+        let args = match self.state.edit_mode {
+            MapEditMode::DrawSel if !self.editsel.rooms.is_empty() && self.editsel.rooms.len() < 4 =>
+                format!(" | [🖱left] Select Room | [ctrl + 🖱left] Extend draw room selection"),
+            MapEditMode::DrawSel =>
+                format!(" | [🖱left] Select Room"),
+            MapEditMode::RoomSel => 
+                format!(" | [🖱left] Select Room"),
+            MapEditMode::ConnXY | MapEditMode::ConnDown | MapEditMode::ConnUp =>
+                format!(" | [🖱left] Connect Rooms | [🖱right] Disconnect Rooms"),
+            MapEditMode::Tags => format!(
+                "{}{}",
+                if tag_hovered {
+                    " | [🖱left] Select Tag | [🖱🖱left] Warp"
+                } else {
+                    " | [🖱🖱left] Create Tag"
+                },
+                if sam.warpon.is_some() {
+                    " | [🖱right] Set warp destination"
+                } else {
+                    ""
+                }
+            ),
+        };
+        format!("(Map {} mode): [🖱mid] Move{}", mode, args)
     }
 }
 

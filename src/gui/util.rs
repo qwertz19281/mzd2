@@ -1,7 +1,9 @@
+use std::borrow::Cow;
+use std::cell::{Cell, RefCell};
 use std::ops::RangeInclusive;
 
 use egui::epaint::TextShape;
-use egui::{Shape, Pos2, Rect, Vec2, Sense, PointerButton, Align2, FontId, Color32, Rounding};
+use egui::{Align2, Color32, FontId, PointerButton, Pos2, Rect, Response, Rounding, Sense, Shape, Vec2};
 
 use super::init::EFRAME_FRAME;
 use super::map::room_ops::OpAxis;
@@ -296,8 +298,8 @@ macro_rules! marco_arrutl {
                 }
                 fn div8(self) -> Self {
                     // debug_assert!(
-                    //     self[0] as u64 % 8 == 0 &&
-                    //     self[1] as u64 % 8 == 0
+                    //     self[0] as u64 % 8 == 0
+                    //     && self[1] as u64 % 8 == 0
                     // );
                     self.div([8u8 as _,8u8 as _])
                 }
@@ -923,5 +925,50 @@ impl RfdUtil for rfd::MessageDialog {
         EFRAME_FRAME.with(|f|
             self.set_parent(f)
         )
+    }
+}
+
+thread_local! {
+    pub static F1_PRESSED: Cell<bool> = const { Cell::new(false) };
+
+    static DOC_CACHE: RefCell<Option<egui_commonmark::CommonMarkCache>> = const { RefCell::new(None) };
+
+    pub static STATUS_BAR: Cell<Cow<'static,str>> = const { Cell::new(Cow::Borrowed("")) };
+}
+
+pub trait ResponseUtil {
+    fn doc(mut self, doc: &'static str) -> Self where Self: Sized {
+        self.doc2(doc);
+        self
+    }
+
+    fn doc2(&mut self, doc: &'static str) -> &mut Self;
+}
+
+impl ResponseUtil for Response {
+    fn doc2(&mut self, doc: &'static str) -> &mut Self {
+        if self.hovered() {
+            if let Some((status,md)) = doc.split_once('\n') {
+                let status = status.trim();
+                let md = md.trim();
+                if !status.is_empty() && self.enabled() {
+                    STATUS_BAR.replace(Cow::Borrowed(status));
+                }
+                if !md.is_empty() && F1_PRESSED.get() {
+                    egui::containers::show_tooltip_at_pointer(
+                        &self.ctx,
+                        self.id.with("__tooltip"),
+                        |ui| {
+                            DOC_CACHE.with_borrow_mut(|cache| {
+                                let cache = cache.get_or_insert_default();
+                                let id = ui.id().with("md");
+                                egui_commonmark::CommonMarkViewer::new(id).show(ui, cache, md);
+                            });
+                        },
+                    );
+                }
+            }
+        }
+        self
     }
 }

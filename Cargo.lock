@@ -2413,7 +2413,6 @@ dependencies = [
  "indexmap",
  "lab",
  "lru",
- "parking_lot",
  "rand",
  "raw-window-handle 0.6.2",
  "regex",
