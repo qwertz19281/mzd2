@@ -564,7 +564,7 @@ impl Map {
                         let connected = conn(&self.state.rooms[next_id], ax,dir) && conn(&self.state.rooms[side_id], ax,!dir);
                         let upwards = ax == axis && dir == direction;
                         let downwards = ax == axis && dir != direction;
-                        let crossback = downwards && !in_sift_range(side_coord, base_coord, axis, !dir);
+                        let crossback = !upwards && !in_sift_range(side_coord, base_coord, axis, direction);
                         let set_ope =
                             if upwards {must_ope}
                             else if connected {conn_ope}
@@ -633,10 +633,10 @@ impl Map {
                         let side_ope = self.state.rooms[side_id].op_evo;
                         if side_ope <= resetted_ope || side_ope >= must_ope {return;}
                         let downward = ax == axis && dir != direction;
-                        let is_higher_level = side_ope > start_level;
+                        let is_higher_level = side_ope > start_level || (side_ope == unconn_ope && start_level == conn_cross_ope);
                         let is_unconn_opes = side_ope == unconn_cross_ope || side_ope == unconn_ope;
                         let connected = conn(&self.state.rooms[next_id], ax,dir) && conn(&self.state.rooms[side_id], ax,!dir);
-                        if downward || !(is_higher_level && !(connected && is_unconn_opes)) {
+                        if downward || !is_higher_level || (connected && is_unconn_opes) {
                             self.state.rooms[side_id].op_evo = resetted_ope;
                             flood_spin.push_back(side_id);
                         }
