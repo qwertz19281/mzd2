@@ -61,12 +61,17 @@ impl DockTab {
 
 impl SharedApp {
     pub fn dock_ui(&mut self, ui: &mut egui::Ui) {
+        let mut style = egui_dock::Style::from_egui(ui.style().as_ref());
+        style.tab_bar.height *= self.sam.dpi_scale;
+
         self.dock_op();
         let mut state = self.dock.state.take().unwrap();
         let mut viewer = TabV(self);
+
         DockArea::new(&mut state)
-            .style(egui_dock::Style::from_egui(ui.style().as_ref()))
+            .style(style)
             .show_inside(ui, &mut viewer);
+
         self.dock.state = Some(state);
         self.dock_op();
     }

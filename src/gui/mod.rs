@@ -67,11 +67,11 @@ convtable!(
 pub fn dpi_hack(ctx: &egui::Context, _: &mut eframe::Frame) -> f32 {
     let scale = ctx.pixels_per_point();
     
-    let mut fontdef = egui::FontDefinitions::default();
+    // let mut fontdef = egui::FontDefinitions::default();
 
-    for font in fontdef.font_data.values_mut() {
-        font.tweak.scale *= scale;
-    }
+    // for font in fontdef.font_data.values_mut() {
+    //     font.tweak.scale *= scale;
+    // }
 
     let mut style = ctx.style();
 
@@ -92,6 +92,11 @@ pub fn dpi_hack(ctx: &egui::Context, _: &mut eframe::Frame) -> f32 {
     {
         let style = Arc::make_mut(&mut style);
         
+        {
+            for font_id in style.text_styles.values_mut() {
+                font_id.size *= scale;
+            }
+        }
         {
             let s = &mut style.spacing;
             s.button_padding *= scale;
@@ -147,7 +152,7 @@ pub fn dpi_hack(ctx: &egui::Context, _: &mut eframe::Frame) -> f32 {
     }
 
     ctx.set_pixels_per_point(1.);
-    ctx.set_fonts(fontdef);
+    //ctx.set_fonts(fontdef);
     ctx.set_style(style);
 
     scale
