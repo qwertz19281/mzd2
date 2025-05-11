@@ -630,6 +630,11 @@ impl Map {
                         self.ui_tag_mouse_op(&mut super_map, ui, sam, other_maps, click_coord, sub_click_coord, &mut tag_hovered);
                     },
                     MapEditMode::ConnXY | MapEditMode::ConnDown | MapEditMode::ConnUp => {
+                        let mut inval = || {
+                            // TODO partial borrows should be a thing
+                            self.adaptpush_preview = None;
+                            self.smartmove_preview = None;
+                        };
                         match super_map.drag_decode(PointerButton::Primary, ui) {
                             DragOp::Start(p) => 
                                 self.cd_state.cds_down(
@@ -637,7 +642,8 @@ impl Map {
                                     self.state.edit_mode,
                                     true, true,
                                     &self.room_matrix, &mut self.state.rooms,
-                                    self.state.rooms_size, self.state.current_level
+                                    self.state.rooms_size, self.state.current_level,
+                                    &mut inval
                                 ),
                             DragOp::Tick(Some(p)) =>
                                 self.cd_state.cds_down(
@@ -645,7 +651,8 @@ impl Map {
                                     self.state.edit_mode,
                                     false, true,
                                     &self.room_matrix, &mut self.state.rooms,
-                                    self.state.rooms_size, self.state.current_level
+                                    self.state.rooms_size, self.state.current_level,
+                                    &mut inval
                                 ),
                             DragOp::Abort => self.cd_state.cds_cancel(),
                             _ => {},
@@ -657,7 +664,8 @@ impl Map {
                                     self.state.edit_mode,
                                     true, false,
                                     &self.room_matrix, &mut self.state.rooms,
-                                    self.state.rooms_size, self.state.current_level
+                                    self.state.rooms_size, self.state.current_level,
+                                    &mut inval
                                 ),
                             DragOp::Tick(Some(p)) =>
                                 self.cd_state.cds_down(
@@ -665,7 +673,8 @@ impl Map {
                                     self.state.edit_mode,
                                     false, false,
                                     &self.room_matrix, &mut self.state.rooms,
-                                    self.state.rooms_size, self.state.current_level
+                                    self.state.rooms_size, self.state.current_level,
+                                    &mut inval
                                 ),
                             DragOp::Abort => self.cd_state.cds_cancel(),
                             _ => {},
@@ -709,6 +718,12 @@ impl Map {
                 if smart_preview_hovered && opts.highest_op_evo == self.latest_used_opevo {
                     preview_smart_move = Some(opts.highest_op_evo);
                 }
+            }
+            if let Some(opts) = &self.adaptpush_preview {
+                if self.adaptpush_show_preview && opts.highest_op_evo == self.latest_used_opevo {
+                    preview_smart_move = Some(opts.highest_op_evo);
+                }
+                self.adaptpush_show_preview = false;
             }
 
             let mut shapes = vec![];
@@ -836,7 +851,7 @@ impl Map {
         let mode = match self.state.edit_mode {
             MapEditMode::DrawSel => "DrawSel",
             MapEditMode::RoomSel => "RoomSel",
-            MapEditMode::ConnXY | MapEditMode::ConnDown | MapEditMode::ConnUp=> "Connect",
+            MapEditMode::ConnXY | MapEditMode::ConnDown | MapEditMode::ConnUp => "Connect",
             MapEditMode::Tags => "Tags",
         };
         let args = match self.state.edit_mode {

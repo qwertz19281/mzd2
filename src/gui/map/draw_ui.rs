@@ -159,6 +159,43 @@ impl Map {
         }
     }
 
+    fn ui_do_adaptive_pushaway(&mut self, clicked: bool, coord: [u8;3], from: [u8;3], from_room: RoomId, axis: OpAxis, dir: bool, uuidmap: &mut UUIDMap) {
+        assert_eq!(self.state.rooms.get(from_room).map(|r| r.coord), Some(from));
+        if clicked {
+            // eprintln!("DPAD CLICK {}",describe_direction(axis,dir));
+        }
+        let mut regen = true;
+        if let Some(v) = &self.adaptpush_preview {
+            if
+                v.base_coord == coord
+                && v.axis == axis
+                && v.dir == dir
+                && v.highest_op_evo == self.latest_used_opevo
+                && v.keep_fwd_gap == self.state.quick_shift_keep_gap
+                && v.backlock == Some(from)
+                && v.no_new_connect == true
+            {
+                regen = false;
+            }
+        }
+        if regen {
+            self.adaptpush_preview = self.shift_smart_new_collect(coord, Some(from), self.state.quick_shift_keep_gap, axis, dir, true);
+        }
+        if let Some(v) = &self.adaptpush_preview {
+            if v.rooms.contains(&from_room) {
+                self.adaptpush_show_preview = false;
+                return;
+            } else {
+                self.adaptpush_show_preview = true;
+            }
+        }
+        if !clicked {return;}
+        if let Some(opts) = &self.adaptpush_preview {
+            let op = RoomOp::SiftSmart(opts.clone(), true);
+            self.ui_apply_roomop(op, uuidmap);
+        }
+    }
+
     pub fn ui_draw(
         &mut self,
         palette: &mut Palette,
@@ -324,6 +361,7 @@ impl Map {
                 }
 
                 let hover_single_layer = ui.vertical(|ui|{
+                    self.adaptpush_show_preview = false;
                     if self.editsel.get_single_room(&self.state.rooms).is_some() && self.state.quickroom_template.len() >= 4 {
                         ui.horizontal(|ui| {
                             dpad(
@@ -333,8 +371,17 @@ impl Map {
                                 true,
                                 ui,
                                 |_,clicked,axis,dir| {
-                                    if !clicked {return;}
-                                    quickmove = Some((axis,dir));
+                                    if clicked {
+                                        quickmove = Some((axis,dir));
+                                    } else {
+                                        if let Some(c) = self.state.dsel_coord {
+                                            try_side(c, axis, dir, |c2| {
+                                                if mods.alt && self.dsel_room.is_some() && self.room_matrix.get(c2).is_some() {
+                                                    self.ui_do_adaptive_pushaway(false, c2, c, self.dsel_room.unwrap(), axis, dir, &mut sam.uuidmap);
+                                                }
+                                            });
+                                        }
+                                    }
                                 },
                             );
 
@@ -656,7 +703,7 @@ impl Map {
             if let Some(c) = self.state.dsel_coord {
                 try_side(c, axis, dir, |c2| {
                     if mods.alt && self.dsel_room.is_some() && self.room_matrix.get(c2).is_some() {
-                        self.adaptive_pushaway(c2, c, self.dsel_room.unwrap(), axis, dir, &mut sam.uuidmap);
+                        self.ui_do_adaptive_pushaway(true, c2, c, self.dsel_room.unwrap(), axis, dir, &mut sam.uuidmap);
                     }
                     self.state.dsel_coord = Some(c2);
                     self.move_viewpos_centred([c2[0],c2[1]]);

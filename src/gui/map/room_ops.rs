@@ -161,7 +161,7 @@ impl Map {
     }
 
     pub fn after_room_op_apply_invalidation(&mut self, redo: bool) {
-        self.smartmove_preview = None;
+        self.conn_change_inval();
         self.picomap_tex.dirty();
         if !redo {
             self.redo_buf.clear();
@@ -188,6 +188,11 @@ impl Map {
                 self.state.rooms.remove(self.editsel.single_room().unwrap());
             }
         }
+    }
+
+    pub fn conn_change_inval(&mut self) {
+        self.smartmove_preview = None;
+        self.adaptpush_preview = None;
     }
 }
 
@@ -389,6 +394,8 @@ impl Map {
 
                 if unconnect_new {
                     room.dirconn[axis.axis_idx()][(!dir) as usize] = false;
+                    self.adaptpush_preview = None;
+                    self.smartmove_preview = None;
                     // if room.dirconn[axis.axis_idx()][(!dir) as usize] {
                     //     try_side(room.coord, axis, !dir, |side_coord,_,_| {
                     //         if let Some(&sid) = self.room_matrix.get(side_coord) {
@@ -518,6 +525,8 @@ impl Map {
             allow_siftshrink,
             rooms: all_list.into(),
             highest_op_evo: op_evo,
+            backlock: None,
+            keep_fwd_gap: no_new_connect,
         })
     }
 
@@ -697,7 +706,9 @@ impl Map {
             no_new_connect,
             allow_siftshrink: false,
             rooms: all_list.into(),
-            highest_op_evo: must_ope,
+            highest_op_evo: retrace_ope,
+            backlock,
+            keep_fwd_gap,
         })
     }
 
@@ -730,6 +741,7 @@ impl Map {
                                     nroom.dirconn[sidetest_a as usize][!sidetest_b as usize] = false;
                                     let room = unsafe { self.state.rooms.get_unchecked_mut(id) };
                                     room.dirconn[sidetest_a as usize][sidetest_b as usize] = false;
+                                    self.conn_change_inval();
                                 }
                             }
                         }
@@ -761,6 +773,8 @@ impl Map {
                 }
             }
         });
+
+        self.conn_change_inval();
     }
 
     pub fn get_room_connected(&self, room_id: RoomId, ax: OpAxis, dir: bool) -> bool {
@@ -940,6 +954,8 @@ pub struct ShiftSmartCollected {
     pub(super) allow_siftshrink: bool,
     pub(super) rooms: SRc<[RoomId]>,
     pub(super) highest_op_evo: u64,
+    pub(super) backlock: Option<[u8;3]>,
+    pub(super) keep_fwd_gap: bool,
 }
 
 impl ShiftSmartCollected {

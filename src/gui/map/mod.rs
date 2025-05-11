@@ -48,6 +48,8 @@ pub struct Map {
     pub picomap_tex: TextureCell,
     pub editsel: DrawImageGroup,
     pub smartmove_preview: Option<ShiftSmartCollected>,
+    pub adaptpush_preview: Option<ShiftSmartCollected>,
+    pub adaptpush_show_preview: bool,
     pub latest_used_opevo: u64,
     pub undo_buf: VecDeque<(RoomOp,u64)>,
     pub redo_buf: VecDeque<(RoomOp,u64)>,
@@ -317,6 +319,8 @@ impl Map {
             move_mode_palette: None,
             tag_sel: None,
             matrix_debug_corrupt_flag: false,
+            adaptpush_preview: None,
+            adaptpush_show_preview: false,
         };
 
         if map.state.quickroom_template.is_empty() {
@@ -450,6 +454,8 @@ impl Map {
             move_mode_palette: None,
             tag_sel: None,
             matrix_debug_corrupt_flag: false,
+            adaptpush_preview: None,
+            adaptpush_show_preview: false,
         };
 
         uuidmap.insert(this.state.uuid, UUIDTarget::Map(this.id));

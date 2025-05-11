@@ -22,7 +22,7 @@ impl ConnDrawState {
         }
     }
 
-    pub fn cds_down(&mut self, pos: [f32;2], mode: MapEditMode, new: bool, connect: bool, matrix: &CoordStore<RoomId>, rooms: &mut RoomMap, rooms_size: [u32;2], z: u8) {
+    pub fn cds_down(&mut self, pos: [f32;2], mode: MapEditMode, new: bool, connect: bool, matrix: &CoordStore<RoomId>, rooms: &mut RoomMap, rooms_size: [u32;2], z: u8, mut inval: impl FnMut()) {
         if new {
             self.cds_cancel();
         }
@@ -33,8 +33,9 @@ impl ConnDrawState {
             self.connect = connect;
         }
 
-        let set_dir = |room: &mut Room,ax: OpAxis,dir: bool| {
+        let mut set_dir = |room: &mut Room,ax: OpAxis,dir: bool| {
             room.dirconn[ax.axis_idx()][dir as usize] = self.connect;
+            inval();
         };
 
         let mut set_cd = |coord: [u8;3],ax: OpAxis,dir: bool| {
