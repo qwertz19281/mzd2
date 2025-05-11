@@ -47,7 +47,7 @@ impl DelState {
         if self.active.is_none() {
             let pos = quantize1(current_pos);
             let rect;
-            if let Some(e) = src.get(pos).filter(|e| !e.is_empty() ) {
+            if let Some(e) = src.get(pos) && !e.is_empty() {
                 let ept = e.to_sel_pt(pos);
                 if whole_selentry {
                     rect = rector(
@@ -122,7 +122,7 @@ impl DelState {
         }
 
         let mut add_sel_entry = |q: [u16;2]| {
-            if let Some(e) = src.get(q.as_u32()).filter(|e| !e.is_empty() ) {
+            if let Some(e) = src.get(q.as_u32()) && !e.is_empty() {
                 let ept = e.to_sel_pt(q.as_u32());
                 if self.whole_selentry {
                     for y in ept.start[1] .. ept.start[1] + ept.size[1] as u16 {

@@ -351,8 +351,12 @@ impl Tileset {
             return false;
         }
 
-        std::fs::write(edit_path, ser).unwrap_gui("Error saving tileset metadata").is_some() &&
-        std::fs::write(attached_to_path(&self.path, ".mzdtileset.sel"), sml_buf).unwrap_gui("Error saving tileset metadata").is_some()
+        std::fs::write(
+            edit_path, ser
+        ).unwrap_gui("Error saving tileset metadata").is_some()
+        && std::fs::write(
+            attached_to_path(&self.path, ".mzdtileset.sel"), sml_buf
+        ).unwrap_gui("Error saving tileset metadata").is_some()
     }
 
     fn save_image(&mut self) -> anyhow::Result<()> {

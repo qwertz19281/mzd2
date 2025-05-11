@@ -79,14 +79,14 @@ impl Map {
         let mut regen = true;
         if let Some(v) = &self.smartmove_preview {
             if
-                v.base_coord == coord &&
-                v.n_sift_old == self.state.smart_move_size &&
-                v.axis == axis &&
-                v.dir == dir &&
-                v.highest_op_evo == self.latest_used_opevo &&
-                v.away_lock == false &&
-                v.no_new_connect == false &&
-                v.allow_siftshrink == true
+                v.base_coord == coord 
+                && v.n_sift_old == self.state.smart_move_size
+                && v.axis == axis
+                && v.dir == dir
+                && v.highest_op_evo == self.latest_used_opevo
+                && v.away_lock == false
+                && v.no_new_connect == false
+                && v.allow_siftshrink == true
             {
                 regen = false;
             }
@@ -290,7 +290,7 @@ impl Map {
 
                     match self.state.edit_mode {
                         MapEditMode::DrawSel => {
-                            if let Some(v) = self.dsel_room.filter(|&v| self.state.rooms.contains_key(v) ) {
+                            if let Some(v) = self.dsel_room && self.state.rooms.contains_key(v) {
                                 if ui.button("Delete Room").clicked() {
                                     self.dsel_room = None;
                                     self.editsel = DrawImageGroup::unsel(self.state.rooms_size);
@@ -338,7 +338,7 @@ impl Map {
                             self.ui_tag_header(sam, ui);
                         }
                         _ => {
-                            if let Some(v) = self.ssel_room.filter(|&v| self.state.rooms.contains_key(v) ) {
+                            if let Some(v) = self.ssel_room && self.state.rooms.contains_key(v) {
                                 if ui.button("Delete Room").clicked() {
                                     self.ssel_room = None;
                                     self.ui_delete_room(v, &mut sam.uuidmap);
@@ -421,7 +421,7 @@ impl Map {
                 });
                 match self.state.edit_mode {
                     MapEditMode::DrawSel => {
-                        if let Some(v) = self.dsel_room.filter(|&v| self.state.rooms.contains_key(v) ) {
+                        if let Some(v) = self.dsel_room && self.state.rooms.contains_key(v) {
                             let room = self.state.rooms.get_mut(v).unwrap();
                             ui.add(
                                 egui::TextEdit::multiline(&mut room.desc_text)
@@ -578,10 +578,10 @@ impl Map {
 
             if let Some(hover_abs) = super_map.hover_pos_rel() {
                 if
-                    matches!(self.state.edit_mode, MapEditMode::RoomSel) &&
-                    self.ssel_room.is_none() &&
-                    mods.ctrl && mods.shift &&
-                    ui.input(|i| i.key_released(egui::Key::I) && !i.key_down(egui::Key::Escape) )
+                    matches!(self.state.edit_mode, MapEditMode::RoomSel)
+                    && self.ssel_room.is_none()
+                    && mods.ctrl && mods.shift
+                    && ui.input(|i| i.key_released(egui::Key::I) && !i.key_down(egui::Key::Escape) )
                 {
                     self.ui_import_mzd1(&mut sam.uuidmap);
                 }

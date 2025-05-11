@@ -444,10 +444,12 @@ impl DrawImageGroup {
                 return false;
             }
             if 
-                (coord == [base_coord[0]+1,base_coord[1]  ,base_coord[2]] ||
-                 coord == [base_coord[0]  ,base_coord[1]+1,base_coord[2]] ||
-                 coord == [base_coord[0]+1,base_coord[1]+1,base_coord[2]]) &&
-                !self.rooms.iter().any(|&(_,c,_)| c == coord )
+                (
+                    coord == [base_coord[0]+1,base_coord[1]  ,base_coord[2]]
+                 || coord == [base_coord[0]  ,base_coord[1]+1,base_coord[2]]
+                 || coord == [base_coord[0]+1,base_coord[1]+1,base_coord[2]]
+                )
+                && !self.rooms.iter().any(|&(_,c,_)| c == coord )
             {
                 let off = [
                     (coord[0]-base_coord[0]) as u32 * rooms_size[0],

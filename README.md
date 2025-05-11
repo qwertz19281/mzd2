@@ -14,7 +14,7 @@ cargo install -f --git https://github.com/qwertz19281/mzd2 --branch master
 
 ## Goal
 
-Make it easy to sketch maps/dungeons for e.g. action rpg like ALttP or Link's Awakening
+Make it easy to sketch maps/dungeons for e.g. action adventure like ALttP or Link's Awakening
 
 ## Features
 

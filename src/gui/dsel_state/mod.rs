@@ -73,7 +73,7 @@ impl DSelState {
             let pos = quantize1(current_pos);
             // eprintln!("QUANT {:?} => {:?}",current_pos,pos);
             let rect;
-            if let Some(e) = src.get(pos).filter(|e| !e.is_empty() ) {
+            if let Some(e) = src.get(pos) && !e.is_empty() {
                 // eprintln!("SELE {:?} {:?}",e.start,e.size);
                 let ept = e.to_sel_pt(pos);
                 // eprintln!("SELPT {:?} {:?}",ept.start,ept.size);
@@ -192,12 +192,12 @@ impl DSelState {
         }
 
         let mut add_sel_entry = |q: [u16;2]| {
-            if let Some(e) = src.get(q.as_u32()).filter(|e| !e.is_empty() ) {
+            if let Some(e) = src.get(q.as_u32()) && !e.is_empty() {
                 let ept = e.to_sel_pt(q.as_u32());
                 if self.whole_selentry {
                     for y in ept.start[1] .. ept.start[1] + ept.size[1] as u16 {
                         for x in ept.start[0] .. ept.start[0] + ept.size[0] as u16 {
-                            if let Some(e) = src.get([x,y].as_u32()).filter(|e| !e.is_empty() ) {
+                            if let Some(e) = src.get([x,y].as_u32()) && !e.is_empty() {
                                 self.selected_staging.insert([x,y], e.clone());
                             }
                         }

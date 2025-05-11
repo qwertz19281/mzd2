@@ -109,7 +109,7 @@ impl Map {
             is_selected,
             Some(|s: &mut Self| s.selected_quickroom_template = Some(idx)),
             Some(|s: &mut Self| {
-                if let Some(r) = s.editsel.get_single_room_mut(&mut s.state.rooms).filter(|r| !r.transient && r.loaded.is_some() ) {
+                if let Some(r) = s.editsel.get_single_room_mut(&mut s.state.rooms) && !r.transient && r.loaded.is_some() {
                     let new_room = r.create_clone(
                         [255,255,255],
                         rooms_size,
@@ -205,7 +205,7 @@ impl Map {
                 }
             }
             self.dummyroomscope_start();
-            if let Some(room) = self.editsel.get_single_room_mut(&mut self.state.rooms).filter(|r| r.transient) {
+            if let Some(room) = self.editsel.get_single_room_mut(&mut self.state.rooms) && room.transient {
                 if ui.button("Create this room").clicked() {
                     room.transient = false;
                 }
@@ -310,8 +310,8 @@ impl Map {
                                 let hov = <[f32;2]>::from(hov).as_u32().div8();
                                 let itre = room.layers.iter().enumerate()
                                     .filter(|(i,l)|
-                                        l.vis != 0 &&
-                                        if hide_layers_above | hide_layers_all {*i <= room.selected_layer} else {true}
+                                        l.vis != 0
+                                        && if hide_layers_above | hide_layers_all {*i <= room.selected_layer} else {true}
                                     )
                                     .map(|(i,_)| i);
                                 if let Some((traced,_)) = loaded.sel_matrix.get_traced(hov, itre) {
@@ -403,7 +403,7 @@ impl Map {
                                         (&mut self.dirty_rooms,&mut self.imglru),
                                     );
                                     if move_mode {
-                                        if let Some(src) = self.draw_state.src.as_ref().filter(|f| f.src.src_room_off.is_some() ) {
+                                        if let Some(src) = self.draw_state.src.as_ref() && src.src.src_room_off.is_some() {
                                             for (p,_) in &src.src.sels {
                                                 let off = p.as_u32().add(src.src.src_room_off.unwrap().as_u32());
                                                 DelState::delete_in(off, &mut mm)
@@ -553,7 +553,7 @@ impl Map {
 
                 if let Some(h) = reg.hover_pos_rel() {
                     let mut palet = &palette.paletted[palette.selected as usize];
-                    if let Some(p) = self.move_mode_palette.as_ref().filter(|_| mods.alt ) {
+                    if mods.alt && let Some(p) = &self.move_mode_palette {
                         palet = p;
                     }
                     match hack_render_mode {
@@ -633,14 +633,16 @@ impl Map {
                     }
                 }
 
-                if ui.input(|i| i.key_pressed(Key::O) ) {
-                    palette.mutated_selected(|v| v.rot90() );
-                } else if ui.input(|i| i.key_pressed(Key::I) ) {
-                    palette.mutated_selected(|v| v.rot270() );
-                } else if ui.input(|i| i.key_pressed(Key::K) ) {
-                    palette.mutated_selected(|v| v.flip([true,false]) );
-                } else if ui.input(|i| i.key_pressed(Key::L) ) {
-                    palette.mutated_selected(|v| v.flip([false,true]) );
+                if reg.hover_pos_rel().is_some() || ui.ctx().memory(|v| v.focus().is_none() ) {
+                    if ui.input(|i| i.key_pressed(Key::O) ) {
+                        palette.mutated_selected(|v| v.rot90() );
+                    } else if ui.input(|i| i.key_pressed(Key::I) ) {
+                        palette.mutated_selected(|v| v.rot270() );
+                    } else if ui.input(|i| i.key_pressed(Key::K) ) {
+                        palette.mutated_selected(|v| v.flip([true,false]) );
+                    } else if ui.input(|i| i.key_pressed(Key::L) ) {
+                        palette.mutated_selected(|v| v.flip([false,true]) );
+                    }
                 }
 
                 reg.extend_rel_fixtex(shapes);
@@ -656,20 +658,19 @@ impl Map {
                     self.state.dsel_coord = Some(c2);
                     self.move_viewpos_centred([c2[0],c2[1]]);
                     self.state.current_level = c2[2];
-                    if let Some(&id) = self.room_matrix.get(c2) {
-                        if let Some(room) = self.state.rooms.get(id) {
-                            self.dsel_room = Some(id);
-                            self.dsel_updated();
-                            self.post_drawroom_switch(&mut sam.uuidmap);
-                            self.editsel = DrawImageGroup::single(id, c2, self.state.rooms_size);
-                            return;
-                        }
+                    if let Some(&id) = self.room_matrix.get(c2) && let Some(room) = self.state.rooms.get(id) {
+                        self.dsel_room = Some(id);
+                        self.dsel_updated();
+                        self.post_drawroom_switch(&mut sam.uuidmap);
+                        self.editsel = DrawImageGroup::single(id, c2, self.state.rooms_size);
+                    } else {
+                        self.dsel_room = None;
+                        self.dsel_updated();
+                        self.post_drawroom_switch(&mut sam.uuidmap);
+                        self.create_dummy_room(c2, self.selected_quickroom_template, &mut sam.uuidmap);
+                        self.editsel = DrawImageGroup::unsel(self.state.rooms_size);
                     }
-                    self.dsel_room = None;
-                    self.dsel_updated();
-                    self.post_drawroom_switch(&mut sam.uuidmap);
-                    self.create_dummy_room(c2, self.selected_quickroom_template, &mut sam.uuidmap);
-                    self.editsel = DrawImageGroup::unsel(self.state.rooms_size);
+                    
                 });
                 ui.ctx().request_repaint();
             }
@@ -677,8 +678,8 @@ impl Map {
 
         self.dummyroomscope_end();
 
-        if let Some((axis,dir)) = makeconn.filter(|_| quickmove.is_none() ) {
-            if let Some(id) = self.editsel.single_room().filter(|id| self.state.rooms.contains_key(*id) ) {
+        if quickmove.is_none() && let Some((axis,dir)) = makeconn {
+            if let Some(id) = self.editsel.single_room() && self.state.rooms.contains_key(id) {
                 let conn = self.get_room_connected(id, axis, dir);
                 self.set_room_connect(id, axis, dir, !conn);
                 ui.ctx().request_repaint();
