@@ -586,7 +586,7 @@ pub fn dpad(
     visible: bool,
     ui: &mut egui::Ui,
     fun: impl FnMut(&mut egui::Ui,bool,OpAxis,bool),
-) {
+) -> Response {
     let icons = if inv_icons {
         ["→","←","↓","↑","-","+"]
     } else {
@@ -616,7 +616,7 @@ pub fn dpadc(
     visible: bool,
     ui: &mut egui::Ui,
     mut fun: impl FnMut(&mut egui::Ui,bool,OpAxis,bool),
-) {
+) -> Response {
     let pa = alloc_painter_rel(
         ui,
         Vec2 { x: base_size * 3., y: text_size + base_size * 2. },
@@ -624,7 +624,7 @@ pub fn dpadc(
         1.,
     );
 
-    if !visible {return;}
+    if !visible {return pa.response;}
 
     let border = base_size * 0.1;
 
@@ -816,6 +816,8 @@ pub fn dpadc(
     });
 
     pa.extend_rel(shapes);
+
+    pa.response
 }
 
 pub fn dragvalion_down<Num>(value: &mut Num, speed: impl Into<f64>, clamp_range: RangeInclusive<Num>, stepu: Num, ui: &mut egui::Ui) where Num: egui::emath::Numeric + NumUtl {

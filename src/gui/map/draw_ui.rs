@@ -1,4 +1,4 @@
-use egui::{Color32, Key, PointerButton};
+use egui::{Color32, Key, PointerButton, Sense};
 use image::RgbaImage;
 
 use crate::gui::doc::DOC_ROOMDRAW;
@@ -367,7 +367,8 @@ impl Map {
                     self.adaptpush_show_preview = false;
                     if self.editsel.get_single_room(&self.state.rooms).is_some() && self.state.quickroom_template.len() >= 4 {
                         ui.horizontal(|ui| {
-                            dpad(
+                            let mut hovered = None;
+                            let dpad_resp = dpad(
                                 "Quick Nav",
                                 20. * sam.dpi_scale, 32. * sam.dpi_scale, sam.dpi_scale,
                                 false,
@@ -377,6 +378,7 @@ impl Map {
                                     if clicked {
                                         quickmove = Some((axis,dir));
                                     } else {
+                                        hovered = Some((axis,dir));
                                         if let Some(c) = self.state.dsel_coord {
                                             try_side(c, axis, dir, |c2| {
                                                 if mods.alt && self.dsel_room.is_some() && self.room_matrix.get(c2).is_some() {
@@ -387,6 +389,45 @@ impl Map {
                                     }
                                 },
                             );
+                            if 
+                                let Some((axis,dir)) = hovered
+                                && let Some(dsel_coord) = self.state.dsel_coord
+                                && let Some(side) = try_side(dsel_coord, axis, dir, |c| c ) 
+                                && let Some(&room_id) = self.room_matrix.get(side)
+                                && let Some(room) = self.state.rooms.get_mut(room_id)
+                            {
+                                dpad_resp.on_hover_ui_at_pointer(|ui| {
+                                    let rooms_size = self.state.rooms_size;
+
+                                    self.texlru.put(room_id, self.texlru_gen);
+                                    if room.loaded.as_ref().is_some_and(|v| !v.dirty_file && v.undo_buf.is_empty() && v.redo_buf.is_empty() ) {
+                                        self.imglru.put(room_id, self.texlru_gen);
+                                    }
+
+                                    let mut shapes = vec![];
+
+                                    let vl = room.layers.clone(); // TODO lifetime wranglery
+                                    room.render(
+                                        [0,0],
+                                        vl.iter().enumerate().filter(|&(_,l)| l.vis != 0 ).map(|(i,_)| i ),
+                                        Some(egui::Color32::from_rgba_unmultiplied(32, 176, 72, 1)),
+                                        //Some(egui::Color32::from_rgba_unmultiplied(27, 33, 28, 255)),
+                                        self.state.rooms_size,
+                                        |s| shapes.push(s),
+                                        &self.path,
+                                        ui.ctx(),
+                                    );
+
+                                    let p = alloc_painter_rel(
+                                        ui,
+                                        rooms_size.as_f32().into(),
+                                        Sense::click(),
+                                        1.,
+                                    );
+                        
+                                    p.extend_rel_fixtex(shapes);
+                                });
+                            }
 
                             self.templateslot(0, ui, sam);
                             self.templateslot(1, ui, sam);
