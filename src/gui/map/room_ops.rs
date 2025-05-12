@@ -801,7 +801,7 @@ impl Map {
             room.dirconn[ax.axis_idx()][dir as usize]
         };
 
-        let Some(room) = self.state.rooms.get(room_id) else {return None};
+        let room = self.state.rooms.get(room_id)?;
 
         try_side(room.coord, ax, dir, |c2| {
             if let Some(&id) = self.room_matrix.get(c2) {

@@ -277,7 +277,7 @@ impl Map {
                 .filter(|&v| state.rooms.contains_key(v));
 
             if room_id.is_none() {
-                gui_error("Room UUID not found", format_args!("Room UUID of {} not found: {}", typ, v))
+                gui_error("Room UUID not found", format_args!("Room UUID of {typ} not found: {v}"))
             }
 
             room_id

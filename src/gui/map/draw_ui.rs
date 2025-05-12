@@ -61,7 +61,7 @@ impl Map {
 
     pub fn drop_dummy_room(&mut self, uuidmap: &mut UUIDMap) {
         if let Some(v) = self.dummy_room {
-            if !self.state.rooms.get(v).is_some_and(|v| !v.transient) {
+            if self.state.rooms.get(v).is_none_or(|v| v.transient) {
                 if let Some(room) = self.state.rooms.remove(v) {
                     uuidmap.remove(&room.uuid);
                     uuidmap.remove(&room.resuuid);
@@ -95,7 +95,9 @@ impl Map {
             }
         }
 
-        self.editsel.rooms.retain(|(id,_,_)| self.state.rooms.get(*id).map_or(false, |v| !v.transient ));
+        self.editsel.rooms.retain(|(id,_,_)|
+            self.state.rooms.get(*id).is_some_and(|v| !v.transient )
+        );
     }
 
     fn templateslot(&mut self, idx: usize, ui: &mut egui::Ui, sam: &mut SAM) {
@@ -187,6 +189,7 @@ impl Map {
                 return;
             } else {
                 self.adaptpush_show_preview = true;
+                // TODO request_repaint
             }
         }
         if !clicked {return;}

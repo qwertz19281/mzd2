@@ -24,7 +24,7 @@ impl Map {
     fn ui_create_room(&mut self, coord: [u8;3], uuidmap: &mut UUIDMap) -> Option<RoomId> {
         if let Some(roomcreate_op) = self.create_create_room(coord, uuidmap) {
             let mut msg = String::new();
-            debug_assert!(self.validate_apply(&roomcreate_op, &mut msg), "Debug assert validate apply ui_create_room: {}", msg);
+            debug_assert!(self.validate_apply(&roomcreate_op, &mut msg), "Debug assert validate apply ui_create_room: {msg}");
             let ur = self.apply_room_op(roomcreate_op, uuidmap);
             let room_id = match &ur {
                 &RoomOp::Del(id) => id,
@@ -43,7 +43,7 @@ impl Map {
     fn ui_add_room(&mut self, room: Room, uuidmap: &mut UUIDMap) -> Option<RoomId> {
         if let Some(roomcreate_op) = self.create_add_room(room) {
             let mut msg = String::new();
-            debug_assert!(self.validate_apply(&roomcreate_op, &mut msg), "Debug assert validate apply ui_add_room: {}", msg);
+            debug_assert!(self.validate_apply(&roomcreate_op, &mut msg), "Debug assert validate apply ui_add_room: {msg}");
             let ur = self.apply_room_op(roomcreate_op, uuidmap);
             let room_id = match &ur {
                 &RoomOp::Del(id) => id,
@@ -67,7 +67,7 @@ impl Map {
 
     pub(super) fn ui_apply_roomop(&mut self, op: RoomOp, uuidmap: &mut UUIDMap) {
         let mut msg = String::new();
-        debug_assert!(self.validate_apply(&op, &mut msg), "Debug assert validate apply ui_create_room: {}", msg);
+        debug_assert!(self.validate_apply(&op, &mut msg), "Debug assert validate apply ui_create_room: {msg}");
         let ur = self.apply_room_op(op, uuidmap);
         self.undo_buf.push_back((ur,next_ur_op_id()));
         self.after_room_op_apply_invalidation(false);
@@ -384,7 +384,7 @@ impl Map {
 
                                 let resp = ui.add_enabled(
                                     palette.global_clipboard.is_some_and(|(m,r)| 
-                                        if let Some(m) = get_map_by_id(&self, other_maps, m) {
+                                        if let Some(m) = get_map_by_id(self, other_maps, m) {
                                             m.state.rooms_size == self.state.rooms_size && m.state.rooms.contains_key(r)
                                         } else {
                                             false
@@ -394,7 +394,7 @@ impl Map {
                                 );
                                 if resp.clicked() {
                                     let (src_map,src_room) = palette.global_clipboard.unwrap();
-                                    let src_map = get_map_by_id(&self, other_maps, src_map).unwrap();
+                                    let src_map = get_map_by_id(self, other_maps, src_map).unwrap();
                                     let src_room = &src_map.state.rooms[src_room];
 
                                     let new_room = src_room.create_clone(
@@ -786,7 +786,7 @@ impl Map {
                                 ui.ctx(),
                             );
                             render_tags(
-                                &room,
+                                room,
                                 [cx,cy].mul(self.state.rooms_size),
                                 super_map.zoom,
                                 |s| shapes.push(s),
@@ -877,7 +877,7 @@ impl Map {
                 }
             ),
         };
-        format!("(Map {} mode): [🖱mid] Move{}", mode, args)
+        format!("(Map {mode} mode): [🖱mid] Move{args}")
     }
 }
 
