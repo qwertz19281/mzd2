@@ -478,7 +478,7 @@ impl Map {
                             dpad(
                                 "Collapse",
                                 20. * sam.dpi_scale, 32. * sam.dpi_scale, sam.dpi_scale, true,
-                                self.state.ssel_coord.is_some(),
+                                self.ssel_room.is_none_or(|id| !self.state.rooms.contains_key(id) ),
                                 ui,
                                 |_,clicked,axis,dir| {
                                     if !clicked {return;}

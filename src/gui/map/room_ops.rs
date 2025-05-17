@@ -365,7 +365,7 @@ impl Map {
         true
     }
 
-    fn check_collapse(&self, base_coord: [u8;3], n_sift: u8, axis: OpAxis, dir: bool) -> bool {
+    pub fn check_collapse(&self, base_coord: [u8;3], n_sift: u8, axis: OpAxis, dir: bool) -> bool {
         assert!(n_sift != 0);
         for ns in 0 .. n_sift {
             if self.room_matrix.vacant_axis2(apply_sift(base_coord, ns, axis, dir), axis) != 0 {return false;}
@@ -647,6 +647,7 @@ impl Map {
 
         let retrace_ope = next_op_gen_evo();
         self.latest_used_opevo = retrace_ope;
+        // self.state.rooms.get_mut(my_room)?.op_evo = retrace_ope;
 
         flood_spin.push_back(my_room);
 
@@ -695,6 +696,12 @@ impl Map {
         });
 
         if abort || !sift_vali((area_min,area_max), 1, axis, direction) {return None;}
+
+        // for &room in &all_list {
+        //     if let Some(room) = self.state.rooms.get_mut(room) {
+        //         room.op_evo = must_ope;
+        //     }
+        // }
 
         Some(ShiftSmartCollected {
             base_coord,
