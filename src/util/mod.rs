@@ -91,7 +91,7 @@ impl<T,E> ResultExt<T> for Result<T,E> where E: Display {
                 rfd::MessageDialog::new()
                     .set_level(rfd::MessageLevel::Error)
                     .set_title(title)
-                    .set_description(format!("{}", e))
+                    .set_description(format!("{e}"))
                     .try_set_parent()
                     .show();
                 Err(e)
@@ -104,7 +104,7 @@ pub fn gui_error(title: &str, error: impl std::fmt::Display) {
     rfd::MessageDialog::new()
         .set_level(rfd::MessageLevel::Error)
         .set_title(title)
-        .set_description(format!("{}", error))
+        .set_description(format!("{error}"))
         .try_set_parent()
         .show();
 }
@@ -199,7 +199,7 @@ pub fn tex_resource_dir(map_path: impl Into<PathBuf>) -> PathBuf {
 
 pub fn tex_resource_path(map_path: impl Into<PathBuf>, resource_uuid: &Uuid) -> PathBuf {
     let mut dir = tex_resource_dir(map_path);
-    dir.push(format!("{}.png",resource_uuid));
+    dir.push(format!("{resource_uuid}.png"));
     dir
 }
 
@@ -211,7 +211,7 @@ pub fn seltrix_resource_dir(map_path: impl Into<PathBuf>) -> PathBuf {
 
 pub fn seltrix_resource_path(map_path: impl Into<PathBuf>, resource_uuid: &Uuid) -> PathBuf {
     let mut dir = seltrix_resource_dir(map_path);
-    dir.push(format!("{}.sel",resource_uuid));
+    dir.push(format!("{resource_uuid}.sel"));
     dir
 }
 

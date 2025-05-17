@@ -184,7 +184,7 @@ impl Map {
                     show_text: true,
                     show_always: false,
                     text: Default::default(),
-                    color: calc_text_color(&room, sub_click_coord, self.state.rooms_size),
+                    color: calc_text_color(room, sub_click_coord, self.state.rooms_size),
                     warp_enabled: true,
                     warp: None,
                 };
@@ -511,9 +511,9 @@ impl SAM {
     }
 
     fn snap_current(&self, maps: &Maps, dock: &Docky, pre: bool) -> Option<WarpUR> {
-        let Some(current_map) = dock.last_focused_map.and_then(|v| maps.open_maps.get(&v) ) else {return None};
+        let current_map = dock.last_focused_map.and_then(|v| maps.open_maps.get(&v) )?;
         let map = current_map.borrow();
-        Some(WarpUR::current(&*map, pre))
+        Some(WarpUR::current(&map, pre))
     }
 
     fn is_too_similar(&self, v: &WarpUR, maps: &Maps, dock: &Docky) -> bool {

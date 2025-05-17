@@ -417,7 +417,7 @@ impl Tileset {
 
         if epath.is_file() {
             state = Self::try_deser_state(&epath, &spath, &mut dirty, &mut selmatrix)?;
-            state.zoom = state.zoom.max(1).min(4);
+            state.zoom = state.zoom.clamp(1, 4);
             if state.validate_size != img_size {
                 selmatrix = None;
             }

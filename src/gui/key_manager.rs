@@ -26,7 +26,7 @@ impl PainterRel {
             is_pressed_ignmod(v.key, ui)
         };
 
-        let first_pressed_key = keys.iter().filter(|k| is_pressed(k,ui) ).next().cloned();
+        let first_pressed_key = keys.iter().find(|k| is_pressed(k,ui) ).cloned();
 
         // if the base key was released, but not if modifiers change
         let mut key_was_released = state.as_ref().is_some_and(|v| !is_pressed_ignmod(v.key,ui) && !v.is_esc() );
