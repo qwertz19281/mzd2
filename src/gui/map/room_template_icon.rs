@@ -2,9 +2,10 @@ use std::path::PathBuf;
 
 use egui::{Color32, Rounding, Sense, Ui};
 
+use crate::gui::doc::DOC_ROOMTEMPLATE;
 use crate::gui::rector;
 use crate::gui::room::Room;
-use crate::gui::util::{alloc_painter_rel, ArrUtl};
+use crate::gui::util::{alloc_painter_rel, ArrUtl, ResponseUtil};
 
 pub fn templicon<S>(
     state: &mut S,
@@ -96,7 +97,7 @@ pub fn templicon<S>(
 
     p.extend_rel_fixtex(shapes);
 
-    if let Some((_tex,mesh)) = hovr {
+    if !p.response.show_doc(DOC_ROOMTEMPLATE) && let Some((_tex,mesh)) = hovr {
         p.response.on_hover_ui_at_pointer(|ui| {
             let p = alloc_painter_rel(
                 ui,

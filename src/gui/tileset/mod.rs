@@ -324,7 +324,7 @@ impl Tileset {
 
         reg.extend_rel_fixtex(shapes);
 
-        reg.response.doc2(DOC_TILESETDRAW);
+        reg.response.show_doc(DOC_TILESETDRAW);
 
         // let hover_pos = reg.hover_pos_rel();
     }

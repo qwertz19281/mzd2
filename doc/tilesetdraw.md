@@ -1,4 +1,4 @@
-[🖱left] Select | [🖱mid] Move | [🖱right] Seltrix | [ctrl + 🖱left] Draw | [ctrl + 🖱right] Erase | [🖮+/- + 🖱left] (add/rm) Select | [🖮I/O/K/L] rot/flip palette | [🖮1-0] Palette
+[🖱left] Select | [🖱mid] Move | [shift + 🖱left] Select freely | [🖱right] Seltrix | [ctrl + 🖱left] Draw | [ctrl + 🖱right] Erase | [🖮+/- + 🖱left] (add/rm) Select | [🖮I/O/K/L] rot/flip palette | [🖮1-0] Palette | [shift] Show grid
 # Selecting/Drawing (tileset)
 
 - Left Mouse: Select

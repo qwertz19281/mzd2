@@ -1,4 +1,4 @@
-[🖱left] Draw | [🖱mid] Select | [🖱right] Erase | [shift + 🖱left] Draw freely | [🖮+/- + 🖱mid] (add/rm) Select | [ctrl + 🖱mid] Seltrix | [alt + 🖱mid/left] Move start/end | [🖮I/O/K/L] rot/flip palette | [🖮1-0] Palette
+[🖱left] Draw | [🖱mid] Select | [🖱right] Erase | [shift + 🖱mid] Select freely | [🖮+/- + 🖱mid] (add/rm) Select | [ctrl + 🖱mid] Seltrix | [alt + 🖱mid/left] Move start/end | [🖮I/O/K/L] rot/flip palette | [🖮1-0] Palette | [shift] Show grid
 # Drawing/Selecting (room draw window)
 
 - Left Mouse: Draw

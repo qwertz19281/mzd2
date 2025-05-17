@@ -1,7 +1,7 @@
 use egui::{Color32, Key, PointerButton, Sense};
 use image::RgbaImage;
 
-use crate::gui::doc::DOC_ROOMDRAW;
+use crate::gui::doc::{DOC_ROOMDRAW, DOC_ROOM_CONNDPAD, DOC_ROOM_DRAWREPLACE, DOC_ROOM_QSKEEPGAP, DOC_ROOM_SWITCHDPAD};
 use crate::gui::draw_state::DrawMode;
 use crate::gui::dsel_state::del::DelState;
 use crate::gui::init::SAM;
@@ -272,12 +272,12 @@ impl Map {
             //ui.radio_value(&mut self.state.draw_draw_mode, DrawMode::Line, "Line");
             ui.radio_value(&mut self.state.draw_draw_mode, DrawMode::Rect, "Rect");
             ui.label("|");
-            ui.checkbox(&mut self.state.ds_replace, "DrawReplace");
+            ui.checkbox(&mut self.state.ds_replace, "DrawReplace").doc(DOC_ROOM_DRAWREPLACE);
             ui.checkbox(&mut self.state.dsel_whole, "DSelWhole");
             if let Some(room) = self.dsel_room.and_then(|id| self.state.rooms.get_mut(id) ) {
                 ui.checkbox(&mut room.editor_hide_layers_above, "EditorHideLayersAbove"); //should be transferred from prev room in quickmove dummy create
             }
-            ui.checkbox(&mut self.state.quick_shift_keep_gap, "QuickShiftKeepGap");
+            ui.checkbox(&mut self.state.quick_shift_keep_gap, "QuickShiftKeepGap").doc(DOC_ROOM_QSKEEPGAP);
         });
 
         self.editsel.ensure_loaded(
@@ -390,7 +390,8 @@ impl Map {
                                 },
                             );
                             if 
-                                let Some((axis,dir)) = hovered
+                                !dpad_resp.show_doc(DOC_ROOM_SWITCHDPAD)
+                                && let Some((axis,dir)) = hovered
                                 && let Some(dsel_coord) = self.state.dsel_coord
                                 && let Some(side) = try_side(dsel_coord, axis, dir, |c| c ) 
                                 && let Some(&room_id) = self.room_matrix.get(side)
@@ -424,7 +425,7 @@ impl Map {
                                         Sense::click(),
                                         1.,
                                     );
-                        
+
                                     p.extend_rel_fixtex(shapes);
                                 });
                             }
@@ -450,7 +451,7 @@ impl Map {
                                     if !clicked {return;}
                                     makeconn = Some((axis,dir));
                                 },
-                            );
+                            ).doc(DOC_ROOM_CONNDPAD);
 
                             self.templateslot(2, ui, sam);
                             self.templateslot(3, ui, sam);
@@ -739,7 +740,7 @@ impl Map {
 
                 reg.extend_rel_fixtex(shapes);
 
-                reg.response.doc2(DOC_ROOMDRAW);
+                reg.response.show_doc(DOC_ROOMDRAW);
             });
         }
 

@@ -617,14 +617,17 @@ pub fn dpadc(
     ui: &mut egui::Ui,
     mut fun: impl FnMut(&mut egui::Ui,bool,OpAxis,bool),
 ) -> Response {
-    let pa = alloc_painter_rel(
+    let mut pa = alloc_painter_rel(
         ui,
         Vec2 { x: base_size * 3., y: text_size + base_size * 2. },
         Sense::click(),
         1.,
     );
 
-    if !visible {return pa.response;}
+    if !visible {
+        pa.response.enabled = false;
+        return pa.response;
+    }
 
     let border = base_size * 0.1;
 
@@ -939,38 +942,49 @@ thread_local! {
 }
 
 pub trait ResponseUtil {
-    fn doc(mut self, doc: &'static str) -> Self where Self: Sized {
-        self.doc2(doc);
+    /// Set the status bar of the application and if F1 pressed also a popup with doc
+    fn doc(self, doc: &'static str) -> Self where Self: Sized {
+        self.show_doc(doc);
         self
     }
 
-    fn doc2(&mut self, doc: &'static str) -> &mut Self;
+    /// Set the status bar of the application and if F1 pressed also a popup with doc
+    fn doc2(&mut self, doc: &'static str) -> &mut Self {
+        self.show_doc(doc);
+        self
+    }
+
+    /// Set the status bar of the application and if F1 pressed also a popup with doc
+    fn show_doc(&self, doc: &'static str) -> bool;
 }
 
 impl ResponseUtil for Response {
-    fn doc2(&mut self, doc: &'static str) -> &mut Self {
+    fn show_doc(&self, doc: &'static str) -> bool {
         if self.hovered() {
-            if let Some((status,md)) = doc.split_once('\n') {
-                let status = status.trim();
-                let md = md.trim();
-                if !status.is_empty() && self.enabled() {
-                    STATUS_BAR.replace((Cow::Borrowed(status), !md.is_empty()));
-                }
-                if !md.is_empty() && F1_PRESSED.get() {
-                    egui::containers::show_tooltip_at_pointer(
-                        &self.ctx,
-                        self.id.with("__tooltip"),
-                        |ui| {
-                            DOC_CACHE.with_borrow_mut(|cache| {
-                                let cache = cache.get_or_insert_default();
-                                let id = ui.id().with("md");
-                                egui_commonmark::CommonMarkViewer::new(id).show(ui, cache, md);
-                            });
-                        },
-                    );
-                }
+            let (status,md) = doc.split_once('\n').unwrap_or((doc,&""));
+            let status = status.trim();
+            if !status.is_empty() && self.enabled() {
+                STATUS_BAR.replace((Cow::Borrowed(status), !md.is_empty()));
+            }
+            let mut md = md.trim();
+            if md.is_empty() && !status.is_empty() {
+                md = status;
+            }
+            if !md.is_empty() && F1_PRESSED.get() {
+                egui::containers::show_tooltip_at_pointer(
+                    &self.ctx,
+                    self.id.with("__doc_tooltip"),
+                    |ui| {
+                        DOC_CACHE.with_borrow_mut(|cache| {
+                            let cache = cache.get_or_insert_default();
+                            let id = ui.id().with("md");
+                            egui_commonmark::CommonMarkViewer::new(id).show(ui, cache, md);
+                        });
+                    },
+                );
+                return true;
             }
         }
-        self
+        false
     }
 }

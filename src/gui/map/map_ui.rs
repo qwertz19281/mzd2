@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use egui::{Sense, Vec2, Color32, Rounding, PointerButton};
 
-use crate::gui::doc::DOC_MAP;
+use crate::gui::doc::{DOC_MAP, DOC_MAP_COLLAPSE, DOC_MAP_SHIFTAWAY, DOC_MAP_SHIFTSIZE, DOC_MAP_SINGLEMOVE, DOC_MAP_SMARTMOVE};
 use crate::gui::room::draw_image::DrawImageGroup;
 use crate::gui::rector;
 use crate::gui::init::{SharedApp, SAM};
@@ -414,7 +414,7 @@ impl Map {
                                 }
                             }
 
-                            ui.label("| ShiftAway/Collapse Size: ");
+                            ui.label("| ShiftAway/Collapse Size: ").doc(DOC_MAP_SHIFTSIZE);
                             dragvalion_up(&mut self.state.smart_move_size, 0.015625, 0..=16, 1, ui);
 
                             ui.checkbox(&mut self.state.smart_awaylock_mode, "SmartMove AwayLock");
@@ -461,7 +461,7 @@ impl Map {
                                         self.ui_apply_roomop(op, &mut sam.uuidmap);
                                     }
                                 },
-                            );
+                            ).doc(DOC_MAP_SINGLEMOVE);
                             dpad(
                                 "Shift Away",
                                 20. * sam.dpi_scale, 32. * sam.dpi_scale, sam.dpi_scale, false,
@@ -474,7 +474,7 @@ impl Map {
                                         self.ui_apply_roomop(op, &mut sam.uuidmap);
                                     }
                                 },
-                            );
+                            ).doc(DOC_MAP_SHIFTAWAY);
                             dpad(
                                 "Collapse",
                                 20. * sam.dpi_scale, 32. * sam.dpi_scale, sam.dpi_scale, true,
@@ -487,7 +487,7 @@ impl Map {
                                         self.ui_apply_roomop(op, &mut sam.uuidmap);
                                     }
                                 },
-                            );
+                            ).doc(DOC_MAP_COLLAPSE);
                             dpad(
                                 "Smart Move",
                                 20. * sam.dpi_scale, 32. * sam.dpi_scale, sam.dpi_scale, false,
@@ -497,7 +497,7 @@ impl Map {
                                     smart_preview_hovered = true;
                                     self.ui_do_smart(clicked, axis, dir, &mut sam.uuidmap);
                                 },
-                            );
+                            ).doc(DOC_MAP_SMARTMOVE);
                         });
                     }
                 };
@@ -824,7 +824,7 @@ impl Map {
 
             super_map.extend_rel_fixtex(shapes);
 
-            super_map.response.doc2(DOC_MAP);
+            super_map.response.show_doc(DOC_MAP);
 
             if super_map.response.hovered() {
                 STATUS_BAR.replace((Cow::Owned(self.map_status_line(tag_hovered.is_some(), sam)), true));
