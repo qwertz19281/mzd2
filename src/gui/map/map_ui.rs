@@ -827,7 +827,7 @@ impl Map {
             super_map.response.doc2(DOC_MAP);
 
             if super_map.response.hovered() {
-                STATUS_BAR.replace(Cow::Owned(self.map_status_line(tag_hovered.is_some(), sam)));
+                STATUS_BAR.replace((Cow::Owned(self.map_status_line(tag_hovered.is_some(), sam)), true));
             }
         }
 

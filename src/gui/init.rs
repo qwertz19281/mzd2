@@ -1,6 +1,7 @@
 use std::collections::VecDeque;
 use std::path::PathBuf;
 
+use egui::{Align, Layout};
 use scoped_tls_hkt::scoped_thread_local;
 use uuid::Uuid;
 
@@ -123,8 +124,20 @@ impl eframe::App for SharedApp {
 
             egui::TopBottomPanel::bottom("status_bar")
                 .show(ctx, |ui| {
-                    let text = super::util::STATUS_BAR.replace(std::borrow::Cow::Borrowed(""));
-                    ui.label(text)
+                    let (text,f1help) = super::util::STATUS_BAR.replace((std::borrow::Cow::Borrowed(""), false));
+                    ui.with_layout(
+                        Layout::right_to_left(Align::Center).with_main_align(Align::Min),
+                        |ui| {
+                            if f1help {
+                                ui.label("  [🖮F1] Help");
+                            }
+                            ui.allocate_ui_with_layout(
+                                ui.available_size(),
+                                Layout::left_to_right(Align::Center).with_main_align(Align::Min).with_main_justify(true),
+                                |ui| ui.label(text)
+                            );
+                        }
+                    );
                 });
 
             for v in std::mem::take(&mut self.sam.mut_queue) {

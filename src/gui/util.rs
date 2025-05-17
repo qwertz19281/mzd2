@@ -935,7 +935,7 @@ thread_local! {
 
     static DOC_CACHE: RefCell<Option<egui_commonmark::CommonMarkCache>> = const { RefCell::new(None) };
 
-    pub static STATUS_BAR: Cell<Cow<'static,str>> = const { Cell::new(Cow::Borrowed("")) };
+    pub static STATUS_BAR: Cell<(Cow<'static,str>,bool)> = const { Cell::new((Cow::Borrowed(""), false)) };
 }
 
 pub trait ResponseUtil {
@@ -954,7 +954,7 @@ impl ResponseUtil for Response {
                 let status = status.trim();
                 let md = md.trim();
                 if !status.is_empty() && self.enabled() {
-                    STATUS_BAR.replace(Cow::Borrowed(status));
+                    STATUS_BAR.replace((Cow::Borrowed(status), !md.is_empty()));
                 }
                 if !md.is_empty() && F1_PRESSED.get() {
                     egui::containers::show_tooltip_at_pointer(
