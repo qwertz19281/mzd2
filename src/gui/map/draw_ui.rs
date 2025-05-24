@@ -785,11 +785,12 @@ impl Map {
             if let Some(loaded) = room.loaded.as_mut() {
                 if do_undo && !do_redo {
                     loaded.undo(&mut room.layers, &mut room.selected_layer);
+                    ui.ctx().request_repaint();
                 }
                 if do_redo && !do_undo {
                     loaded.redo(&mut room.layers, &mut room.selected_layer);
+                    ui.ctx().request_repaint();
                 }
-                ui.ctx().request_repaint();
             }
         }
     }
