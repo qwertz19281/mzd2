@@ -12,6 +12,7 @@ impl PainterRel {
         
         let hov = self.hover_pos_rel();
 
+        // TODO since egui 0.27 release of one of the mouse buttons causes all of them to be released
         let is_pressed_ignmod = |v:AKey, ui: &egui::Ui|{
             match v {
                 AKey::Kbd(k) => ui.input(|i| i.key_down(k) ),

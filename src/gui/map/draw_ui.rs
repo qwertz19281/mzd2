@@ -726,7 +726,7 @@ impl Map {
                     }
                 }
 
-                if reg.hover_pos_rel().is_some() || ui.ctx().memory(|v| v.focus().is_none() ) {
+                if reg.hover_pos_rel().is_some() || !ui.ctx().wants_keyboard_input() {
                     if ui.input(|i| i.key_pressed(Key::O) ) {
                         palette.mutated_selected(|v| v.rot90() );
                     } else if ui.input(|i| i.key_pressed(Key::I) ) {
