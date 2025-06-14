@@ -66,23 +66,19 @@ convtable!(
 /// Call only one, returns old dpi
 pub fn dpi_hack(ctx: &egui::Context, _: &mut eframe::Frame) -> f32 {
     let scale = ctx.pixels_per_point();
-    
-    // let mut fontdef = egui::FontDefinitions::default();
 
-    // for font in fontdef.font_data.values_mut() {
-    //     font.tweak.scale *= scale;
-    // }
+    //ctx.disable_accesskit();
 
     let mut style = ctx.style();
 
-    fn marge(s: &mut egui::Margin, dpi: f32) {
+    fn tweak_margin(s: &mut egui::Margin, dpi: f32) {
         s.left *= dpi;
         s.right *= dpi;
         s.top *= dpi;
         s.bottom *= dpi;
     }
 
-    fn rond(s: &mut egui::Rounding, dpi: f32) {
+    fn tweak_rounding(s: &mut egui::Rounding, dpi: f32) {
         s.nw *= dpi;
         s.ne *= dpi;
         s.sw *= dpi;
@@ -91,6 +87,8 @@ pub fn dpi_hack(ctx: &egui::Context, _: &mut eframe::Frame) -> f32 {
 
     {
         let style = Arc::make_mut(&mut style);
+
+        style.visuals = egui::Visuals::dark();
         
         {
             for font_id in style.text_styles.values_mut() {
@@ -108,7 +106,7 @@ pub fn dpi_hack(ctx: &egui::Context, _: &mut eframe::Frame) -> f32 {
             s.indent *= scale;
             s.interact_size *= scale;
             s.item_spacing *= scale;
-            marge(&mut s.menu_margin, scale);
+            tweak_margin(&mut s.menu_margin, scale);
             s.menu_width *= scale;
             s.scroll.bar_inner_margin *= scale;
             s.scroll.bar_outer_margin *= scale;
@@ -119,17 +117,17 @@ pub fn dpi_hack(ctx: &egui::Context, _: &mut eframe::Frame) -> f32 {
             s.slider_width *= scale;
             s.text_edit_width *= scale;
             s.tooltip_width *= scale;
-            marge(&mut s.window_margin, scale);
+            tweak_margin(&mut s.window_margin, scale);
         }
         {
             let s = &mut style.visuals;
             s.clip_rect_margin *= scale;
-            rond(&mut s.menu_rounding, scale);
+            tweak_rounding(&mut s.menu_rounding, scale);
             s.popup_shadow.extrusion *= scale;
             s.resize_corner_size *= scale;
             s.selection.stroke.width *= scale;
             s.text_cursor.width *= scale;
-            rond(&mut s.window_rounding, scale);
+            tweak_rounding(&mut s.window_rounding, scale);
             s.window_shadow.extrusion *= scale;
             s.window_stroke.width *= scale;
         }
@@ -140,7 +138,7 @@ pub fn dpi_hack(ctx: &egui::Context, _: &mut eframe::Frame) -> f32 {
                 s.bg_stroke.width *= dpi;
                 s.expansion *= dpi;
                 s.fg_stroke.width *= dpi;
-                rond(&mut s.rounding, dpi);
+                tweak_rounding(&mut s.rounding, dpi);
             }
 
             wv(&mut s.active, scale);
@@ -152,7 +150,6 @@ pub fn dpi_hack(ctx: &egui::Context, _: &mut eframe::Frame) -> f32 {
     }
 
     ctx.set_pixels_per_point(1.);
-    //ctx.set_fonts(fontdef);
     ctx.set_style(style);
 
     scale

@@ -5,7 +5,28 @@
 - room titles and search
 - select multiple rooms on map
 
-## 0.2
+# 0.2
+
+## 0.2.1
+
+### Features
+
+- Built-in documentation
+    - Short info on bottom status line
+    - Detailed info in F1 popup
+- Preview Smart PushAway
+
+### Fixes
+
+- Smart PushAway fixes
+- Styling fixes
+- Other
+
+### Changes
+
+- Bump MSRV to 1.88
+
+## 0.2.0
 
 ### Features
 

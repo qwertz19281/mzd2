@@ -1,7 +1,8 @@
 use std::io::Cursor;
+use std::os::unix::fs::MetadataExt;
 use std::path::Path;
 
-use image::{guess_format, DynamicImage, ImageFormat, ImageReader, RgbaImage};
+use image::{guess_format, DynamicImage, ImageError, ImageFormat, ImageReader, RgbaImage};
 
 pub fn write_png(writer: impl std::io::Write, image: &RgbaImage) -> image::ImageResult<()> {
     let encoder = image::codecs::png::PngEncoder::new_with_quality(
@@ -52,3 +53,25 @@ pub fn load_image_from_memory(bytes: &[u8], path: &Path) -> image::ImageResult<D
     );
     reader.decode()
 }
+
+const ADAPTIVE_THRES: u64 = 32*1024*1024;
+const ADAPTIVE_BUF_SIZE: u64 = 4*1024*1024;
+
+pub fn load_image_adaptive(path: impl AsRef<Path>) -> image::ImageResult<DynamicImage> {
+    _load_image_adaptive(path.as_ref())
+}
+
+fn _load_image_adaptive(path: &Path) -> image::ImageResult<DynamicImage> {
+    let metadata = path.metadata()?;
+
+    if !metadata.is_file() {
+        return Err(ImageError::IoError(std::io::Error::from(std::io::ErrorKind::IsADirectory)));
+    }
+
+    if metadata.size() > ADAPTIVE_THRES {
+        _load_image(path)
+    } else {
+        read_file_and_load_image(path)
+    }
+}
+

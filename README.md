@@ -4,12 +4,19 @@ dungeon sketch tool (WIP)
 
 ## Install
 
+Release branch:
 ```console
 cargo install -f --git https://github.com/qwertz19281/mzd2 --branch release
 ```
 
+Master branch:
 ```console
 cargo install -f --git https://github.com/qwertz19281/mzd2 --branch master
+```
+
+Enable AVIF support (requires libdav1d)
+```console
+--features avif_decoding
 ```
 
 ## Goal
