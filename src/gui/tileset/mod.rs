@@ -10,7 +10,7 @@ use crate::gui::util::dragslider_up;
 use crate::util::{attached_to_path, gui_error, json_ser_with_ident, write_png, ResultExt, TilesetId};
 use crate::SRc;
 
-use super::doc::DOC_TILESETDRAW;
+use super::doc::{DOC_ROOM_DRAWREPLACE, DOC_TILESETDRAW};
 use super::draw_state::{DrawMode, DrawState};
 use super::dsel_state::cse::CSEState;
 use super::dsel_state::del::DelState;
@@ -107,7 +107,7 @@ impl Tileset {
             //ui.radio_value(&mut self.state.draw_draw_mode, DrawMode::Line, "Line");
             ui.radio_value(&mut self.state.draw_draw_mode, DrawMode::Rect, "Rect");
             ui.label("|");
-            ui.checkbox(&mut self.state.ds_replace, "DrawReplace");
+            ui.checkbox(&mut self.state.ds_replace, "DrawReplace").doc(DOC_ROOM_DRAWREPLACE);
             ui.checkbox(&mut self.state.dsel_whole, "DSelWhole");
         });
 
