@@ -5,6 +5,7 @@ use std::time::Duration;
 
 use egui::epaint::TextShape;
 use egui::{Align2, Color32, FontId, PointerButton, Pos2, Rect, Response, Rounding, Sense, Shape, Ui, Vec2, Widget, WidgetText};
+use egui_commonmark::CommonMarkViewer;
 
 use super::init::EFRAME_FRAME;
 use super::map::room_ops::OpAxis;
@@ -66,6 +67,12 @@ pub fn trans_shape(s: Shape, mul: f32, off: [f32;2]) -> Shape {
         Shape::Callback(mut v) => {
             v.rect = trans_rect(v.rect, mul, off);
             Shape::Callback(v)
+        },
+        Shape::Ellipse(mut v) => {
+            v.center = trans_pos2(v.center, mul, off);
+            v.radius.x *= mul;
+            v.radius.y *= mul;
+            Shape::Ellipse(v)
         },
     }
 }
@@ -520,7 +527,7 @@ impl PainterRel {
             return DragOp::Abort;
         }
         let hov = self.hover_pos_rel();
-        if self.response.drag_released_by(button) {
+        if self.response.drag_stopped_by(button) {
             if let Some(v) = self.hover_pos_rel() {
                 DragOp::End(v)
             } else {
@@ -1018,7 +1025,7 @@ impl ResponseUtil for Response {
                         DOC_CACHE.with_borrow_mut(|cache| {
                             let cache = cache.get_or_insert_default();
                             let id = ui.id().with("md");
-                            egui_commonmark::CommonMarkViewer::new(id).show(ui, cache, md);
+                            CommonMarkViewer::new(id).show(ui, cache, md);
                         });
                     },
                 );

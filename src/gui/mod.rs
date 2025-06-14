@@ -85,6 +85,13 @@ pub fn dpi_hack(ctx: &egui::Context, _: &mut eframe::Frame) -> f32 {
         s.se *= dpi;
     }
 
+    fn tweak_shadow(s: &mut egui::epaint::Shadow, dpi: f32) {
+        s.blur *= dpi;
+        s.spread *= dpi;
+        s.offset.x *= dpi;
+        s.offset.y *= dpi;
+    }
+
     {
         let style = Arc::make_mut(&mut style);
 
@@ -108,6 +115,7 @@ pub fn dpi_hack(ctx: &egui::Context, _: &mut eframe::Frame) -> f32 {
             s.item_spacing *= scale;
             tweak_margin(&mut s.menu_margin, scale);
             s.menu_width *= scale;
+            s.menu_spacing *= scale;
             s.scroll.bar_inner_margin *= scale;
             s.scroll.bar_outer_margin *= scale;
             s.scroll.bar_width *= scale;
@@ -115,6 +123,7 @@ pub fn dpi_hack(ctx: &egui::Context, _: &mut eframe::Frame) -> f32 {
             s.scroll.floating_width *= scale;
             s.scroll.floating_allocated_width *= scale;
             s.slider_width *= scale;
+            s.slider_rail_height *= scale;
             s.text_edit_width *= scale;
             s.tooltip_width *= scale;
             tweak_margin(&mut s.window_margin, scale);
@@ -123,13 +132,14 @@ pub fn dpi_hack(ctx: &egui::Context, _: &mut eframe::Frame) -> f32 {
             let s = &mut style.visuals;
             s.clip_rect_margin *= scale;
             tweak_rounding(&mut s.menu_rounding, scale);
-            s.popup_shadow.extrusion *= scale;
             s.resize_corner_size *= scale;
             s.selection.stroke.width *= scale;
             s.text_cursor.width *= scale;
             tweak_rounding(&mut s.window_rounding, scale);
-            s.window_shadow.extrusion *= scale;
             s.window_stroke.width *= scale;
+            tweak_shadow(&mut s.window_shadow, scale);
+            tweak_shadow(&mut s.popup_shadow, scale);
+            s.selection.stroke.width *= scale;
         }
         {
             let s = &mut style.visuals.widgets;
@@ -146,6 +156,12 @@ pub fn dpi_hack(ctx: &egui::Context, _: &mut eframe::Frame) -> f32 {
             wv(&mut s.inactive, scale);
             wv(&mut s.noninteractive, scale);
             wv(&mut s.open, scale);
+        }
+        {
+            let s = &mut style.interaction;
+            s.interact_radius *= scale;
+            s.resize_grab_radius_corner *= scale;
+            s.resize_grab_radius_side *= scale;
         }
     }
 
