@@ -33,6 +33,10 @@ pub fn templicon<S>(
 
     let mut shapes = vec![];
     'r: {
+        if !ui.is_visible() {
+            break 'r;
+        }
+
         let dest_rect = rector(0, 0, icon_width, icon_height);
 
         shapes.push(egui::Shape::rect_filled(dest_rect, egui::Rounding::ZERO, Color32::BLACK));

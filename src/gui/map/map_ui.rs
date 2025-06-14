@@ -516,34 +516,36 @@ impl Map {
                     1.,
                 );
 
-                let (bg_color, fg_color) = get_full_bgfg_colors(ui.ctx());
+                if ui.is_visible() {
+                    let (bg_color, fg_color) = get_full_bgfg_colors(ui.ctx());
 
-                let picomap_tex = self.picomap_tex.ensure_colorimage(
-                    [256;2],
-                    || Arc::new(render_picomap(self.state.current_level, &self.room_matrix, bg_color, fg_color)),
-                    ui.ctx()
-                );
+                    let picomap_tex = self.picomap_tex.ensure_colorimage(
+                        [256;2],
+                        || Arc::new(render_picomap(self.state.current_level, &self.room_matrix, bg_color, fg_color)),
+                        ui.ctx()
+                    );
 
-                let bg_rect = rector(
-                    (self.state.view_pos[0] / self.state.rooms_size[0] as f32).floor(),
-                    (self.state.view_pos[1] / self.state.rooms_size[1] as f32).floor(),
-                    ((self.state.view_pos[0] + self.windowsize_estim.x) / self.state.rooms_size[0] as f32).ceil(),
-                    ((self.state.view_pos[1] + self.windowsize_estim.y) / self.state.rooms_size[1] as f32).ceil(),
-                );
-        
-                picomap.extend_rel_fixtex([
-                    egui::Shape::rect_filled(
-                        bg_rect,
-                        Rounding::ZERO,
-                        Color32::from_rgba_unmultiplied(0, 0, 255, 255),
-                    ),
-                    egui::Shape::Mesh(basic_tex_shape(picomap_tex.id(), rector(0, 0, 256, 256))),
-                    egui::Shape::rect_filled(
-                        bg_rect,
-                        Rounding::ZERO,
-                        Color32::from_rgba_unmultiplied(0, 0, 255, 64),
-                    )
-                ]);
+                    let bg_rect = rector(
+                        (self.state.view_pos[0] / self.state.rooms_size[0] as f32).floor(),
+                        (self.state.view_pos[1] / self.state.rooms_size[1] as f32).floor(),
+                        ((self.state.view_pos[0] + self.windowsize_estim.x) / self.state.rooms_size[0] as f32).ceil(),
+                        ((self.state.view_pos[1] + self.windowsize_estim.y) / self.state.rooms_size[1] as f32).ceil(),
+                    );
+            
+                    picomap.extend_rel_fixtex([
+                        egui::Shape::rect_filled(
+                            bg_rect,
+                            Rounding::ZERO,
+                            Color32::from_rgba_unmultiplied(0, 0, 255, 255),
+                        ),
+                        egui::Shape::Mesh(basic_tex_shape(picomap_tex.id(), rector(0, 0, 256, 256))),
+                        egui::Shape::rect_filled(
+                            bg_rect,
+                            Rounding::ZERO,
+                            Color32::from_rgba_unmultiplied(0, 0, 255, 64),
+                        )
+                    ]);
+                }
 
                 if let Some(h) = picomap.hover_pos_rel() {
                     if picomap.response.dragged_by(egui::PointerButton::Secondary) {
@@ -729,19 +731,19 @@ impl Map {
                 self.adaptpush_show_preview = false;
             }
 
-            let mut shapes = vec![];
+            if ui.is_visible() {
+                let mut shapes = vec![];
 
-            let grid_stroke = egui::Stroke::new(1., Color32::BLACK);
-            let drawsel_stroke = egui::Stroke::new(1.5, Color32::BLUE);
-            let ssel_stroke = egui::Stroke::new(2., Color32::BLUE);
+                let grid_stroke = egui::Stroke::new(1., Color32::BLACK);
+                let drawsel_stroke = egui::Stroke::new(1.5, Color32::BLUE);
+                let ssel_stroke = egui::Stroke::new(2., Color32::BLUE);
 
-            rooms_in_view(
-                self.state.view_pos,
-                view_size.into(),
-                self.state.rooms_size,
-                |[cx,cy]| {
-                    if cx < 256 && cy < 256 {
-                        if let Some(&room_id) = self.room_matrix.get([cx as u8,cy as u8,self.state.current_level]) {
+                rooms_in_view(
+                    self.state.view_pos,
+                    view_size.into(),
+                    self.state.rooms_size,
+                    |[cx,cy]| {
+                        if cx < 256 && cy < 256 && let Some(&room_id) = self.room_matrix.get([cx as u8,cy as u8,self.state.current_level]) {
                             let Some(room) = self.state.rooms.get_mut(room_id) else {return};
 
                             self.texlru.put(room_id, self.texlru_gen);
@@ -765,22 +767,26 @@ impl Map {
                                     cx * self.state.rooms_size[0], cy * self.state.rooms_size[1],
                                     (cx+1) * self.state.rooms_size[0], (cy+1) * self.state.rooms_size[1],
                                 );
-                                shapes.push(egui::Shape::rect_filled(rect, Rounding::ZERO, Color32::from_rgba_unmultiplied(255, 255, 0, 64)));
+                                shapes.push(
+                                    egui::Shape::rect_filled(rect, Rounding::ZERO, Color32::from_rgba_unmultiplied(255, 255, 0, 64))
+                                );
                             }
                         }
                     }
-                }
-            );
+                );
 
-            draw_grid(self.state.rooms_size, (self.state.view_pos, view_pos_1), grid_stroke, 0., |s| shapes.push(s) );
+                draw_grid(self.state.rooms_size, (self.state.view_pos, view_pos_1), grid_stroke, 0., |s| shapes.push(s) );
 
-            rooms_in_view(
-                self.state.view_pos,
-                view_size.into(),
-                self.state.rooms_size,
-                |[cx,cy]| {
-                    if cx < 256 && cy < 256 {
-                        if let Some(room) = self.room_matrix.get([cx as u8,cy as u8,self.state.current_level]).and_then(|&rid| self.state.rooms.get_mut(rid) ) {
+                rooms_in_view(
+                    self.state.view_pos,
+                    view_size.into(),
+                    self.state.rooms_size,
+                    |[cx,cy]| {
+                        if
+                            cx < 256 && cy < 256
+                            && let Some(room) = self.room_matrix.get([cx as u8,cy as u8,self.state.current_level])
+                                .and_then(|&rid| self.state.rooms.get_mut(rid) )
+                        {
                             room.render_conns(
                                 self.state.edit_mode,
                                 [cx,cy].mul(self.state.rooms_size),
@@ -798,34 +804,34 @@ impl Map {
                             )
                         }
                     }
-                }
-            );
+                );
 
-            if self.state.edit_mode == MapEditMode::DrawSel {
-                if let Some([x,y,z]) = self.state.dsel_coord {
-                    if z == self.state.current_level {
-                        let rect = rector(
-                            x as u32 * self.state.rooms_size[0], y as u32 * self.state.rooms_size[1],
-                            (x as u32+1) * self.state.rooms_size[0], (y as u32+1) * self.state.rooms_size[1],
-                        );
-                        shapes.push(egui::Shape::rect_stroke(rect, Rounding::ZERO, drawsel_stroke));
+                if self.state.edit_mode == MapEditMode::DrawSel {
+                    if let Some([x,y,z]) = self.state.dsel_coord {
+                        if z == self.state.current_level {
+                            let rect = rector(
+                                x as u32 * self.state.rooms_size[0], y as u32 * self.state.rooms_size[1],
+                                (x as u32+1) * self.state.rooms_size[0], (y as u32+1) * self.state.rooms_size[1],
+                            );
+                            shapes.push(egui::Shape::rect_stroke(rect, Rounding::ZERO, drawsel_stroke));
+                        }
                     }
                 }
-            }
 
-            if self.state.edit_mode != MapEditMode::DrawSel {
-                if let Some([x,y,z]) = self.state.ssel_coord {
-                    if z == self.state.current_level {
-                        let rect = rector(
-                            x as u32 * self.state.rooms_size[0] + 8, y as u32 * self.state.rooms_size[1] + 8,
-                            (x as u32+1) * self.state.rooms_size[0] - 8, (y as u32+1) * self.state.rooms_size[1] - 8,
-                        );
-                        shapes.push(egui::Shape::rect_stroke(rect, Rounding::ZERO, ssel_stroke));
+                if self.state.edit_mode != MapEditMode::DrawSel {
+                    if let Some([x,y,z]) = self.state.ssel_coord {
+                        if z == self.state.current_level {
+                            let rect = rector(
+                                x as u32 * self.state.rooms_size[0] + 8, y as u32 * self.state.rooms_size[1] + 8,
+                                (x as u32+1) * self.state.rooms_size[0] - 8, (y as u32+1) * self.state.rooms_size[1] - 8,
+                            );
+                            shapes.push(egui::Shape::rect_stroke(rect, Rounding::ZERO, ssel_stroke));
+                        }
                     }
                 }
-            }
 
-            super_map.extend_rel_fixtex(shapes);
+                super_map.extend_rel_fixtex(shapes);
+            }
 
             super_map.response.show_doc(DOC_MAP);
 

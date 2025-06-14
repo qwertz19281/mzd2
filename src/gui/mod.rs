@@ -1,6 +1,4 @@
-use std::sync::Arc;
-
-use egui::Vec2;
+use egui::{Style, Vec2};
 
 use self::init::SharedApp;
 
@@ -69,8 +67,13 @@ pub fn dpi_hack(ctx: &egui::Context, _: &mut eframe::Frame) -> f32 {
 
     //ctx.disable_accesskit();
 
-    let mut style = ctx.style();
+    ctx.set_pixels_per_point(1.);
+    ctx.all_styles_mut(|style| dpi_hack_style(style, scale) );
 
+    scale
+}
+
+fn dpi_hack_style(style: &mut Style, scale: f32) {
     fn tweak_margin(s: &mut egui::Margin, dpi: f32) {
         s.left *= dpi;
         s.right *= dpi;
@@ -93,9 +96,7 @@ pub fn dpi_hack(ctx: &egui::Context, _: &mut eframe::Frame) -> f32 {
     }
 
     {
-        let style = Arc::make_mut(&mut style);
-
-        style.visuals = egui::Visuals::dark();
+        style.scroll_animation.points_per_second *= scale;
         
         {
             for font_id in style.text_styles.values_mut() {
@@ -166,9 +167,4 @@ pub fn dpi_hack(ctx: &egui::Context, _: &mut eframe::Frame) -> f32 {
             s.resize_grab_radius_side *= scale;
         }
     }
-
-    ctx.set_pixels_per_point(1.);
-    ctx.set_style(style);
-
-    scale
 }

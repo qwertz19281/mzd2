@@ -560,6 +560,7 @@ fn create_picomap_texcell() -> TextureCell {
         magnification: egui::TextureFilter::Nearest,
         minification: egui::TextureFilter::Nearest,
         wrap_mode: egui::TextureWrapMode::Repeat,
+        mipmap_mode: None,
     })
 }
 

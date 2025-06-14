@@ -272,65 +272,67 @@ impl Tileset {
             palette.mutated_selected(|v| v.flip([false,true]) );
         }
 
-        let mut shapes = vec![];
+        if ui.is_visible() && !ui.ctx().will_discard() {
+            let mut shapes = vec![];
 
-        let grid_area = (self.state.voff, self.state.voff.add(reg.area_size().into()));
+            let grid_area = (self.state.voff, self.state.voff.add(reg.area_size().into()));
 
-        let grid_stroke = egui::Stroke::new(1., Color32::BLACK);
-        draw_grid([8,8], grid_area, grid_stroke, 0., |s| shapes.push(s) );
+            let grid_stroke = egui::Stroke::new(1., Color32::BLACK);
+            draw_grid([8,8], grid_area, grid_stroke, 0., |s| shapes.push(s) );
 
-        let grid_stroke = egui::Stroke::new(1., Color32::WHITE);
-        draw_grid([16,16], grid_area, grid_stroke, 0., |s| shapes.push(s) );
+            let grid_stroke = egui::Stroke::new(1., Color32::WHITE);
+            draw_grid([16,16], grid_area, grid_stroke, 0., |s| shapes.push(s) );
 
-        let ts_tex = self.loaded_image.tex.get_or_insert_with(||
-            TextureCell::new(format!("tileset_{}",self.state.title),TS_TEX_OPTS)
-        );
+            let ts_tex = self.loaded_image.tex.get_or_insert_with(||
+                TextureCell::new(format!("tileset_{}",self.state.title),TS_TEX_OPTS)
+            );
 
-        let ts_tex = ts_tex.ensure_image(
-            &self.loaded_image.img,
-            ui.ctx()
-        );
+            let ts_tex = ts_tex.ensure_image(
+                &self.loaded_image.img,
+                ui.ctx()
+            );
 
-        shapes.push(egui::Shape::image(
-            ts_tex.id(),
-            rector(0, 0, self.state.validate_size[0], self.state.validate_size[1]),
-            RECT_0_0_1_1,
-            egui::Color32::WHITE
-        ));
+            shapes.push(egui::Shape::image(
+                ts_tex.id(),
+                rector(0, 0, self.state.validate_size[0], self.state.validate_size[1]),
+                RECT_0_0_1_1,
+                egui::Color32::WHITE
+            ));
 
-        if let Some(h) = reg.hover_pos_rel() {
-            match hack_render_mode {
-                Some(HackRenderMode::Draw) => self.draw_state.draw_hover_at_pos(h.into(), &palette.paletted[palette.selected as usize], |v| shapes.push(v), ui.ctx()),
-                Some(HackRenderMode::CSE) => self.cse_state.cse_render(h.into(), |v| shapes.push(v) ),
-                Some(HackRenderMode::Sel) =>
-                    self.dsel_state.dsel_render(
-                        h.into(),
-                        &self.sel_matrix,
-                        self.state.dsel_whole ^ mods.shift,
-                        |v| shapes.push(v)
-                    ),
-                Some(HackRenderMode::Del) => 
-                    self.del_state.del_render(
-                        h.into(),
-                        &self.sel_matrix,
-                        self.state.dsel_whole ^ mods.shift,
-                        |v| shapes.push(v)
-                    ),
-                None =>
-                    if mods.ctrl {
-                        self.draw_state.draw_hover_at_pos(h.into(), &palette.paletted[palette.selected as usize], |v| shapes.push(v), ui.ctx());
-                    } else {
+            if let Some(h) = reg.hover_pos_rel() {
+                match hack_render_mode {
+                    Some(HackRenderMode::Draw) => self.draw_state.draw_hover_at_pos(h.into(), &palette.paletted[palette.selected as usize], |v| shapes.push(v), ui.ctx()),
+                    Some(HackRenderMode::CSE) => self.cse_state.cse_render(h.into(), |v| shapes.push(v) ),
+                    Some(HackRenderMode::Sel) =>
                         self.dsel_state.dsel_render(
                             h.into(),
                             &self.sel_matrix,
                             self.state.dsel_whole ^ mods.shift,
                             |v| shapes.push(v)
-                        );
-                    },
+                        ),
+                    Some(HackRenderMode::Del) => 
+                        self.del_state.del_render(
+                            h.into(),
+                            &self.sel_matrix,
+                            self.state.dsel_whole ^ mods.shift,
+                            |v| shapes.push(v)
+                        ),
+                    None =>
+                        if mods.ctrl {
+                            self.draw_state.draw_hover_at_pos(h.into(), &palette.paletted[palette.selected as usize], |v| shapes.push(v), ui.ctx());
+                        } else {
+                            self.dsel_state.dsel_render(
+                                h.into(),
+                                &self.sel_matrix,
+                                self.state.dsel_whole ^ mods.shift,
+                                |v| shapes.push(v)
+                            );
+                        },
+                }
             }
-        }
 
-        reg.extend_rel_fixtex(shapes);
+            reg.extend_rel_fixtex(shapes);
+        }
 
         reg.response.show_doc(DOC_TILESETDRAW);
 
@@ -526,4 +528,5 @@ const TS_TEX_OPTS: TextureOptions = TextureOptions {
     magnification: egui::TextureFilter::Nearest,
     minification: egui::TextureFilter::Nearest,
     wrap_mode: egui::TextureWrapMode::Repeat,
+    mipmap_mode: None,
 };

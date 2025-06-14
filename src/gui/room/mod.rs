@@ -332,6 +332,7 @@ const ROOM_TEX_OPTS: TextureOptions = TextureOptions {
     magnification: egui::TextureFilter::Nearest,
     minification: egui::TextureFilter::Linear,
     wrap_mode: egui::TextureWrapMode::Repeat,
+    mipmap_mode: None,
 };
 
 mod dirconn_serde {

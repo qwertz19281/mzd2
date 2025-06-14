@@ -621,72 +621,74 @@ impl Map {
 
                 let mut shapes = vec![];
 
-                let draw_grid = |shapes: &mut Vec<_>| {
-                    let grid_stroke = egui::Stroke::new(1., Color32::BLACK);
-                    draw_grid([8,8], ([0.,0.], self.state.rooms_size.as_f32()), grid_stroke, 0., |s| shapes.push(s) );
+                if ui.is_visible() {
+                    let draw_grid = |shapes: &mut Vec<_>| {
+                        let grid_stroke = egui::Stroke::new(1., Color32::BLACK);
+                        draw_grid([8,8], ([0.,0.], self.state.rooms_size.as_f32()), grid_stroke, 0., |s| shapes.push(s) );
 
-                    let grid_stroke = egui::Stroke::new(1., Color32::WHITE);
-                    draw_grid([16,16], ([0.,0.], self.state.rooms_size.as_f32()), grid_stroke, 0., |s| shapes.push(s) );
-                };
+                        let grid_stroke = egui::Stroke::new(1., Color32::WHITE);
+                        draw_grid([16,16], ([0.,0.], self.state.rooms_size.as_f32()), grid_stroke, 0., |s| shapes.push(s) );
+                    };
 
-                if !mods.shift {draw_grid(&mut shapes);}
+                    if !mods.shift {draw_grid(&mut shapes);}
 
-                self.editsel.render(
-                    &mut self.state.rooms,
-                    self.state.rooms_size,
-                    hover_single_layer,
-                    hide_layers_above | hide_layers_all,
-                    hide_layers_all,
-                    |shape| shapes.push(shape),
-                    &self.path,
-                    ui.ctx(),
-                );
+                    self.editsel.render(
+                        &mut self.state.rooms,
+                        self.state.rooms_size,
+                        hover_single_layer,
+                        hide_layers_above | hide_layers_all,
+                        hide_layers_all,
+                        |shape| shapes.push(shape),
+                        &self.path,
+                        ui.ctx(),
+                    );
 
-                if mods.shift {draw_grid(&mut shapes);}
+                    if mods.shift {draw_grid(&mut shapes);}
 
-                if let Some(h) = reg.hover_pos_rel() {
-                    let mut palet = &palette.paletted[palette.selected as usize];
-                    if mods.alt && let Some(p) = &self.move_mode_palette {
-                        palet = p;
-                    }
-                    match hack_render_mode {
-                        Some(HackRenderMode::Draw) => self.draw_state.draw_hover_at_pos(h.into(), palet, |v| shapes.push(v), ui.ctx()),
-                        Some(HackRenderMode::CSE) => self.cse_state.cse_render(h.into(), |v| shapes.push(v) ),
-                        Some(HackRenderMode::Sel) => //TODO doesn't show shit in None
-                            self.dsel_state.dsel_render(
-                                h.into(),
-                                &self.editsel.selmatrix(
-                                    draw_selected_layer,
-                                    &self.state.rooms,
-                                    self.state.rooms_size,
+                    if let Some(h) = reg.hover_pos_rel() {
+                        let mut palet = &palette.paletted[palette.selected as usize];
+                        if mods.alt && let Some(p) = &self.move_mode_palette {
+                            palet = p;
+                        }
+                        match hack_render_mode {
+                            Some(HackRenderMode::Draw) => self.draw_state.draw_hover_at_pos(h.into(), palet, |v| shapes.push(v), ui.ctx()),
+                            Some(HackRenderMode::CSE) => self.cse_state.cse_render(h.into(), |v| shapes.push(v) ),
+                            Some(HackRenderMode::Sel) => //TODO doesn't show shit in None
+                                self.dsel_state.dsel_render(
+                                    h.into(),
+                                    &self.editsel.selmatrix(
+                                        draw_selected_layer,
+                                        &self.state.rooms,
+                                        self.state.rooms_size,
+                                    ),
+                                    self.state.dsel_whole ^ mods.shift,
+                                    |v| shapes.push(v)
                                 ),
-                                self.state.dsel_whole ^ mods.shift,
-                                |v| shapes.push(v)
-                            ),
-                        Some(HackRenderMode::Del) => 
-                            self.del_state.del_render(
-                                h.into(),
-                                &self.editsel.selmatrix(
-                                    draw_selected_layer,
-                                    &self.state.rooms,
-                                    self.state.rooms_size,
+                            Some(HackRenderMode::Del) => 
+                                self.del_state.del_render(
+                                    h.into(),
+                                    &self.editsel.selmatrix(
+                                        draw_selected_layer,
+                                        &self.state.rooms,
+                                        self.state.rooms_size,
+                                    ),
+                                    self.state.dsel_whole ^ mods.shift,
+                                    |v| shapes.push(v)
                                 ),
-                                self.state.dsel_whole ^ mods.shift,
-                                |v| shapes.push(v)
-                            ),
-                        None => {
-                            self.draw_state.draw_hover_at_pos(h.into(), palet, |v| shapes.push(v), ui.ctx());
-                            self.dsel_state.dsel_render(
-                                h.into(),
-                                &self.editsel.selmatrix(
-                                    draw_selected_layer,
-                                    &self.state.rooms,
-                                    self.state.rooms_size,
-                                ),
-                                self.state.dsel_whole ^ mods.shift,
-                                |v| shapes.push(v)
-                            );
-                        },
+                            None => {
+                                self.draw_state.draw_hover_at_pos(h.into(), palet, |v| shapes.push(v), ui.ctx());
+                                self.dsel_state.dsel_render(
+                                    h.into(),
+                                    &self.editsel.selmatrix(
+                                        draw_selected_layer,
+                                        &self.state.rooms,
+                                        self.state.rooms_size,
+                                    ),
+                                    self.state.dsel_whole ^ mods.shift,
+                                    |v| shapes.push(v)
+                                );
+                            },
+                        }
                     }
                 }
 

@@ -1025,8 +1025,7 @@ impl ResponseUtil for Response {
                     |ui| {
                         DOC_CACHE.with_borrow_mut(|cache| {
                             let cache = cache.get_or_insert_default();
-                            let id = ui.id().with("md");
-                            CommonMarkViewer::new(id).show(ui, cache, md);
+                            CommonMarkViewer::new().show(ui, cache, md);
                         });
                     },
                 );

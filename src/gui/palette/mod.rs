@@ -307,6 +307,7 @@ const PAL_TEX_OPTS: TextureOptions = TextureOptions {
     magnification: egui::TextureFilter::Linear,
     minification: egui::TextureFilter::Linear,
     wrap_mode: egui::TextureWrapMode::ClampToEdge,
+    mipmap_mode: None,
 };
 
 pub fn lru_ui(state: &mut SharedApp, ui: &mut egui::Ui) {

@@ -74,7 +74,7 @@ pub fn top_panel_ui(state: &mut SharedApp, ui: &mut egui::Ui) {
             |ui| {
                 let prev = ui.ctx().style().visuals.dark_mode;
 
-                egui::widgets::global_dark_light_mode_switch(ui);
+                egui::widgets::global_theme_preference_switch(ui);
 
                 if ui.ctx().style().visuals.dark_mode != prev {
                     invalidate_all_textures();
