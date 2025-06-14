@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 
-use egui::{Color32, PointerButton, Rounding, Sense, Vec2, Widget};
+use egui::{Color32, PointerButton, Rounding, Sense, Vec2};
 
 use crate::gui::doc::{DOC_MAP, DOC_MAP_COLLAPSE, DOC_MAP_SHIFTAWAY, DOC_MAP_SHIFTSIZE, DOC_MAP_SINGLEMOVE, DOC_MAP_SMARTMOVE};
 use crate::gui::room::draw_image::DrawImageGroup;
@@ -12,7 +12,7 @@ use crate::gui::palette::Palette;
 use crate::gui::room::Room;
 use crate::gui::tags::render_tags;
 use crate::gui::texture::basic_tex_shape;
-use crate::gui::util::{alloc_painter_rel, alloc_painter_rel_ds, dpad, dragslider_up, dragvalion_down, dragvalion_up, draw_grid, get_full_bgfg_colors, ArrUtl, DragOp, ResponseUtil, STATUS_BAR};
+use crate::gui::util::{alloc_painter_rel, alloc_painter_rel_ds, button_with_green_success, dpad, dragslider_up, dragvalion_down, dragvalion_up, draw_grid, get_full_bgfg_colors, ArrUtl, DragOp, ResponseUtil, STATUS_BAR};
 use crate::gui::window_states::map::Maps;
 use crate::util::{MapId, gui_error};
 
@@ -180,9 +180,15 @@ impl Map {
         ui.horizontal(|ui| {
             ui.vertical(|ui| {
                 ui.horizontal(|ui| {
-                    if ui.button("Save").clicked() {
-                        self.save_map(&mut sam.uuidmap);
-                    }
+                    button_with_green_success(
+                        self, "Save", ui,
+                        |s| &mut s.show_green_save_until,
+                        |s, _| {
+                            s.save_map(&mut sam.uuidmap);
+                            true
+                        }
+                    );
+
                     if ui.button("Save&Close").clicked() {
                         self.save_map(&mut sam.uuidmap);
                         self.unload_map(&mut sam.uuidmap);

@@ -23,7 +23,7 @@ use super::rector;
 use super::init::{SharedApp, SAM};
 use super::sel_matrix::{sel_entry_dims, SelMatrix, SelMatrixLayered};
 use super::texture::{RECT_0_0_1_1, TextureCell};
-use super::util::{alloc_painter_rel_ds, draw_grid, ArrUtl, DragOp, ResponseUtil};
+use super::util::{alloc_painter_rel_ds, button_with_green_success, draw_grid, ArrUtl, DragOp, ResponseUtil};
 
 mod convert_0_1;
 
@@ -42,6 +42,7 @@ pub struct Tileset {
     pub dirty_img: bool,
     pub key_manager_state: Option<KMKey>,
     pub sel_matrix: SelMatrix,
+    pub show_green_save_until: f64,
 }
 
 #[derive(Deserialize,Serialize)]
@@ -65,11 +66,17 @@ impl Tileset {
         let draw_allowed = self.edit_path && self.path.extension() == Some(OsStr::new("png"));
 
         ui.horizontal(|ui| {
-            if ui.button(if false {"SAVE"} else {"Save"}).clicked() {
-                if self.edit_path {
-                    self.ui_save(draw_allowed && self.edit_mode);
+            button_with_green_success(
+                self, "Save", ui,
+                |s| &mut s.show_green_save_until,
+                |s, _| {
+                    if s.edit_path {
+                        s.ui_save(draw_allowed && s.edit_mode);
+                    }
+                    s.edit_path
                 }
-            }
+            );
+
             if ui.button(if false {"SAVE&Close"} else {"Save&Close"}).clicked() {
                 if self.edit_path {
                     self.ui_save(draw_allowed && self.edit_mode);
@@ -457,6 +464,7 @@ impl Tileset {
             dirty_img: dirty,
             key_manager_state: None,
             sel_matrix: selmatrix.unwrap_or_else(|| SelMatrix::new_emptyfilled(sel_entry_dims(img_size))),
+            show_green_save_until: -1.0,
         };
 
         Ok(ts)
@@ -495,6 +503,7 @@ impl Tileset {
             dirty_img: true,
             key_manager_state: None,
             sel_matrix,
+            show_green_save_until: -1.0,
         }
     }
 

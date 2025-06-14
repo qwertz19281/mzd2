@@ -73,6 +73,7 @@ pub struct Map {
     pub move_mode_palette: Option<PaletteItem>,
     pub tag_sel: Option<(RoomId,Uuid)>,
     pub(crate) matrix_debug_corrupt_flag: bool,
+    pub show_green_save_until: f64,
 }
 
 pub type RoomMap = HopSlotMap<RoomId,Room>;
@@ -321,6 +322,7 @@ impl Map {
             matrix_debug_corrupt_flag: false,
             adaptpush_preview: None,
             adaptpush_show_preview: false,
+            show_green_save_until: -1.0,
         };
 
         if map.state.quickroom_template.is_empty() {
@@ -456,6 +458,7 @@ impl Map {
             matrix_debug_corrupt_flag: false,
             adaptpush_preview: None,
             adaptpush_show_preview: false,
+            show_green_save_until: -1.0,
         };
 
         uuidmap.insert(this.state.uuid, UUIDTarget::Map(this.id));

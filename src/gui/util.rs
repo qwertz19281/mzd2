@@ -1,9 +1,10 @@
 use std::borrow::Cow;
 use std::cell::{Cell, RefCell};
 use std::ops::RangeInclusive;
+use std::time::Duration;
 
 use egui::epaint::TextShape;
-use egui::{Align2, Color32, FontId, PointerButton, Pos2, Rect, Response, Rounding, Sense, Shape, Vec2};
+use egui::{Align2, Color32, FontId, PointerButton, Pos2, Rect, Response, Rounding, Sense, Shape, Ui, Vec2, Widget, WidgetText};
 
 use super::init::EFRAME_FRAME;
 use super::map::room_ops::OpAxis;
@@ -916,6 +917,34 @@ pub fn get_full_bgfg_colors(ctx: &egui::Context) -> (Color32, Color32) {
     } else {
         (Color32::WHITE, Color32::BLACK)
     }
+}
+
+pub fn button_with_green_success<T>(
+    state: &mut T,
+    text: impl Into<WidgetText>,
+    ui: &mut Ui,
+    mut counter: impl FnMut(&mut T) -> &mut f64,
+    action: impl FnOnce(&mut T, &mut Ui) -> bool,
+) -> Response {
+    let ts = ui.ctx().input(|i| i.time );
+
+    let mut button = egui::Button::new(text);
+
+    if ts < *counter(state) {
+        button = button.fill(Color32::DARK_GREEN);
+        ui.ctx().request_repaint_after(Duration::from_millis(100));
+    }
+
+    let resp = button.ui(ui);
+    
+    if resp.clicked() {
+        if action(state, ui) {
+            *counter(state) = ts + 0.5;
+            ui.ctx().request_repaint_after(Duration::from_millis(500));
+        }
+    }
+
+    resp
 }
 
 pub trait RfdUtil {
