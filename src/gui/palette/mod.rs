@@ -12,7 +12,7 @@ use crate::SRc;
 use super::init::SharedApp;
 use super::map::RoomId;
 use super::sel_matrix::SelEntry;
-use super::util::{alloc_painter_rel, ArrUtl};
+use super::util::{alloc_painter_rel, get_full_bgfg_colors, ArrUtl};
 use super::{rector, line2};
 use super::texture::{TextureCell, RECT_0_0_1_1};
 
@@ -157,11 +157,13 @@ pub fn palette_ui(state: &mut SharedApp, ui: &mut egui::Ui) {
 
     let selected = &mut state.palette.paletted[state.palette.selected as usize];
 
+    let (bg_color, _) = get_full_bgfg_colors(ui.ctx());
+
     let uv = selected.uv;
     shapes.push(egui::Shape::rect_filled(
         texdraw_rect(0),
         Rounding::ZERO,
-        egui::Color32::BLACK,
+        bg_color,
     ));
 
     if !selected.src.is_empty() {
@@ -179,7 +181,7 @@ pub fn palette_ui(state: &mut SharedApp, ui: &mut egui::Ui) {
         shapes.push(egui::Shape::rect_filled(
             texdraw_rect(pos),
             Rounding::ZERO,
-            egui::Color32::BLACK,
+            bg_color,
         ));
 
         if !pal.src.is_empty() {

@@ -658,8 +658,10 @@ pub fn dpadc(
         x >= base_size*2.+border && x < base_size*3.-border && y >= text_size+base_size+border && y < text_size+base_size*2.-border
     };
 
-    let akw_stroke = egui::Stroke::new(dpi, Color32::WHITE);
-    let fill_hover = Color32::from_rgba_unmultiplied(255, 255, 255, 64);
+    let (_, fg_color) = get_full_bgfg_colors(ui.ctx());
+
+    let akw_stroke = egui::Stroke::new(dpi, fg_color);
+    let fill_hover = Color32::from_rgba_unmultiplied(fg_color.r(), fg_color.g(), fg_color.b(), 64);
     let fill_down = Color32::from_rgba_unmultiplied(255, 0, 0, 255);
 
     let mut shapes = Vec::new();
@@ -760,7 +762,7 @@ pub fn dpadc(
                 Align2::CENTER_CENTER,
                 desc,
                 FontId::proportional(text_size*0.5),
-                Color32::WHITE,
+                fg_color,
             ),
             egui::Shape::text(
                 fonts,
@@ -768,7 +770,7 @@ pub fn dpadc(
                 Align2::CENTER_CENTER,
                 icons[0],
                 FontId::monospace(base_size*0.5),
-                Color32::WHITE,
+                fg_color,
             ),
             egui::Shape::text(
                 fonts,
@@ -776,7 +778,7 @@ pub fn dpadc(
                 Align2::CENTER_CENTER,
                 icons[1],
                 FontId::monospace(base_size*0.5),
-                Color32::WHITE,
+                fg_color,
             ),
             egui::Shape::text(
                 fonts,
@@ -784,7 +786,7 @@ pub fn dpadc(
                 Align2::CENTER_CENTER,
                 icons[2],
                 FontId::monospace(base_size*0.5),
-                Color32::WHITE,
+                fg_color,
             ),
             egui::Shape::text(
                 fonts,
@@ -792,7 +794,7 @@ pub fn dpadc(
                 Align2::CENTER_CENTER,
                 icons[3],
                 FontId::monospace(base_size*0.5),
-                Color32::WHITE,
+                fg_color,
             ),
             egui::Shape::text(
                 fonts,
@@ -800,7 +802,7 @@ pub fn dpadc(
                 Align2::CENTER_CENTER,
                 icons[4],
                 FontId::monospace(base_size*0.5),
-                Color32::WHITE,
+                fg_color,
             ),
             egui::Shape::text(
                 fonts,
@@ -808,7 +810,7 @@ pub fn dpadc(
                 Align2::CENTER_CENTER,
                 icons[5],
                 FontId::monospace(base_size*0.5),
-                Color32::WHITE,
+                fg_color,
             ),
             egui::Shape::line_segment(line2(0, text_size, base_size*2., text_size+base_size*2.), akw_stroke),
             egui::Shape::line_segment(line2(base_size*2., text_size, 0, text_size+base_size*2.), akw_stroke),
@@ -905,6 +907,15 @@ pub fn text_with_bg_color(
         }
     }
     dest(text.into());
+}
+
+/// In dark mode, returns (BLACK, WHITE), in lightmode, (WHITE, BLACK)
+pub fn get_full_bgfg_colors(ctx: &egui::Context) -> (Color32, Color32) {
+    if ctx.style().visuals.dark_mode {
+        (Color32::BLACK, Color32::WHITE)
+    } else {
+        (Color32::WHITE, Color32::BLACK)
+    }
 }
 
 pub trait RfdUtil {

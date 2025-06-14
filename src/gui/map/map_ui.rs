@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 
-use egui::{Sense, Vec2, Color32, Rounding, PointerButton};
+use egui::{Color32, PointerButton, Rounding, Sense, Vec2, Widget};
 
 use crate::gui::doc::{DOC_MAP, DOC_MAP_COLLAPSE, DOC_MAP_SHIFTAWAY, DOC_MAP_SHIFTSIZE, DOC_MAP_SINGLEMOVE, DOC_MAP_SMARTMOVE};
 use crate::gui::room::draw_image::DrawImageGroup;
@@ -12,7 +12,7 @@ use crate::gui::palette::Palette;
 use crate::gui::room::Room;
 use crate::gui::tags::render_tags;
 use crate::gui::texture::basic_tex_shape;
-use crate::gui::util::{alloc_painter_rel, alloc_painter_rel_ds, dpad, dragslider_up, dragvalion_down, dragvalion_up, draw_grid, ArrUtl, DragOp, ResponseUtil, STATUS_BAR};
+use crate::gui::util::{alloc_painter_rel, alloc_painter_rel_ds, dpad, dragslider_up, dragvalion_down, dragvalion_up, draw_grid, get_full_bgfg_colors, ArrUtl, DragOp, ResponseUtil, STATUS_BAR};
 use crate::gui::window_states::map::Maps;
 use crate::util::{MapId, gui_error};
 
@@ -509,10 +509,12 @@ impl Map {
                     Sense::drag(),
                     1.,
                 );
-        
+
+                let (bg_color, fg_color) = get_full_bgfg_colors(ui.ctx());
+
                 let picomap_tex = self.picomap_tex.ensure_colorimage(
                     [256;2],
-                    || Arc::new(render_picomap(self.state.current_level,&self.room_matrix)),
+                    || Arc::new(render_picomap(self.state.current_level, &self.room_matrix, bg_color, fg_color)),
                     ui.ctx()
                 );
 
@@ -524,11 +526,6 @@ impl Map {
                 );
         
                 picomap.extend_rel_fixtex([
-                    egui::Shape::rect_filled(
-                        rector(0, 0, 256, 256),
-                        Rounding::ZERO,
-                        Color32::BLACK,
-                    ),
                     egui::Shape::rect_filled(
                         bg_rect,
                         Rounding::ZERO,

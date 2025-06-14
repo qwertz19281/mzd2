@@ -1,3 +1,5 @@
+use std::sync::atomic::AtomicU64;
+use std::sync::atomic::Ordering::Relaxed;
 use std::sync::Arc;
 
 use egui::epaint::ImageDelta;
@@ -179,12 +181,19 @@ pub fn ensure_texture2<'a> (
     tex.as_mut().unwrap()
 }
 
+pub static GLOBAL_TEX_INVAL: AtomicU64 = AtomicU64::new(0);
+
+pub fn invalidate_all_textures() {
+    GLOBAL_TEX_INVAL.fetch_add(1, Relaxed);
+}
+
 #[derive(Clone)]
 pub struct TextureCell {
     pub tex_handle: Option<TextureHandle>,
     dirty_full: bool,
     dirty_region: Option<([u32;2],[u32;2])>,
     name: String,
+    global_seq: u64,
     opts: TextureOptions,
 }
 
@@ -195,6 +204,7 @@ impl TextureCell {
             dirty_full: false,
             dirty_region: None,
             name: name.into(),
+            global_seq: GLOBAL_TEX_INVAL.load(Relaxed),
             opts,
         }
     }
@@ -214,11 +224,20 @@ impl TextureCell {
         })
     }
 
+    fn fetch_global_seq(&mut self) -> bool {
+        let old = self.global_seq;
+        let new = GLOBAL_TEX_INVAL.load(Relaxed);
+        self.global_seq = new;
+        old != new
+    }
+
     pub fn ensure_image<'a>(
         &'a mut self,
         image: &RgbaImage,
         ctx: &Context,
     ) -> &'a mut TextureHandle {
+        self.dirty_full |= self.fetch_global_seq();
+
         let tex = ensure_texture_from_image(
             &mut self.tex_handle,
             &self.name,
@@ -241,6 +260,8 @@ impl TextureCell {
         image: impl FnOnce() -> Arc<ColorImage>,
         ctx: &Context,
     ) -> &'a mut TextureHandle {
+        self.dirty_full |= self.fetch_global_seq();
+        
         let tex = ensure_texture2(
             &mut self.tex_handle,
             &self.name,

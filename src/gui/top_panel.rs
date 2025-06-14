@@ -2,10 +2,13 @@ use std::cell::RefCell;
 use std::ffi::OsStr;
 use std::path::PathBuf;
 
+use egui::{Align, Layout};
+
 use super::dock::DockTab;
 use super::init::SharedApp;
 use super::map::Map;
 use super::tags::get_tag_state;
+use super::texture::invalidate_all_textures;
 use super::tileset::Tileset;
 use super::util::{dragvalion_up, ArrUtl, RfdUtil};
 
@@ -65,6 +68,20 @@ pub fn top_panel_ui(state: &mut SharedApp, ui: &mut egui::Ui) {
                 state.sam.warpon = None;
             }
         }
+
+        ui.with_layout(
+            Layout::right_to_left(Align::Center).with_main_align(Align::Min),
+            |ui| {
+                let prev = ui.ctx().style().visuals.dark_mode;
+
+                egui::widgets::global_dark_light_mode_switch(ui);
+
+                if ui.ctx().style().visuals.dark_mode != prev {
+                    invalidate_all_textures();
+                    ui.ctx().request_repaint();
+                }
+            }
+        );
     });
 }
 
