@@ -33,7 +33,7 @@ pub fn launch_gui(args: crate::cli::Args) {
         "com.github.qwertz19281.mzd2",
         options,
         Box::new(|_| {
-            Box::new(SharedApp::new(args.load_paths))
+            Ok(Box::new(SharedApp::new(args.load_paths)))
         }),
     ).unwrap();
 }

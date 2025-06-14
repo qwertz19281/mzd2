@@ -113,6 +113,8 @@ pub fn dpi_hack(ctx: &egui::Context, _: &mut eframe::Frame) -> f32 {
             s.indent *= scale;
             s.interact_size *= scale;
             s.item_spacing *= scale;
+            s.default_area_size.x *= scale;
+            s.default_area_size.y *= scale;
             tweak_margin(&mut s.menu_margin, scale);
             s.menu_width *= scale;
             s.menu_spacing *= scale;
@@ -134,7 +136,7 @@ pub fn dpi_hack(ctx: &egui::Context, _: &mut eframe::Frame) -> f32 {
             tweak_rounding(&mut s.menu_rounding, scale);
             s.resize_corner_size *= scale;
             s.selection.stroke.width *= scale;
-            s.text_cursor.width *= scale;
+            s.text_cursor.stroke.width *= scale;
             tweak_rounding(&mut s.window_rounding, scale);
             s.window_stroke.width *= scale;
             tweak_shadow(&mut s.window_shadow, scale);

@@ -1,4 +1,4 @@
-use egui::{FontId, TextEdit};
+use egui::{FontId, TextEdit, TextWrapMode};
 
 use crate::gui::init::SAM;
 use crate::gui::room::Layer;
@@ -26,7 +26,7 @@ impl Map {
 
         ui.scope(|ui| {
             ui.style_mut().override_text_style = Some(egui::TextStyle::Monospace);
-            ui.style_mut().wrap = Some(false);
+            ui.style_mut().wrap_mode = Some(TextWrapMode::Extend);
 
             let min_size = egui::Vec2 {
                 x: ui.fonts(|f| f.glyph_width(&FontId::monospace(14. * sam.dpi_scale), '✏')),

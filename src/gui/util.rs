@@ -834,7 +834,7 @@ pub fn dpadc(
 }
 
 pub fn dragvalion_down<Num>(value: &mut Num, speed: impl Into<f64>, clamp_range: RangeInclusive<Num>, stepu: Num, ui: &mut egui::Ui) where Num: egui::emath::Numeric + NumUtl {
-    let resp = ui.add(egui::DragValue::new(value).speed(speed).clamp_range(clamp_range.clone()));
+    let resp = ui.add(egui::DragValue::new(value).speed(speed).range(clamp_range.clone()));
     if resp.hovered() {
         let delta = ui.input(|i| i.raw_scroll_delta );
         if delta.y < -0.9 {
@@ -849,7 +849,7 @@ pub fn dragvalion_down<Num>(value: &mut Num, speed: impl Into<f64>, clamp_range:
 }
 
 pub fn dragvalion_up<Num>(value: &mut Num, speed: impl Into<f64>, clamp_range: RangeInclusive<Num>, stepu: Num, ui: &mut egui::Ui) where Num: egui::emath::Numeric + NumUtl {
-    let resp = ui.add(egui::DragValue::new(value).speed(speed).clamp_range(clamp_range.clone()));
+    let resp = ui.add(egui::DragValue::new(value).speed(speed).range(clamp_range.clone()));
     if resp.hovered() {
         let delta = ui.input(|i| i.raw_scroll_delta );
         if delta.y < -0.9 {
@@ -1020,6 +1020,7 @@ impl ResponseUtil for Response {
             if !md.is_empty() && F1_PRESSED.get() {
                 egui::containers::show_tooltip_at_pointer(
                     &self.ctx,
+                    self.layer_id,
                     self.id.with("__doc_tooltip"),
                     |ui| {
                         DOC_CACHE.with_borrow_mut(|cache| {
