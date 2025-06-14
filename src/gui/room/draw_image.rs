@@ -1,7 +1,7 @@
 use std::hash::{Hash, Hasher};
 use std::path::Path;
 
-use egui::{Color32, Rounding, Stroke, Pos2, Align2, FontId};
+use egui::{Align2, Color32, CornerRadius, FontId, Pos2, Stroke};
 use egui::epaint::ahash::AHasher;
 use image::{GenericImage, GenericImageView, ImageBuffer, Pixel as _, RgbaImage};
 use lab::Lab;
@@ -546,14 +546,14 @@ impl Room {
         let dest_rect = rector(off[0], off[1], off[0]+rooms_size[0], off[1]+rooms_size[1]);
 
         if let Some(bg_color) = bg_color {
-            dest(egui::Shape::rect_filled(dest_rect, egui::Rounding::ZERO, bg_color))
+            dest(egui::Shape::rect_filled(dest_rect, CornerRadius::ZERO, bg_color))
         }
         
         for i in visible_layers {
             mesh.add_rect_with_uv(dest_rect, loaded.image.layer_uv(i, rooms_size), egui::Color32::WHITE);
         }
         
-        dest(egui::Shape::Mesh(mesh));
+        dest(mesh.into());
 
         if cfg!(all(debug_assertions, feature = "super_validate")) {
             ctx.fonts(|fonts| {
@@ -579,11 +579,11 @@ impl Room {
 
         if mode == MapEditMode::ConnDown {
             if !self.dirconn[2][0] {
-                dest(egui::Shape::rect_filled(dest_rect, Rounding::ZERO, unconn_color_fill))
+                dest(egui::Shape::rect_filled(dest_rect, CornerRadius::ZERO, unconn_color_fill))
             }
         } else if mode == MapEditMode::ConnUp {
             if !self.dirconn[2][1] {
-                dest(egui::Shape::rect_filled(dest_rect, Rounding::ZERO, unconn_color_fill))
+                dest(egui::Shape::rect_filled(dest_rect, CornerRadius::ZERO, unconn_color_fill))
             }
         }
         if mode == MapEditMode::ConnDown || mode == MapEditMode::ConnUp || mode == MapEditMode::ConnXY || mode == MapEditMode::RoomSel {

@@ -74,25 +74,39 @@ pub fn dpi_hack(ctx: &egui::Context, _: &mut eframe::Frame) -> f32 {
 }
 
 fn dpi_hack_style(style: &mut Style, scale: f32) {
+    fn mul_i8(v: &mut i8, dpi: f32) {
+        *v = (*v as f32 * dpi).round() as i8;
+    }
+    fn mul_u8(v: &mut u8, dpi: f32) {
+        *v = (*v as f32 * dpi).round() as u8;
+    }
+
     fn tweak_margin(s: &mut egui::Margin, dpi: f32) {
+        mul_i8(&mut s.left, dpi);
+        mul_i8(&mut s.right, dpi);
+        mul_i8(&mut s.top, dpi);
+        mul_i8(&mut s.bottom, dpi);
+    }
+
+    fn tweak_marginf(s: &mut egui::epaint::Marginf, dpi: f32) {
         s.left *= dpi;
         s.right *= dpi;
         s.top *= dpi;
         s.bottom *= dpi;
     }
 
-    fn tweak_rounding(s: &mut egui::Rounding, dpi: f32) {
-        s.nw *= dpi;
-        s.ne *= dpi;
-        s.sw *= dpi;
-        s.se *= dpi;
+    fn tweak_corner_radius(s: &mut egui::CornerRadius, dpi: f32) {
+        mul_u8(&mut s.nw, dpi);
+        mul_u8(&mut s.ne, dpi);
+        mul_u8(&mut s.sw, dpi);
+        mul_u8(&mut s.se, dpi);
     }
 
     fn tweak_shadow(s: &mut egui::epaint::Shadow, dpi: f32) {
-        s.blur *= dpi;
-        s.spread *= dpi;
-        s.offset.x *= dpi;
-        s.offset.y *= dpi;
+        mul_u8(&mut s.blur, dpi);
+        mul_u8(&mut s.spread, dpi);
+        mul_i8(&mut s.offset[0], dpi);
+        mul_i8(&mut s.offset[1], dpi);
     }
 
     {
@@ -134,11 +148,11 @@ fn dpi_hack_style(style: &mut Style, scale: f32) {
         {
             let s = &mut style.visuals;
             s.clip_rect_margin *= scale;
-            tweak_rounding(&mut s.menu_rounding, scale);
+            tweak_corner_radius(&mut s.menu_corner_radius, scale);
             s.resize_corner_size *= scale;
             s.selection.stroke.width *= scale;
             s.text_cursor.stroke.width *= scale;
-            tweak_rounding(&mut s.window_rounding, scale);
+            tweak_corner_radius(&mut s.window_corner_radius, scale);
             s.window_stroke.width *= scale;
             tweak_shadow(&mut s.window_shadow, scale);
             tweak_shadow(&mut s.popup_shadow, scale);
@@ -151,7 +165,7 @@ fn dpi_hack_style(style: &mut Style, scale: f32) {
                 s.bg_stroke.width *= dpi;
                 s.expansion *= dpi;
                 s.fg_stroke.width *= dpi;
-                tweak_rounding(&mut s.rounding, dpi);
+                tweak_corner_radius(&mut s.corner_radius, dpi);
             }
 
             wv(&mut s.active, scale);

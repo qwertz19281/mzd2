@@ -1,4 +1,4 @@
-use egui::{Shape, Color32, Rounding};
+use egui::{Color32, CornerRadius, Shape, StrokeKind};
 
 use crate::gui::rector;
 use crate::gui::sel_matrix::SelEntryWrite;
@@ -40,7 +40,7 @@ impl CSEState {
         }
 
         let stroke = egui::Stroke::new(1.5, Color32::BLUE);
-        dest(egui::Shape::rect_stroke(rect, Rounding::ZERO, stroke));
+        dest(egui::Shape::rect_stroke(rect, CornerRadius::ZERO, stroke, StrokeKind::Inside));
     }
 
     pub fn cse_mouse_up(&mut self, pos: [f32;2], dest: &mut impl SelEntryWrite) {

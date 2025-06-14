@@ -3,7 +3,7 @@ use std::collections::VecDeque;
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 
-use egui::{TextureOptions, Rounding};
+use egui::{CornerRadius, TextureOptions};
 use image::{imageops, RgbaImage};
 
 use crate::util::MapId;
@@ -162,7 +162,7 @@ pub fn palette_ui(state: &mut SharedApp, ui: &mut egui::Ui) {
     let uv = selected.uv;
     shapes.push(egui::Shape::rect_filled(
         texdraw_rect(0),
-        Rounding::ZERO,
+        CornerRadius::ZERO,
         bg_color,
     ));
 
@@ -180,7 +180,7 @@ pub fn palette_ui(state: &mut SharedApp, ui: &mut egui::Ui) {
     for (pal,(_,pos)) in state.palette.paletted.iter_mut().zip(xbounds_iter(plen)) {
         shapes.push(egui::Shape::rect_filled(
             texdraw_rect(pos),
-            Rounding::ZERO,
+            CornerRadius::ZERO,
             bg_color,
         ));
 
@@ -352,7 +352,7 @@ pub fn lru_ui(state: &mut SharedApp, ui: &mut egui::Ui) {
 
         shapes.push(egui::Shape::rect_filled(
             rector(0, 0, lru_icon_size[0], lru_icon_size[1]),
-            Rounding::ZERO,
+            CornerRadius::ZERO,
             egui::Color32::BLACK,
         ));
 
@@ -383,7 +383,7 @@ pub fn lru_ui(state: &mut SharedApp, ui: &mut egui::Ui) {
                         egui::Color32::WHITE
                     );
     
-                    reg2.extend_rel_fixtex(vec![shape]);
+                    reg2.extend_rel_fixtex([shape]);
                 });
             }
         } else {

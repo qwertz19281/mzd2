@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use egui::{Color32, Rounding, Sense, Ui};
+use egui::{Color32, CornerRadius, Sense, StrokeKind, Ui};
 
 use crate::gui::doc::DOC_ROOMTEMPLATE;
 use crate::gui::rector;
@@ -39,7 +39,7 @@ pub fn templicon<S>(
 
         let dest_rect = rector(0, 0, icon_width, icon_height);
 
-        shapes.push(egui::Shape::rect_filled(dest_rect, egui::Rounding::ZERO, Color32::BLACK));
+        shapes.push(egui::Shape::rect_filled(dest_rect, CornerRadius::ZERO, Color32::BLACK));
 
         let Some(room) = room(state) else {break 'r};
 
@@ -55,7 +55,7 @@ pub fn templicon<S>(
         let mut mesh = egui::Mesh::with_texture(tex.id());
         
         // if let Some(bg_color) = bg_color {
-        //     dest(egui::Shape::rect_filled(dest_rect, egui::Rounding::ZERO, bg_color))
+        //     dest(egui::Shape::rect_filled(dest_rect, CornerRadius::ZERO, bg_color))
         // }
 
         let visible_layers = room.layers.iter().enumerate()
@@ -76,12 +76,12 @@ pub fn templicon<S>(
             mesh.add_rect_with_uv(dest_rect, loaded.image.layer_uv(i, rooms_size), Color32::WHITE);
         }
 
-        shapes.push(egui::Shape::Mesh(mesh));
+        shapes.push(mesh.into());
 
         let selected_stroke = egui::Stroke::new(1.5, Color32::RED);
 
         if is_selected {
-            shapes.push(egui::Shape::rect_stroke(dest_rect, Rounding::ZERO, selected_stroke));
+            shapes.push(egui::Shape::rect_stroke(dest_rect, CornerRadius::ZERO, selected_stroke, StrokeKind::Inside));
         }
     }
 
@@ -110,7 +110,7 @@ pub fn templicon<S>(
                 1.,
             );
 
-            p.extend_rel_fixtex(vec![egui::Shape::Mesh(mesh)])
+            p.extend_rel_fixtex([mesh.into()])
         });
     }
 }

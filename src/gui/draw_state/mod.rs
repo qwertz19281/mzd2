@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use egui::{Shape, Color32, Rounding};
+use egui::{Color32, CornerRadius, Shape, StrokeKind};
 use egui::epaint::ahash::HashSet;
 use serde::{Serialize, Deserialize};
 
@@ -73,7 +73,7 @@ impl DrawState {
                     for &q in self.current_dest.iter().chain(self.current_dest2.iter()) {
                         let q = q.as_i32().mul8();
                         let rect = rector(q[0], q[1], q[0] + size.0 as i32, q[1] + size.1 as i32);
-                        dest(egui::Shape::rect_filled(rect, Rounding::ZERO, Color32::BLACK))
+                        dest(egui::Shape::rect_filled(rect, CornerRadius::ZERO, Color32::BLACK))
                     }
                 }
 
@@ -85,7 +85,7 @@ impl DrawState {
                     mesh.add_rect_with_uv(rect, src.uv, blend);
                 }
 
-                dest(egui::Shape::Mesh(mesh));
+                dest(mesh.into());
             }
         } else {
             if src.is_empty() {return;}
@@ -102,9 +102,9 @@ impl DrawState {
                 let mut tex = src.src.texture.borrow_mut();
                 let tex = tex.ensure_image(&src.src.img, ctx);
 
-                dest(egui::Shape::Mesh(basic_tex_shape_c(tex.id(), rect, blend))); // TODO ignores the PaletteItem UV
+                dest(basic_tex_shape_c(tex.id(), rect, blend).into()); // TODO ignores the PaletteItem UV
             } else {
-                dest(egui::Shape::rect_stroke(rect, Rounding::ZERO, stroke));
+                dest(egui::Shape::rect_stroke(rect, CornerRadius::ZERO, stroke, StrokeKind::Inside));
             }
         }
     }

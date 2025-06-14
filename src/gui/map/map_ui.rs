@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 
-use egui::{Color32, PointerButton, Rounding, Sense, Vec2};
+use egui::{Color32, CornerRadius, PointerButton, Sense, StrokeKind, Vec2};
 
 use crate::gui::doc::{DOC_MAP, DOC_MAP_COLLAPSE, DOC_MAP_SHIFTAWAY, DOC_MAP_SHIFTSIZE, DOC_MAP_SINGLEMOVE, DOC_MAP_SMARTMOVE};
 use crate::gui::room::draw_image::DrawImageGroup;
@@ -535,13 +535,13 @@ impl Map {
                     picomap.extend_rel_fixtex([
                         egui::Shape::rect_filled(
                             bg_rect,
-                            Rounding::ZERO,
+                            CornerRadius::ZERO,
                             Color32::from_rgba_unmultiplied(0, 0, 255, 255),
                         ),
-                        egui::Shape::Mesh(basic_tex_shape(picomap_tex.id(), rector(0, 0, 256, 256))),
+                        basic_tex_shape(picomap_tex.id(), rector(0, 0, 256, 256)).into(),
                         egui::Shape::rect_filled(
                             bg_rect,
-                            Rounding::ZERO,
+                            CornerRadius::ZERO,
                             Color32::from_rgba_unmultiplied(0, 0, 255, 64),
                         )
                     ]);
@@ -712,7 +712,7 @@ impl Map {
             // eprintln!("");
 
             // super_map.extend_rel_fixtex([
-            //     egui::Shape::rect_filled(rector(0., 0., 3200., 2400.), Rounding::default(), Color32::RED)
+            //     egui::Shape::rect_filled(rector(0., 0., 3200., 2400.), CornerRadius::default(), Color32::RED)
             // ]);
 
             let view_size = super_map.area_size();
@@ -768,7 +768,7 @@ impl Map {
                                     (cx+1) * self.state.rooms_size[0], (cy+1) * self.state.rooms_size[1],
                                 );
                                 shapes.push(
-                                    egui::Shape::rect_filled(rect, Rounding::ZERO, Color32::from_rgba_unmultiplied(255, 255, 0, 64))
+                                    egui::Shape::rect_filled(rect, CornerRadius::ZERO, Color32::from_rgba_unmultiplied(255, 255, 0, 64))
                                 );
                             }
                         }
@@ -813,7 +813,7 @@ impl Map {
                                 x as u32 * self.state.rooms_size[0], y as u32 * self.state.rooms_size[1],
                                 (x as u32+1) * self.state.rooms_size[0], (y as u32+1) * self.state.rooms_size[1],
                             );
-                            shapes.push(egui::Shape::rect_stroke(rect, Rounding::ZERO, drawsel_stroke));
+                            shapes.push(egui::Shape::rect_stroke(rect, CornerRadius::ZERO, drawsel_stroke, StrokeKind::Inside));
                         }
                     }
                 }
@@ -825,7 +825,7 @@ impl Map {
                                 x as u32 * self.state.rooms_size[0] + 8, y as u32 * self.state.rooms_size[1] + 8,
                                 (x as u32+1) * self.state.rooms_size[0] - 8, (y as u32+1) * self.state.rooms_size[1] - 8,
                             );
-                            shapes.push(egui::Shape::rect_stroke(rect, Rounding::ZERO, ssel_stroke));
+                            shapes.push(egui::Shape::rect_stroke(rect, CornerRadius::ZERO, ssel_stroke, StrokeKind::Middle));
                         }
                     }
                 }

@@ -1,10 +1,11 @@
 use std::borrow::Cow;
 use std::cell::{Cell, RefCell};
 use std::ops::RangeInclusive;
+use std::sync::Arc;
 use std::time::Duration;
 
 use egui::epaint::TextShape;
-use egui::{Align2, Color32, FontId, PointerButton, Pos2, Rect, Response, Rounding, Sense, Shape, Ui, Vec2, Widget, WidgetText};
+use egui::{Align2, Color32, CornerRadius, FontId, PointerButton, Pos2, Rect, Response, Sense, Shape, StrokeKind, Ui, Vec2, Widget, WidgetText};
 use egui_commonmark::CommonMarkViewer;
 
 use super::init::EFRAME_FRAME;
@@ -12,6 +13,13 @@ use super::map::room_ops::OpAxis;
 use super::{StupidInto, line2, rector};
 
 pub fn trans_shape(s: Shape, mul: f32, off: [f32;2]) -> Shape {
+    fn mul_i8(v: &mut i8, mul: f32) {
+        *v = (*v as f32 * mul).round() as i8;
+    }
+    fn mul_u8(v: &mut u8, mul: f32) {
+        *v = (*v as f32 * mul).round() as u8;
+    }
+
     match s {
         Shape::Noop => Shape::Noop,
         Shape::Vec(v) => {
@@ -34,10 +42,10 @@ pub fn trans_shape(s: Shape, mul: f32, off: [f32;2]) -> Shape {
             Shape::Path(v)
         },
         Shape::Rect(mut v) => {
-            v.rounding.nw *= mul;
-            v.rounding.ne *= mul;
-            v.rounding.sw *= mul;
-            v.rounding.se *= mul;
+            mul_u8(&mut v.corner_radius.nw, mul);
+            mul_u8(&mut v.corner_radius.ne, mul);
+            mul_u8(&mut v.corner_radius.sw, mul);
+            mul_u8(&mut v.corner_radius.se, mul);
             v.rect = trans_rect(v.rect, mul, off);
             Shape::Rect(v)
         },
@@ -46,11 +54,12 @@ pub fn trans_shape(s: Shape, mul: f32, off: [f32;2]) -> Shape {
             // Text is not scaled!
             Shape::Text(v)
         },
-        Shape::Mesh(mut v) => {
+        Shape::Mesh(mut mesh) => {
+            let v = Arc::make_mut(&mut mesh);
             for v in &mut v.vertices {
                 v.pos = trans_pos2(v.pos, mul, off);
             }
-            Shape::Mesh(v)
+            Shape::Mesh(mesh)
         },
         Shape::QuadraticBezier(mut v) => {
             for v in &mut v.points {
@@ -79,13 +88,14 @@ pub fn trans_shape(s: Shape, mul: f32, off: [f32;2]) -> Shape {
 
 pub fn trans_shape_fixtex(s: Shape, zoom: f32, off: [f32;2]) -> Shape {
     match s {
-        Shape::Mesh(mut v) => {
+        Shape::Mesh(mut mesh) => {
+            let v = Arc::make_mut(&mut mesh);
             for v in &mut v.vertices {
                 v.pos = trans_pos2(v.pos, zoom, off);
                 v.pos.x = v.pos.x.round();
                 v.pos.y = v.pos.y.round();
             }
-            Shape::Mesh(v)
+            Shape::Mesh(mesh)
         },
         s => trans_shape(s, zoom, off)
     }
@@ -633,7 +643,7 @@ pub fn dpadc(
     );
 
     if !visible {
-        pa.response.enabled = false;
+        pa.response.flags.set(egui::response::Flags::ENABLED, false);
         return pa.response;
     }
 
@@ -822,9 +832,9 @@ pub fn dpadc(
             ),
             egui::Shape::line_segment(line2(0, text_size, base_size*2., text_size+base_size*2.), akw_stroke),
             egui::Shape::line_segment(line2(base_size*2., text_size, 0, text_size+base_size*2.), akw_stroke),
-            egui::Shape::rect_stroke(rector(0, text_size, base_size*2., text_size+base_size*2.), Rounding::ZERO, akw_stroke),
-            egui::Shape::rect_stroke(rector(base_size*2., text_size, base_size*3., text_size+base_size), Rounding::ZERO, akw_stroke),
-            egui::Shape::rect_stroke(rector(base_size*2., text_size+base_size, base_size*3., text_size+base_size*2.), Rounding::ZERO, akw_stroke),
+            egui::Shape::rect_stroke(rector(0, text_size, base_size*2., text_size+base_size*2.), CornerRadius::ZERO, akw_stroke, StrokeKind::Inside),
+            egui::Shape::rect_stroke(rector(base_size*2., text_size, base_size*3., text_size+base_size), CornerRadius::ZERO, akw_stroke, StrokeKind::Inside),
+            egui::Shape::rect_stroke(rector(base_size*2., text_size+base_size, base_size*3., text_size+base_size*2.), CornerRadius::ZERO, akw_stroke, StrokeKind::Inside),
         ]);
     });
 
@@ -911,7 +921,7 @@ pub fn text_with_bg_color(
         if rect.width() * rect.height() != 0. {
             let rect = Rect::from_min_size(rect.min, rect.size()/zoom);
             let rect = rect.expand(1.);
-            dest(egui::Shape::rect_filled(rect, Rounding::ZERO, bg_color));
+            dest(egui::Shape::rect_filled(rect, CornerRadius::ZERO, bg_color));
         }
     }
     dest(text.into());
