@@ -8,6 +8,7 @@ use crate::gui::map::next_ur_op_id;
 use crate::gui::map::room_ops::{RoomOp, try_6_sides};
 use crate::gui::sel_matrix::{SelEntryWrite, SelEntry};
 use crate::gui::util::{ArrUtl, RfdUtil};
+use crate::util::img::read_file_and_load_image;
 use crate::util::{gui_error, next_op_gen_evo};
 
 use super::uuid::UUIDMap;
@@ -78,8 +79,7 @@ impl Map {
                 bail!("room overlap")
             }
 
-            let file_content = std::fs::read(f.path())?;
-            let image = image::load_from_memory(&file_content)?;
+            let image = read_file_and_load_image(f.path())?;
             ensure!(image.dimensions() == (160,128), "mzd1 image file with wrong dims");
 
             rooms.push((dest,image));

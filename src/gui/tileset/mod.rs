@@ -7,7 +7,8 @@ use image::RgbaImage;
 use serde::{Deserialize, Serialize};
 
 use crate::gui::util::dragslider_up;
-use crate::util::{attached_to_path, gui_error, json_ser_with_ident, write_png, ResultExt, TilesetId};
+use crate::util::img::{read_file_and_load_image, write_png};
+use crate::util::{attached_to_path, gui_error, json_ser_with_ident, ResultExt, TilesetId};
 use crate::SRc;
 
 use super::doc::{DOC_ROOM_DRAWREPLACE, DOC_TILESETDRAW};
@@ -377,8 +378,7 @@ impl Tileset {
     }
 
     pub fn load(path: PathBuf) -> anyhow::Result<Self> {
-        let image = std::fs::read(&path)?;
-        let image = image::load_from_memory(&image)?;
+        let image = read_file_and_load_image(&path)?;
         Self::load2(path, image.to_rgba8())
     }
 

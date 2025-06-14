@@ -9,8 +9,9 @@ use slotmap::Key;
 use uuid::Uuid;
 
 use crate::gui::texture::TextureCell;
+use crate::util::img::{decode_cache_qoi, encode_cache_qoi, load_image_from_memory, write_png};
 use crate::util::uuid::{generate_res_uuid, generate_uuid, UUIDMap, UUIDTarget};
-use crate::util::{decode_cache_qoi, encode_cache_qoi, gui_error, seltrix_resource_path, tex_resource_path, write_png, MapId, ResultExt};
+use crate::util::{gui_error, seltrix_resource_path, tex_resource_path, MapId, ResultExt};
 
 use self::draw_image::DrawImage;
 
@@ -229,7 +230,7 @@ impl Room {
 
         let layers = sel_matrix.layers.len();
 
-        let file_content = match std::fs::read(tex_file) {
+        let file_content = match std::fs::read(&tex_file) {
             // Err(e) if e.kind() == ErrorKind::NotFound => {
             //     self.image.img = Default::default();
             //     self.image.tex = None;
@@ -238,7 +239,7 @@ impl Room {
             v => v,
         }?;
 
-        let image = image::load_from_memory(&file_content)?;
+        let image = load_image_from_memory(&file_content, &tex_file)?;
         drop(file_content);
         let image = image.to_rgba8();
 

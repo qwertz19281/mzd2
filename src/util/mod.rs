@@ -3,11 +3,11 @@ use std::fmt::Display;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicI64, Ordering::Relaxed};
 
-use image::{DynamicImage, RgbaImage};
 use ::uuid::Uuid;
 
 use crate::gui::util::RfdUtil;
 
+pub mod img;
 pub mod uuid;
 
 #[repr(transparent)]
@@ -164,30 +164,6 @@ pub fn next_palette_id() -> u64 {
         next as u64
     } else {
         panic!("PaletteId Overflow");
-    }
-}
-
-pub fn write_png(writer: impl std::io::Write, image: &RgbaImage) -> image::ImageResult<()> {
-    let encoder = image::codecs::png::PngEncoder::new_with_quality(
-        writer,
-        image::codecs::png::CompressionType::Best,
-        Default::default()
-    );
-    image.write_with_encoder(encoder)
-}
-
-pub fn encode_cache_qoi(image: &RgbaImage) -> image::ImageResult<Vec<u8>> {
-    let mut dest = vec![];
-    let encoder = image::codecs::qoi::QoiEncoder::new(&mut dest);
-    image.write_with_encoder(encoder).map(|_| dest)
-}
-
-pub fn decode_cache_qoi(data: &[u8]) -> anyhow::Result<RgbaImage> {
-    let decoder = image::codecs::qoi::QoiDecoder::new(data)?;
-    let image = DynamicImage::from_decoder(decoder)?;
-    match image {
-        DynamicImage::ImageRgba8(v) => Ok(v),
-        _ => anyhow::bail!("Decoded cached image is wrong pixel format"),
     }
 }
 

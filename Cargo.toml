@@ -17,7 +17,7 @@ serde_json = "1"
 #serde_bytes = "0.11"
 anyhow = "1"
 #num = "0.4"
-image = "0.24"
+image = { version = "0.25", default-features = false, features = ["jpeg","png","qoi"] }
 #qcell = "0.5"
 slotmap = { version = "1", features = ["serde"] }
 #egui-toast = "0.8"
@@ -38,8 +38,13 @@ lab = "0.11"
 egui_commonmark = "0.13"
 
 [features]
-#default = ["super_validate"] # Enable for extra validations. debug_assertions also has the be enabled. On big maps, this has severe performance impact
+default = ["image_formats"]
+# Enable for extra validations. debug_assertions also has the be enabled. On big maps, this has severe performance impact
 super_validate = []
+# Enable more image formats
+image_formats = ["image/rayon","image/default-formats"]
+# Enable AVIF decoding (requires libdav1d)
+avif_decoding = ["image_formats","image/avif-native"]
 
 [profile.dev.package."*"]
 opt-level = 3
