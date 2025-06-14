@@ -9,7 +9,7 @@ rust-version = "1.88"
 
 [dependencies]
 egui = "0.31"
-eframe = { version = "0.31", features = ["default_fonts","glow","wayland","x11"] }
+eframe = { version = "0.31", default-features = false, features = ["default_fonts","glow","wayland","x11"] }
 egui_dock = "0.16"
 serde = { version = "1", features = ["derive"] }
 #rmp-serde = "1.1"
@@ -38,7 +38,10 @@ lab = "0.11"
 egui_commonmark = "0.20"
 
 [features]
-default = ["image_formats"]
+default = ["image_formats", "super_validate", "avif_decoding"]
+
+# TODO this is currently pretty non-functional in mzd2
+accesskit = ["egui/accesskit", "eframe/default"]
 # Enable for extra validations. debug_assertions also has the be enabled. On big maps, this has severe performance impact
 super_validate = []
 # Enable more image formats
