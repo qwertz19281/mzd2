@@ -306,8 +306,8 @@ pub fn calc_text_color(room: &Room, v: [u32;2], rooms_size: [u32;2]) -> [u8;3] {
             rooms_size,
         ) {
             const DERIV_RANGE: f32 = 5.;
-            let mut rng = rand::thread_rng();
-            let deriv = [rng.gen_range(-DERIV_RANGE..DERIV_RANGE), rng.gen_range(-DERIV_RANGE..DERIV_RANGE)];
+            let mut rng = rand::rng();
+            let deriv = [rng.random_range(-DERIV_RANGE..DERIV_RANGE), rng.random_range(-DERIV_RANGE..DERIV_RANGE)];
             return calc_text_color_over_bg(avg, deriv).to_rgb();
         }
     }

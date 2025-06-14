@@ -31,7 +31,7 @@ uuid = { version = "1.7", features = ["v7", "serde"] }
 scoped-tls-hkt = "0.1.4"
 clap = { version = "4.5", features = ["derive"] }
 filetime = "0.2"
-rand = "0.8"
+rand = "0.9"
 indexmap = { version = "2.2", features = ["serde"] }
 ahash = "0.8"
 lab = "0.11"
