@@ -199,6 +199,14 @@ impl Map {
         }
     }
 
+    pub(crate) fn room_undoredo_inval(&mut self) {
+        self.dsel_state.dsel_cancel();
+        self.draw_state.draw_cancel();
+        self.del_state.del_cancel();
+        self.cse_state.cse_cancel();
+        self.move_mode_palette = None;
+    }
+
     pub fn ui_draw(
         &mut self,
         palette: &mut Palette,
@@ -787,10 +795,11 @@ impl Map {
             if let Some(loaded) = room.loaded.as_mut() {
                 if do_undo && !do_redo {
                     loaded.undo(&mut room.layers, &mut room.selected_layer);
+                    self.room_undoredo_inval();
                     ui.ctx().request_repaint();
-                }
-                if do_redo && !do_undo {
+                } else if do_redo && !do_undo {
                     loaded.redo(&mut room.layers, &mut room.selected_layer);
+                    self.room_undoredo_inval();
                     ui.ctx().request_repaint();
                 }
             }

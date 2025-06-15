@@ -116,10 +116,7 @@ impl Map {
 
     pub(crate) fn post_drawroom_switch(&mut self, uuidmap: &mut UUIDMap) {
         self.drop_dummy_room(uuidmap);
-        self.draw_state.draw_cancel();
-        self.dsel_state.clear_selection();
-        self.del_state.del_cancel();
-        self.move_mode_palette = None;
+        self.room_undoredo_inval();
     }
 
     fn attempt_remove_transient_room(&mut self, id: RoomId, uuidmap: &mut UUIDMap) {
