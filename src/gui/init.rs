@@ -5,6 +5,7 @@ use egui::{Align, Layout};
 use scoped_tls_hkt::scoped_thread_local;
 use uuid::Uuid;
 
+use crate::gui::palette::palette_post;
 use crate::util::uuid::UUIDMap;
 use crate::util::MapId;
 
@@ -121,6 +122,8 @@ impl eframe::App for SharedApp {
                 //self.palette.do_keyboard_numbers(ui);
                 self.dock_ui(ui)
             });
+
+            palette_post(self, ctx);
 
             egui::TopBottomPanel::bottom("status_bar")
                 .show(ctx, |ui| {

@@ -3,7 +3,7 @@ use std::collections::VecDeque;
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 
-use egui::{CornerRadius, TextureOptions};
+use egui::{CornerRadius, Key, TextureOptions};
 use image::{imageops, RgbaImage};
 
 use crate::util::MapId;
@@ -393,5 +393,23 @@ pub fn lru_ui(state: &mut SharedApp, ui: &mut egui::Ui) {
     
     if let Some(idx) = lru_rm_idx {
         state.palette.lru.remove(idx);
+    }
+}
+
+pub fn palette_post(state: &mut SharedApp, ctx: &egui::Context) {
+    if !ctx.wants_keyboard_input() {
+        if ctx.input(|i| i.key_pressed(Key::O) ) {
+            state.palette.mutated_selected(|v| v.rot90() );
+            ctx.request_repaint();
+        } else if ctx.input(|i| i.key_pressed(Key::I) ) {
+            state.palette.mutated_selected(|v| v.rot270() );
+            ctx.request_repaint();
+        } else if ctx.input(|i| i.key_pressed(Key::K) ) {
+            state.palette.mutated_selected(|v| v.flip([true,false]) );
+            ctx.request_repaint();
+        } else if ctx.input(|i| i.key_pressed(Key::L) ) {
+            state.palette.mutated_selected(|v| v.flip([false,true]) );
+            ctx.request_repaint();
+        }
     }
 }
