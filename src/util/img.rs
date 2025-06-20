@@ -1,13 +1,15 @@
-use std::io::Cursor;
+use std::fs::File;
+use std::io::{self, BufReader, Cursor};
 use std::os::unix::fs::MetadataExt;
 use std::path::Path;
 
+use image::codecs::{png, qoi};
 use image::{guess_format, DynamicImage, ImageError, ImageFormat, ImageReader, RgbaImage};
 
-pub fn write_png(writer: impl std::io::Write, image: &RgbaImage) -> image::ImageResult<()> {
-    let encoder = image::codecs::png::PngEncoder::new_with_quality(
+pub fn write_png(writer: impl io::Write, image: &RgbaImage) -> image::ImageResult<()> {
+    let encoder = png::PngEncoder::new_with_quality(
         writer,
-        image::codecs::png::CompressionType::Best,
+        png::CompressionType::Best,
         Default::default()
     );
     image.write_with_encoder(encoder)
@@ -15,12 +17,13 @@ pub fn write_png(writer: impl std::io::Write, image: &RgbaImage) -> image::Image
 
 pub fn encode_cache_qoi(image: &RgbaImage) -> image::ImageResult<Vec<u8>> {
     let mut dest = vec![];
-    let encoder = image::codecs::qoi::QoiEncoder::new(&mut dest);
-    image.write_with_encoder(encoder).map(|_| dest)
+    let encoder = qoi::QoiEncoder::new(&mut dest);
+    image.write_with_encoder(encoder)?;
+    Ok(dest)
 }
 
 pub fn decode_cache_qoi(data: &[u8]) -> anyhow::Result<RgbaImage> {
-    let decoder = image::codecs::qoi::QoiDecoder::new(data)?;
+    let decoder = qoi::QoiDecoder::new(data)?;
     let image = DynamicImage::from_decoder(decoder)?;
     match image {
         DynamicImage::ImageRgba8(v) => Ok(v),
@@ -39,9 +42,11 @@ pub fn read_file_and_load_image(path: impl AsRef<Path>) -> image::ImageResult<Dy
 }
 
 fn _load_image(path: &Path) -> image::ImageResult<DynamicImage> {
-    ImageReader::open(path)?
-        .with_guessed_format()?
-        .decode()
+    // use slightly larger buffer to optimize readahead interaction
+    let reader = BufReader::with_capacity(32768, File::open(path)?);
+    let reader = ImageReader::new(reader)
+        .with_guessed_format()?;
+    reader.decode()
 }
 
 /// Load image from memory, determining the format from the magic bytes or the file extension
@@ -65,7 +70,7 @@ fn _load_image_adaptive(path: &Path) -> image::ImageResult<DynamicImage> {
     let metadata = path.metadata()?;
 
     if !metadata.is_file() {
-        return Err(ImageError::IoError(std::io::Error::from(std::io::ErrorKind::IsADirectory)));
+        return Err(ImageError::IoError(io::Error::from(io::ErrorKind::IsADirectory)));
     }
 
     if metadata.size() > ADAPTIVE_THRES {
