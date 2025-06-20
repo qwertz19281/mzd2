@@ -75,3 +75,16 @@ fn _load_image_adaptive(path: &Path) -> image::ImageResult<DynamicImage> {
     }
 }
 
+pub fn load_image_off_thread(path: impl AsRef<Path>) -> anyhow::Result<DynamicImage> {
+    let path = path.as_ref();
+    let result = std::thread::scope(|s| {
+        s.spawn(|| _load_image(path) ).join()
+    });
+    match result {
+        Ok(v) => Ok(v?),
+        Err(e) => {
+            std::thread::spawn(|| std::panic::resume_unwind(e) );
+            anyhow::bail!("Image decoding panicked");
+        }
+    }
+}
