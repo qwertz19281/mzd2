@@ -141,10 +141,7 @@ impl Map {
                 if mods.ctrl {
                     for v in &mut room.layers[..room.selected_layer] {v.vis = 0;}
                 }
-                self.draw_state.draw_cancel();
-                self.dsel_state.clear_selection();
-                self.del_state.del_cancel();
-                self.move_mode_palette = None;
+                self.room_undoredo_inval();
             },
         }
 

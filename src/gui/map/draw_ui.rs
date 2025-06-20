@@ -332,6 +332,7 @@ impl Map {
                     if let Some(room) = self.editsel.rooms.first().and_then(|(r,_,_)| self.state.rooms.get_mut(*r) ) {
                         hide_layers_above = room.editor_hide_layers_above;
                         let mut moved = false;
+                        let mut layer_changed = false;
                         if ui.input(|i| i.key_pressed(Key::R) ) {
                             room.editor_hide_layers_above ^= true;
                             moved = true;
@@ -339,10 +340,12 @@ impl Map {
                         if ui.input(|i| i.key_pressed(Key::W) ) {
                             room.selected_layer = (room.selected_layer+1).min(room.layers.len().saturating_sub(1));
                             moved = true;
+                            layer_changed = true;
                         }
                         if ui.input(|i| i.key_pressed(Key::S) ) {
                             room.selected_layer = room.selected_layer.saturating_sub(1);
                             moved = true;
+                            layer_changed = true;
                         }
                         if ui.input(|i| i.key_down(Key::A) ) {
                             hide_layers_all = true;
@@ -365,8 +368,12 @@ impl Map {
                                     .map(|(i,_)| i);
                                 if let Some((traced,_)) = loaded.sel_matrix.get_traced(hov, itre) {
                                     room.selected_layer = traced;
+                                    layer_changed = true;
                                 }
                             }
+                        }
+                        if layer_changed {
+                            self.room_undoredo_inval();
                         }
                     }
                 }
