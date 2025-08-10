@@ -20,6 +20,7 @@
 
 - Smart PushAway fixes
 - Styling fixes
+- Load dragged-in images on separate thread to resist image decoding panics
 - Other
 
 ### Changes
