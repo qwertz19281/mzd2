@@ -747,7 +747,7 @@ impl Map {
 
                 reg.extend_rel_fixtex(shapes);
 
-                reg.response.show_doc(DOC_ROOMDRAW);
+                reg.response.on_hover_cursor(egui::CursorIcon::Crosshair).show_doc(DOC_ROOMDRAW);
             });
         }
 
