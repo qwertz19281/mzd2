@@ -207,6 +207,49 @@ impl Map {
         self.move_mode_palette = None;
     }
 
+    fn ui_dpad_hover_preview(&mut self, dpad_resp: egui::Response, doc: &'static str, hovered: Option<(OpAxis, bool)>) {
+        if 
+            !dpad_resp.show_doc(doc)
+            && let Some((axis,dir)) = hovered
+            && let Some(dsel_coord) = self.state.dsel_coord
+            && let Some(side) = try_side(dsel_coord, axis, dir, |c| c ) 
+            && let Some(&room_id) = self.room_matrix.get(side)
+            && let Some(room) = self.state.rooms.get_mut(room_id)
+        {
+            dpad_resp.on_hover_ui_at_pointer(|ui| {
+                let rooms_size = self.state.rooms_size;
+
+                self.texlru.put(room_id, self.texlru_gen);
+                if room.loaded.as_ref().is_some_and(|v| !v.dirty_file && v.undo_buf.is_empty() && v.redo_buf.is_empty() ) {
+                    self.imglru.put(room_id, self.texlru_gen);
+                }
+
+                let mut shapes = vec![];
+
+                let vl = room.layers.clone(); // TODO lifetime wranglery
+                room.render(
+                    [0,0],
+                    vl.iter().enumerate().filter(|&(_,l)| l.vis != 0 ).map(|(i,_)| i ),
+                    Some(egui::Color32::from_rgba_unmultiplied(32, 176, 72, 1)),
+                    //Some(egui::Color32::from_rgba_unmultiplied(27, 33, 28, 255)),
+                    self.state.rooms_size,
+                    |s| shapes.push(s),
+                    &self.path,
+                    ui.ctx(),
+                );
+
+                let p = alloc_painter_rel(
+                    ui,
+                    rooms_size.as_f32().into(),
+                    Sense::click(),
+                    1.,
+                );
+
+                p.extend_rel_fixtex(shapes);
+            });
+        }
+    }
+
     pub fn ui_draw(
         &mut self,
         palette: &mut Palette,
@@ -406,46 +449,7 @@ impl Map {
                                     }
                                 },
                             );
-                            if 
-                                !dpad_resp.show_doc(DOC_ROOM_SWITCHDPAD)
-                                && let Some((axis,dir)) = hovered
-                                && let Some(dsel_coord) = self.state.dsel_coord
-                                && let Some(side) = try_side(dsel_coord, axis, dir, |c| c ) 
-                                && let Some(&room_id) = self.room_matrix.get(side)
-                                && let Some(room) = self.state.rooms.get_mut(room_id)
-                            {
-                                dpad_resp.on_hover_ui_at_pointer(|ui| {
-                                    let rooms_size = self.state.rooms_size;
-
-                                    self.texlru.put(room_id, self.texlru_gen);
-                                    if room.loaded.as_ref().is_some_and(|v| !v.dirty_file && v.undo_buf.is_empty() && v.redo_buf.is_empty() ) {
-                                        self.imglru.put(room_id, self.texlru_gen);
-                                    }
-
-                                    let mut shapes = vec![];
-
-                                    let vl = room.layers.clone(); // TODO lifetime wranglery
-                                    room.render(
-                                        [0,0],
-                                        vl.iter().enumerate().filter(|&(_,l)| l.vis != 0 ).map(|(i,_)| i ),
-                                        Some(egui::Color32::from_rgba_unmultiplied(32, 176, 72, 1)),
-                                        //Some(egui::Color32::from_rgba_unmultiplied(27, 33, 28, 255)),
-                                        self.state.rooms_size,
-                                        |s| shapes.push(s),
-                                        &self.path,
-                                        ui.ctx(),
-                                    );
-
-                                    let p = alloc_painter_rel(
-                                        ui,
-                                        rooms_size.as_f32().into(),
-                                        Sense::click(),
-                                        1.,
-                                    );
-
-                                    p.extend_rel_fixtex(shapes);
-                                });
-                            }
+                            self.ui_dpad_hover_preview(dpad_resp, DOC_ROOM_SWITCHDPAD, hovered);
 
                             self.templateslot(0, ui, sam);
                             self.templateslot(1, ui, sam);
@@ -458,17 +462,20 @@ impl Map {
                         );
 
                         ui.horizontal(|ui| {
-                            dpadc(
+                            let mut hovered = None;
+                            let dpad_resp = dpadc(
                                 "Room Conns",
                                 20. * sam.dpi_scale, 32. * sam.dpi_scale, sam.dpi_scale,
                                 icons,
                                 !self.state.rooms[id].transient,
                                 ui,
                                 |_,clicked,axis,dir| {
+                                    hovered = Some((axis,dir));
                                     if !clicked {return;}
                                     makeconn = Some((axis,dir));
                                 },
-                            ).doc(DOC_ROOM_CONNDPAD);
+                            );
+                            self.ui_dpad_hover_preview(dpad_resp, DOC_ROOM_CONNDPAD, hovered);
 
                             self.templateslot(2, ui, sam);
                             self.templateslot(3, ui, sam);
