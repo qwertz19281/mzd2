@@ -98,11 +98,29 @@ impl eframe::App for SharedApp {
         // with a division, which is obviously not 100% precise, which can again mess up all our pixel-perfect rendering
         ctx.set_pixels_per_point(1.);
 
-        ctx.input(|i|
-            super::util::F1_PRESSED.set(i.key_down(egui::Key::F1))
-        );
-
         EFRAME_FRAME.set(frame, || {
+            egui::TopBottomPanel::bottom("status_bar")
+                .show(ctx, |ui| {
+                    let (text,f1help) = super::util::STATUS_BAR.replace((std::borrow::Cow::Borrowed(""), false));
+                    ui.with_layout(
+                        Layout::right_to_left(Align::Center).with_main_align(Align::Min),
+                        |ui| {
+                            if f1help {
+                                ui.label("  [🖮F1] Help");
+                            }
+                            ui.allocate_ui_with_layout(
+                                ui.available_size(),
+                                Layout::left_to_right(Align::Center).with_main_align(Align::Min).with_main_justify(true),
+                                |ui| ui.label(text)
+                            );
+                        }
+                    );
+                });
+
+            ctx.input(|i|
+                super::util::F1_PRESSED.set(i.key_down(egui::Key::F1))
+            );
+
             for v in std::mem::take(&mut self.sam.mut_queue) {
                 v(self);
             }
@@ -125,23 +143,6 @@ impl eframe::App for SharedApp {
 
             palette_post(self, ctx);
 
-            egui::TopBottomPanel::bottom("status_bar")
-                .show(ctx, |ui| {
-                    let (text,f1help) = super::util::STATUS_BAR.replace((std::borrow::Cow::Borrowed(""), false));
-                    ui.with_layout(
-                        Layout::right_to_left(Align::Center).with_main_align(Align::Min),
-                        |ui| {
-                            if f1help {
-                                ui.label("  [🖮F1] Help");
-                            }
-                            ui.allocate_ui_with_layout(
-                                ui.available_size(),
-                                Layout::left_to_right(Align::Center).with_main_align(Align::Min).with_main_justify(true),
-                                |ui| ui.label(text)
-                            );
-                        }
-                    );
-                });
 
             for v in std::mem::take(&mut self.sam.mut_queue) {
                 v(self);
