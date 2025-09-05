@@ -200,7 +200,8 @@ impl Map {
                         sam.mut_queue.push(Box::new(move |state: &mut SharedApp| {state.maps.open_maps.remove(&id);} ))
                     }
                     ui.add(egui::TextEdit::singleline(&mut self.state.title).desired_width(200. * sam.dpi_scale));
-                    ui.label("| Zoom: ");
+                    ui.separator();
+                    ui.label("Zoom: ");
                     dragslider_up(&mut self.state.map_zoom, 0.03125, -1..=1, 1, ui);
                     if self.matrix_debug_corrupt_flag {
                         if ui.button("!Room matrix corruption!").clicked() {
@@ -218,12 +219,14 @@ impl Map {
                 });
                 ui.horizontal(|ui| {
                     let mut level = self.state.current_level;
-                    ui.label("| Z: ");
+                    ui.separator();
+                    ui.label("Z: ");
                     dragvalion_up(&mut level, 0.03125, 0..=255, 1, ui);
                     if level != self.state.current_level {
                         self.update_level(level);
                     }
-                    ui.label("| XY: ");
+                    ui.separator();
+                    ui.label("XY: ");
                     let oldx = self.state.view_pos[0] / self.state.rooms_size[0] as f32;
                     let oldy = self.state.view_pos[1] / self.state.rooms_size[1] as f32;
                     let mut x = oldx;
@@ -238,7 +241,7 @@ impl Map {
                         // eprintln!("MODY");
                         self.state.view_pos[1] = y * self.state.rooms_size[1] as f32;
                     }
-                    ui.label("|");
+                    ui.separator();
                     if ui.button("Jump2DSel").clicked() {
                         if let Some([x,y,z]) = self.state.dsel_coord {
                             self.move_viewpos_centred([x,y]);
@@ -251,7 +254,7 @@ impl Map {
                             self.state.current_level = z;
                         }
                     }
-                    ui.label("|");
+                    ui.separator();
                     ui.checkbox(&mut self.state.set_dssel_merged, "Merge ssel/dsel");
                 });
                 ui.horizontal(|ui| {
@@ -291,7 +294,7 @@ impl Map {
                         }
                     }
 
-                    ui.label("|");
+                    ui.separator();
 
                     match self.state.edit_mode {
                         MapEditMode::DrawSel => {
@@ -417,7 +420,8 @@ impl Map {
                                 }
                             }
 
-                            ui.label("| ShiftAway/Collapse Size: ").doc(DOC_MAP_SHIFTSIZE);
+                            ui.separator();
+                            ui.label("ShiftAway/Collapse Size: ").doc(DOC_MAP_SHIFTSIZE);
                             dragvalion_up(&mut self.state.smart_move_size, 0.015625, 0..=16, 1, ui);
 
                             ui.checkbox(&mut self.state.smart_awaylock_mode, "SmartMove AwayLock");

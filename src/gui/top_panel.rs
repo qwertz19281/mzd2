@@ -40,14 +40,14 @@ pub fn top_panel_ui(state: &mut SharedApp, ui: &mut egui::Ui) {
         }
         dragvalion_up(&mut state.top_panel.create_map_size[0], 16, 160..=320, 16, ui);
         dragvalion_up(&mut state.top_panel.create_map_size[1], 16, 128..=240, 16, ui);
-        ui.label("|");
+        ui.separator();
         if ui.button("Create Tileset:").clicked() {
             new_tileset(state);
         }
         dragvalion_up(&mut state.top_panel.create_tileset_size[0], 16, 160..=5120, 16, ui);
         dragvalion_up(&mut state.top_panel.create_tileset_size[1], 16, 128..=3840, 16, ui);
         dragvalion_up(&mut state.top_panel.create_tileset_quant, 0.03125, 1..=2, 1, ui);
-        ui.label("|");
+        ui.separator();
         ui.checkbox(&mut state.sam.warp_dsel, "WarpDSel");
         if ui.button("WarpBack").clicked() {
             state.sam.do_undo(&mut state.maps, &state.dock);

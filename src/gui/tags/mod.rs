@@ -276,9 +276,10 @@ impl Map {
 
             ui.checkbox(&mut tag.show_text, "Show Text");
             ui.checkbox(&mut tag.show_always, "Always");
-            ui.label("| Color: ");
+            ui.separator();
+            ui.label("Color: ");
             color_edit_button_srgb(ui, &mut tag.color);
-            ui.label("|");
+            ui.separator();
             ui.checkbox(&mut tag.warp_enabled, "Warp");
             if ui.button("Start").clicked() {
                 sam.warpon = Some((self.id, id, uuid));
@@ -289,7 +290,7 @@ impl Map {
                 }
             }
         }
-        ui.label("|");
+        ui.separator();
         if ui.button("Remove Tag").clicked() { // TODO integrate move/add/remove tag with map undoredo
             e.shift_remove();
         }

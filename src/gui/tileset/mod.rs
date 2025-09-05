@@ -110,11 +110,11 @@ impl Tileset {
             // ui.radio_value(&mut self.state.draw_mode, DrawOp::Draw, "Draw");
             // ui.radio_value(&mut self.state.draw_mode, DrawOp::Sel, "Sel");
             // ui.radio_value(&mut self.state.draw_mode, DrawOp::CSE, "CSE");
-            // ui.label("|");
+            // ui.separator();
             ui.radio_value(&mut self.state.draw_draw_mode, DrawMode::Direct, "Direct");
             //ui.radio_value(&mut self.state.draw_draw_mode, DrawMode::Line, "Line");
             ui.radio_value(&mut self.state.draw_draw_mode, DrawMode::Rect, "Rect");
-            ui.label("|");
+            ui.separator();
             ui.checkbox(&mut self.state.ds_replace, "DrawReplace").doc(DOC_ROOM_DRAWREPLACE);
             ui.checkbox(&mut self.state.dsel_whole, "DSelWhole");
         });

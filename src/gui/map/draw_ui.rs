@@ -233,7 +233,7 @@ impl Map {
         ui.horizontal(|ui| {
             ui.label("Zoom: ");
             dragslider_up(&mut self.state.draw_zoom, 0.03125, 1..=2, 1, ui);
-            ui.label("|");
+            ui.separator();
             if let Some(room) = self.editsel.get_single_room_mut(&mut self.state.rooms) {
                 if let Some(loaded) = room.loaded.as_mut() {
                     let resp = ui.add_enabled(
@@ -264,9 +264,11 @@ impl Map {
         if cfg!(all(debug_assertions, feature = "super_validate")) {
             ui.horizontal(|ui| {
                 ui.label(format!("Coord: {:?}", self.state.dsel_coord));
-                ui.label(format!("| ID: {:?}", self.dsel_room));
+                ui.separator();
+                ui.label(format!("ID: {:?}", self.dsel_room));
                 if let Some(room) = self.dsel_room.and_then(|id| self.state.rooms.get(id) ) {
-                    ui.label(format!("| UUID: {}", room.uuid));
+                    ui.separator();
+                    ui.label(format!("UUID: {}", room.uuid));
                 }
             });
         }
@@ -275,11 +277,11 @@ impl Map {
             // ui.radio_value(&mut self.state.draw_mode, DrawOp::Draw, "Draw");
             // ui.radio_value(&mut self.state.draw_mode, DrawOp::Sel, "Sel");
             // ui.radio_value(&mut self.state.draw_mode, DrawOp::CSE, "CSE");
-            ui.label("|");
+            ui.separator();
             ui.radio_value(&mut self.state.draw_draw_mode, DrawMode::Direct, "Direct");
             //ui.radio_value(&mut self.state.draw_draw_mode, DrawMode::Line, "Line");
             ui.radio_value(&mut self.state.draw_draw_mode, DrawMode::Rect, "Rect");
-            ui.label("|");
+            ui.separator();
             ui.checkbox(&mut self.state.ds_replace, "DrawReplace").doc(DOC_ROOM_DRAWREPLACE);
             ui.checkbox(&mut self.state.dsel_whole, "DSelWhole");
             if let Some(room) = self.dsel_room.and_then(|id| self.state.rooms.get_mut(id) ) {
