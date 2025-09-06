@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 
-use egui::{Color32, CornerRadius, PointerButton, Sense, StrokeKind, Vec2};
+use egui::{Color32, CornerRadius, CursorIcon, PointerButton, Sense, StrokeKind, Vec2};
 
 use crate::gui::doc::{DOC_MAP, DOC_MAP_COLLAPSE, DOC_MAP_SHIFTAWAY, DOC_MAP_SHIFTSIZE, DOC_MAP_SINGLEMOVE, DOC_MAP_SMARTMOVE};
 use crate::gui::room::draw_image::DrawImageGroup;
@@ -574,7 +574,7 @@ impl Map {
                     let delta = super_map.response.drag_delta() / zoomf(self.state.map_zoom);
                     let new_view_pos = self.state.view_pos.sub(delta.into());
                     self.set_view_pos(new_view_pos);
-                    ui.output_mut(|o| o.cursor_icon = egui::CursorIcon::AllScroll );
+                    ui.ctx().set_cursor_icon(CursorIcon::AllScroll);
                 }
             }
 

@@ -1,4 +1,4 @@
-use egui::{Color32, Key, PointerButton, Sense};
+use egui::{Color32, CursorIcon, Key, PointerButton, Sense};
 use image::RgbaImage;
 
 use crate::gui::doc::{DOC_ROOMDRAW, DOC_ROOM_CONNDPAD, DOC_ROOM_DRAWREPLACE, DOC_ROOM_QSKEEPGAP, DOC_ROOM_SWITCHDPAD};
@@ -754,7 +754,7 @@ impl Map {
 
                 reg.extend_rel_fixtex(shapes);
 
-                reg.response.on_hover_cursor(egui::CursorIcon::Crosshair).show_doc(DOC_ROOMDRAW);
+                reg.response.on_hover_cursor(CursorIcon::Crosshair).show_doc(DOC_ROOMDRAW);
             });
         }
 

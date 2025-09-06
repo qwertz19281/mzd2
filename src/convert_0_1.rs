@@ -248,12 +248,8 @@ impl OldSelEntry {
         assert!(v.len() >= 4);
         Self {
             start: [
-                unsafe {
-                    std::mem::transmute(v[0])
-                },
-                unsafe {
-                    std::mem::transmute(v[1])
-                },
+                v[0].cast_signed(),
+                v[1].cast_signed(),
             ],
             size: [v[2],v[3]],
         }

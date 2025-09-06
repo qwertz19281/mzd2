@@ -2,7 +2,7 @@ use std::ffi::OsStr;
 use std::io::Cursor;
 use std::path::{Path, PathBuf};
 
-use egui::{Color32, Key, PointerButton, TextureOptions, Vec2};
+use egui::{Color32, CursorIcon, Key, PointerButton, TextureOptions, Vec2};
 use image::RgbaImage;
 use serde::{Deserialize, Serialize};
 
@@ -138,7 +138,9 @@ impl Tileset {
                 let delta = reg.response.drag_delta() / self.state.zoom as f32;
                 let new_view_pos = self.state.voff.sub(delta.into());
                 self.set_view_pos(new_view_pos, view_size.into());
-                ui.output_mut(|o| o.cursor_icon = egui::CursorIcon::AllScroll );
+                ui.ctx().set_cursor_icon(CursorIcon::AllScroll);
+            } else {
+                ui.ctx().set_cursor_icon(CursorIcon::Crosshair);
             }
         }
 
@@ -324,7 +326,7 @@ impl Tileset {
             reg.extend_rel_fixtex(shapes);
         }
 
-        reg.response.on_hover_cursor(egui::CursorIcon::Crosshair).show_doc(DOC_TILESETDRAW);
+        reg.response.show_doc(DOC_TILESETDRAW);
 
         // let hover_pos = reg.hover_pos_rel();
     }
