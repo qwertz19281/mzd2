@@ -6,6 +6,8 @@ use std::ops::Deref;
 use egui::{CornerRadius, Key, TextureOptions};
 use image::{imageops, RgbaImage};
 
+use crate::gui::doc::{DOC_LRU, DOC_PALETTE};
+use crate::gui::util::ResponseUtil;
 use crate::util::MapId;
 use crate::SRc;
 
@@ -212,6 +214,8 @@ pub fn palette_ui(state: &mut SharedApp, ui: &mut egui::Ui) {
 
     reg.extend_rel_fixtex(shapes);
     //reg.response.mark_changed();
+
+    reg.response.doc(DOC_PALETTE);
 }
 
 fn xbounds_iter(len: u32) -> impl Iterator<Item = (u32,u32)> {
@@ -368,21 +372,21 @@ pub fn lru_ui(state: &mut SharedApp, ui: &mut egui::Ui) {
 
             reg.extend_rel_fixtex(shapes);
 
-            if pal.src.img.width() <= 320 && pal.src.img.height() <= 240 {
+            if !reg.response.show_doc(DOC_LRU) && pal.src.img.width() <= 320 && pal.src.img.height() <= 240 {
                 reg.response.on_hover_ui_at_pointer(|ui| {
                     let reg2 = alloc_painter_rel(
                         ui,
                         <[u32;2]>::from(pal.src.img.dimensions()).as_f32().into(), egui::Sense::hover(),
                         1.,
                     );
-    
+
                     let shape = egui::Shape::image(
                         tex.id(),
                         rector(0, 0, pal.src.img.width(), pal.src.img.height()),
                         pal.uv,
                         egui::Color32::WHITE
                     );
-    
+
                     reg2.extend_rel_fixtex([shape]);
                 });
             }

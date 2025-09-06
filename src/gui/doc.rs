@@ -3,6 +3,8 @@ pub const DOC_TILESETDRAW: &str = include_str!("../../doc/tilesetdraw.md");
 pub const DOC_MAP: &str = include_str!("../../doc/map.md");
 pub const DOC_ROOM_SWITCHDPAD: &str = include_str!("../../doc/room_switchdpad.md");
 pub const DOC_ROOMTEMPLATE: &str = include_str!("../../doc/roomtemplate.md");
+pub const DOC_LRU: &str = include_str!("../../doc/lru.md");
+pub const DOC_PALETTE: &str = include_str!("../../doc/palette.md");
 
 pub const DOC_ROOM_CONNDPAD: &str = "Toggle the connectedness of this room to the neighor room.";
 pub const DOC_ROOM_QSKEEPGAP: &str = "Whether gaps (where there are no rooms on the map) should be preserved when moving rooms (doesn't affect the move ops on the map pane).";
